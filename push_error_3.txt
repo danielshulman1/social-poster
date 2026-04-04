@@ -1,0 +1,82 @@
+remote: error: GH013: Repository rule violations found for refs/heads/main.        
+remote: 
+remote: - GITHUB PUSH PROTECTION        
+remote:   —————————————————————————————————————————        
+remote:     Resolve the following violations before pushing again        
+remote: 
+remote:     - Push cannot contain secrets        
+remote: 
+remote:             
+remote:      (?) Learn how to resolve a blocked push        
+remote:      https://docs.github.com/code-security/secret-scanning/working-with-secret-scanning-and-push-protection/working-with-push-protection-from-the-command-line#resolving-a-blocked-push        
+remote:             
+remote:             
+remote:       —— GitHub Personal Access Token ——————————————————————        
+remote:        locations:        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.livecheck:8        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/danielshulman1/social-poster/security/secret-scanning/unblock-secret/3BtgDbLzc9984av2E5VKw9cndyP        
+remote:             
+remote:             
+remote:       —— Google OAuth Client ID ————————————————————————————        
+remote:        locations:        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.livecheck:9        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.livecheck:11        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.vercel.pulled:3        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.vercel.pulled:5        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/danielshulman1/social-poster/security/secret-scanning/unblock-secret/3BtgDcNPKM00rCvXsdowrMxMCcD        
+remote:             
+remote:             
+remote:       —— Google OAuth Client Secret ————————————————————————        
+remote:        locations:        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.livecheck:10        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.livecheck:12        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.vercel.pulled:4        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: .env.vercel.pulled:6        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/danielshulman1/social-poster/security/secret-scanning/unblock-secret/3BtgDawDw1CnmyNqWRStEhHzqVt        
+remote:             
+remote:             
+remote:       —— LinkedIn Client Secret ————————————————————————————        
+remote:        locations:        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/social-feeds/prisma/dev.db:83        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/danielshulman1/social-poster/security/secret-scanning/unblock-secret/3BtgDcZbEqA3TXqlOMt7RAnFXDu        
+remote:             
+remote:             
+remote:       —— OpenAI API Key ————————————————————————————————————        
+remote:        locations:        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/frontend/backups/backup-2025-12-18T18-00-00-064Z.json:667        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/frontend/backups/backup-2025-12-18T20-00-00-021Z.json:738        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/frontend/backups/backup-2025-12-18T20-30-00-056Z.json:790        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/frontend/backups/backup-2025-12-18T21-00-00-072Z.json:789        
+remote:          - commit: b6f7584c7faefd569bc6bc2791138efac17df7ea        
+remote:            path: packages/frontend/backups/backup-2025-12-18T21-00-00-087Z.json:789        
+remote:             
+remote:        (?) To push, remove secret from commit(s) or follow this URL to allow the secret.        
+remote:        https://github.com/danielshulman1/social-poster/security/secret-scanning/unblock-secret/3BtgDazrIUrTp2bhzUqXiYH1ttI        
+remote:             
+remote: 
+remote: 
+To https://github.com/danielshulman1/social-poster.git
+ ! [remote rejected] main -> main (push declined due to repository rule violations)
+error: failed to push some refs to 'https://github.com/danielshulman1/social-poster.git'

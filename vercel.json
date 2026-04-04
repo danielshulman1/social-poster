@@ -1,0 +1,13 @@
+{
+    "buildCommand": "cd packages/social-feeds && pnpm install && pnpm build",
+    "outputDirectory": "packages/social-feeds/.next",
+    "installCommand": "pnpm install",
+    "framework": "nextjs",
+    "devCommand": "cd packages/social-feeds && pnpm dev",
+    "crons": [
+        {
+            "path": "/api/cron/process-schedules",
+            "schedule": "0 0 * * *"
+        }
+    ]
+}
