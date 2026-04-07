@@ -44,8 +44,9 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request email permission which is standard and usually approved
-    const scope = 'public_profile,email';
+    // For now, request no additional scopes - just basic login
+    // The pages will need to be fetched with a server token instead
+    const scope = '';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
