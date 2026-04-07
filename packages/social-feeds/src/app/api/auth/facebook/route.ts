@@ -44,9 +44,9 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Keep the initial Facebook connect flow limited to page scopes.
-    // Instagram scopes require additional Meta app setup and will block the whole login flow if requested here.
-    const scope = 'public_profile,pages_read_user_content,pages_manage_posts,instagram_basic';
+    // Request basic permissions to read user profile and access pages they manage
+    // pages_manage_pages allows reading the list of pages via /me/accounts
+    const scope = 'public_profile,pages_manage_pages';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
