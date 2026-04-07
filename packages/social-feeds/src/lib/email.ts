@@ -44,7 +44,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendPasswordResetEmail = async (email: string, resetToken: string): Promise<void> => {
     // Construct the correct base URL. Try NEXT_PUBLIC_APP_URL, then NEXTAUTH_URL, then VERCEL_URL, fallback to localhost.
-    let appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    let rawAuthUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    let appUrl = "";
+    if (rawAuthUrl) {
+        // If the user accidentally pasted multiple URLs separated by newlines or commas in Vercel
+        appUrl = rawAuthUrl.split(/[\n,\s\\]+/)[0];
+    }
     if (!appUrl && process.env.VERCEL_URL) {
         appUrl = `https://${process.env.VERCEL_URL}`;
     }
