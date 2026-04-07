@@ -148,18 +148,40 @@ function ConnectionsPageContent() {
             } else {
                 toast.success('Facebook connected.');
             }
-            // Refetch connections after successful OAuth
-            fetch('/api/connections')
-                .then(res => res.json())
-                .then(connections => store.setAccounts(connections))
-                .catch(err => console.error('Error refetching connections:', err));
+            // Refetch connections after successful OAuth with a small delay
+            setTimeout(() => {
+                fetch('/api/connections')
+                    .then(res => {
+                        if (!res.ok) {
+                            console.error('API response not ok:', res.status);
+                            return [];
+                        }
+                        return res.json();
+                    })
+                    .then(connections => {
+                        console.log('Fetched connections:', connections);
+                        store.setAccounts(connections);
+                    })
+                    .catch(err => console.error('Error refetching connections:', err));
+            }, 500);
         } else if (success === 'linkedin') {
             toast.success('LinkedIn connected.');
-            // Refetch connections after successful OAuth
-            fetch('/api/connections')
-                .then(res => res.json())
-                .then(connections => store.setAccounts(connections))
-                .catch(err => console.error('Error refetching connections:', err));
+            // Refetch connections after successful OAuth with a small delay
+            setTimeout(() => {
+                fetch('/api/connections')
+                    .then(res => {
+                        if (!res.ok) {
+                            console.error('API response not ok:', res.status);
+                            return [];
+                        }
+                        return res.json();
+                    })
+                    .then(connections => {
+                        console.log('Fetched connections:', connections);
+                        store.setAccounts(connections);
+                    })
+                    .catch(err => console.error('Error refetching connections:', err));
+            }, 500);
         } else if (success === 'google') {
             toast.success('Google connected.');
         }
@@ -200,9 +222,14 @@ function ConnectionsPageContent() {
     useEffect(() => {
         const fetchConnections = async () => {
             try {
+                console.log('Fetching connections from /api/connections...');
                 const res = await fetch('/api/connections');
-                if (!res.ok) throw new Error('Failed to fetch connections');
+                if (!res.ok) {
+                    console.error('Failed to fetch connections, status:', res.status);
+                    throw new Error(`Failed to fetch connections: ${res.status}`);
+                }
                 const connections = await res.json();
+                console.log('Loaded connections:', connections);
                 store.setAccounts(connections);
             } catch (error) {
                 console.error('Error loading connections:', error);
