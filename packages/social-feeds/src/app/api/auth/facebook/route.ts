@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+import crypto from "crypto";
 
 export const dynamic = 'force-dynamic';
-
-const normalizeEnv = (value?: string | null) =>
-    (value || "").trim().replace(/^["']|["']$/g, "");
 
 const isPlaceholder = (value: string) => {
     const normalized = value.toLowerCase();
@@ -17,9 +16,7 @@ const isPlaceholder = (value: string) => {
 };
 
 export async function GET(req: Request) {
-    const requestUrl = new URL(req.url);
-    const requestOrigin = requestUrl.origin;
-    const baseUrl = normalizeEnv(process.env.NEXTAUTH_URL) || requestOrigin;
+    const baseUrl = getAppBaseUrl(req.url) || "http://localhost:3000";
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -41,10 +38,15 @@ export async function GET(req: Request) {
     }
 
     const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
-    const state = Buffer.from(JSON.stringify({ userId: session.user.id })).toString('base64');
+    const state = Buffer.from(JSON.stringify({
+        userId: session.user.id,
+        nonce: crypto.randomUUID(),
+        createdAt: Date.now(),
+    })).toString('base64');
 
-    // Scopes for reading pages, posting, and Instagram
-    const scope = 'public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,pages_manage_metadata,instagram_basic,instagram_content_publish';
+    // Keep the initial Facebook connect flow limited to page scopes.
+    // Instagram scopes require additional Meta app setup and will block the whole login flow if requested here.
+    const scope = 'public_profile,pages_read_user_content,pages_manage_posts,instagram_basic';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
@@ -54,5 +56,9 @@ export async function GET(req: Request) {
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('display', 'page');
 
-    return NextResponse.redirect(authUrl.toString());
+    const response = NextResponse.redirect(authUrl.toString());
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    return response;
 }
