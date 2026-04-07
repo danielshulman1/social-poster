@@ -44,9 +44,9 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request basic permissions to read user profile and access pages they manage
-    // pages_manage_pages allows reading the list of pages via /me/accounts
-    const scope = 'public_profile,pages_manage_pages';
+    // Request permissions to access user's pages and posts
+    // Using standard scopes that work with Facebook Login
+    const scope = 'public_profile';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
