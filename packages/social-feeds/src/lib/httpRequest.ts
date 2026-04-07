@@ -1,3 +1,5 @@
+import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+
 export type WorkflowHttpTemplateContext = {
     content: string;
     ai_output: string;
@@ -14,31 +16,7 @@ export type WorkflowHttpTemplateContext = {
     date: string;
 };
 
-const normalizeEnv = (value?: string | null) =>
-    (value || "").trim().replace(/^["']|["']$/g, "");
-
 const EMAIL_LIKE_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export const getAppBaseUrl = (requestUrl?: string) => {
-    const configuredBase =
-        normalizeEnv(process.env.NEXTAUTH_URL) ||
-        normalizeEnv(process.env.NEXT_PUBLIC_APP_URL);
-
-    if (configuredBase) return configuredBase;
-
-    const vercelUrl = normalizeEnv(process.env.VERCEL_URL);
-    if (vercelUrl) {
-        return vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
-    }
-
-    if (!requestUrl) return "";
-
-    try {
-        return new URL(requestUrl).origin;
-    } catch {
-        return "";
-    }
-};
 
 export const resolveHttpRequestUrl = (rawUrl: string, requestUrl?: string) => {
     const trimmed = rawUrl.trim();

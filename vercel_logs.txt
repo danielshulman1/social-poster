@@ -1,0 +1,8 @@
+Retrieving project…
+Resolving deployment "social-feeds-j2lk769ld-daniels-projects-3d05e2ae.vercel.app"
+Streaming logs for deployment dpl_9fZNnRBvZ1DNjkgBNtSARjZBZNAo starting from 15:49:19.02
+
+waiting for new logs...
+WARN! Command automatically interrupted after 5 minutes.
+
+Error: An unexpected error occurred in logs: AbortError: The user aborted a request.

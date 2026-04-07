@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getAppBaseUrl } from "@/lib/appUrl";
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST || "smtp.ethereal.email",
@@ -11,6 +12,7 @@ const transporter = nodemailer.createTransport({
 
 export const sendWorkflowFailureEmail = async (email: string, workflowName: string, error: string) => {
     try {
+        const appUrl = getAppBaseUrl() || "http://localhost:3000";
         const info = await transporter.sendMail({
             from: '"Workflow Automator" <noreply@example.com>',
             to: email,
@@ -24,7 +26,7 @@ export const sendWorkflowFailureEmail = async (email: string, workflowName: stri
             <code>${error}</code>
           </div>
           <p>Please log in to your dashboard to investigate.</p>
-          <a href="${process.env.NEXTAUTH_URL}/dashboard" style="display: inline-block; background: #0f172a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
+          <a href="${appUrl}/dashboard" style="display: inline-block; background: #0f172a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Dashboard</a>
         </div>
       `,
         });
@@ -40,25 +42,8 @@ export const sendWorkflowFailureEmail = async (email: string, workflowName: stri
 // Password reset email via Resend
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export const sendPasswordResetEmail = async (email: string, resetToken: string): Promise<void> => {
-    // Construct the correct base URL. Try NEXT_PUBLIC_APP_URL, then NEXTAUTH_URL, then VERCEL_URL, fallback to localhost.
-    let rawAuthUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
-    let appUrl = "";
-    if (rawAuthUrl) {
-        // If the user accidentally pasted multiple URLs separated by newlines or commas in Vercel
-        appUrl = rawAuthUrl.split(/[\n,\s\\]+/)[0];
-    }
-    if (!appUrl && process.env.VERCEL_URL) {
-        appUrl = `https://${process.env.VERCEL_URL}`;
-    }
-    appUrl = appUrl || "http://localhost:3000";
-    // Strip trailing slash if present
-    if (appUrl.endsWith('/')) {
-        appUrl = appUrl.slice(0, -1);
-    }
-    
+    const appUrl = getAppBaseUrl() || "http://localhost:3000";
     const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
 
     if (!process.env.RESEND_API_KEY) {
@@ -68,6 +53,7 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
     }
 
     try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
         const { data, error } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
             to: email,

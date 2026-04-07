@@ -1,28 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const normalizeEnv = (value?: string | null) =>
-    (value || "").trim().replace(/^["']|["']$/g, "");
-
-const getAppBaseUrl = (requestUrl: string) => {
-    const configuredBase =
-        normalizeEnv(process.env.NEXTAUTH_URL) ||
-        normalizeEnv(process.env.NEXT_PUBLIC_APP_URL);
-
-    if (configuredBase) return configuredBase;
-
-    const vercelUrl = normalizeEnv(process.env.VERCEL_URL);
-    if (vercelUrl) {
-        return vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
-    }
-
-    try {
-        return new URL(requestUrl).origin;
-    } catch {
-        return "";
-    }
-};
-
+import { getAppBaseUrl } from "@/lib/appUrl";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -137,7 +115,7 @@ export async function GET(req: Request) {
                                 orgName = `[Page] ${orgDetail.localizedName}`;
                             }
                         }
-                    } catch (e) {
+                    } catch {
                         // ignore error fetching organization details
                     }
 

@@ -24,6 +24,14 @@ model User {
   linkedinClientSecret String?  // Per-user LinkedIn app Client Secret
   facebookAppId        String?  // Per-user Facebook app ID
   facebookAppSecret    String?  // Per-user Facebook app Secret
+  twitterClientId      String?  // Per-user Twitter/X app Client ID
+  twitterClientSecret  String?  // Per-user Twitter/X app Client Secret
+  tiktokClientId       String?  // Per-user TikTok app Client ID
+  tiktokClientSecret   String?  // Per-user TikTok app Client Secret
+  youtubeClientId      String?  // Per-user YouTube app Client ID
+  youtubeClientSecret  String?  // Per-user YouTube app Client Secret
+  pinterestClientId    String?  // Per-user Pinterest app Client ID
+  pinterestClientSecret String?  // Per-user Pinterest app Client Secret
   resetToken           String?  @unique  // Password reset token
   resetTokenExpiry     DateTime?  // Password reset token expiration
   createdAt     DateTime  @default(now())

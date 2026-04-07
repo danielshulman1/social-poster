@@ -57,6 +57,8 @@ export default function SettingsPage() {
     const [facebookAppIdPreview, setFacebookAppIdPreview] = useState('');
     const [showFacebookAppSecret, setShowFacebookAppSecret] = useState(false);
     const [isSavingFacebookApp, setIsSavingFacebookApp] = useState(false);
+    const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const facebookRedirectUri = appOrigin ? `${appOrigin}/api/auth/facebook/callback` : '';
 
     useEffect(() => {
         fetch('/api/user/settings')
@@ -551,7 +553,7 @@ export default function SettingsPage() {
                             <p className="text-[11px] text-muted-foreground mb-1">
                                 Required to connect to Facebook and Instagram. Create an app at{' '}
                                 <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="underline hover:text-foreground">developers.facebook.com</a>
-                                {' '}and add the Facebook Login product.
+                                {' '}and add the Facebook Login product. These credentials override the shared Facebook app for your account.
                             </p>
                             {hasFacebookAppCredentials && (
                                 <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">
@@ -593,9 +595,17 @@ export default function SettingsPage() {
                                     Save Facebook Credentials
                                 </Button>
                             </div>
-                            <p className="text-[11px] text-muted-foreground">
-                                Add Valid OAuth Redirect URI: <code className="text-xs bg-muted px-1 py-0.5 rounded">{typeof window !== 'undefined' ? window.location.origin : ''}/api/auth/facebook/callback</code>
-                            </p>
+                            <div className="rounded-md border bg-muted/20 p-3 text-[11px] text-muted-foreground space-y-2">
+                                <p className="font-medium text-foreground">Meta app setup</p>
+                                <p>
+                                    App Domains: <code className="text-xs bg-muted px-1 py-0.5 rounded">{appOrigin ? new URL(appOrigin).hostname : ''}</code>
+                                </p>
+                                <p>
+                                    Valid OAuth Redirect URI: <code className="text-xs bg-muted px-1 py-0.5 rounded">{facebookRedirectUri}</code>
+                                </p>
+                                <p>Facebook Login &gt; Settings: turn on Client OAuth Login and Web OAuth Login.</p>
+                                <p>If Meta shows &quot;URL Blocked&quot;, the redirect URI above is not whitelisted in the Facebook app tied to these credentials.</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

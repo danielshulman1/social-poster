@@ -1,32 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const normalizeEnv = (value?: string) =>
-    (value || "").trim().replace(/^["']|["']$/g, "");
-
-const getAppBaseUrl = (requestUrl: string) => {
-    const configuredBase =
-        normalizeEnv(process.env.NEXTAUTH_URL) ||
-        normalizeEnv(process.env.NEXT_PUBLIC_APP_URL);
-
-    if (configuredBase) return configuredBase;
-
-    const productionUrl = normalizeEnv(process.env.VERCEL_PROJECT_PRODUCTION_URL);
-    if (productionUrl) {
-        return productionUrl.startsWith("http") ? productionUrl : `https://${productionUrl}`;
-    }
-
-    const vercelUrl = normalizeEnv(process.env.VERCEL_URL);
-    if (vercelUrl) {
-        return vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
-    }
-
-    try {
-        return new URL(requestUrl).origin;
-    } catch {
-        return "";
-    }
-};
+import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 
 export async function GET(req: Request) {
     const url = new URL(req.url);

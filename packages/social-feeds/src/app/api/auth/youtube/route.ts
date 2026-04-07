@@ -9,30 +9,35 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
     const baseUrl = getAppBaseUrl(req.url) || 'http://localhost:3000';
     const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
         return NextResponse.redirect(new URL('/login', baseUrl));
     }
 
-    // Read user's LinkedIn credentials from DB
+    // Read user's YouTube credentials from DB
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { linkedinClientId: true, linkedinClientSecret: true },
+        select: { youtubeClientId: true, youtubeClientSecret: true },
     });
 
-    if (!user?.linkedinClientId || !user?.linkedinClientSecret) {
-        return NextResponse.json({ error: "LinkedIn credentials not configured. Go to Settings → API Keys to add your LinkedIn Client ID and Secret." }, { status: 400 });
+    if (!user?.youtubeClientId || !user?.youtubeClientSecret) {
+        return NextResponse.json(
+            { error: "YouTube credentials not configured. Go to Settings → API Keys to add your YouTube Client ID and Secret." },
+            { status: 400 }
+        );
     }
 
-    const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
+    const redirectUri = `${baseUrl}/api/auth/youtube/callback`;
     const state = Buffer.from(JSON.stringify({ userId: session.user.id })).toString('base64');
-    const scope = 'openid profile w_member_social w_organization_social';
 
-    const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', user.youtubeClientId);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('client_id', user.linkedinClientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube');
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', scope);
+    authUrl.searchParams.set('access_type', 'offline');
+    authUrl.searchParams.set('prompt', 'consent');
 
     return NextResponse.redirect(authUrl.toString());
 }

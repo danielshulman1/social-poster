@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 
 export const dynamic = 'force-dynamic';
-
-const normalizeEnv = (value?: string | null) =>
-    (value || "").trim().replace(/^["']|["']$/g, "");
 
 const isPlaceholder = (value: string) => {
     const normalized = value.toLowerCase();
@@ -20,8 +18,7 @@ export async function GET(req: Request) {
     const state = url.searchParams.get('state');
     const error = url.searchParams.get('error');
     const errorDescription = url.searchParams.get('error_description');
-    const requestOrigin = url.origin;
-    const baseUrl = normalizeEnv(process.env.NEXTAUTH_URL) || requestOrigin;
+    const baseUrl = getAppBaseUrl(req.url) || "http://localhost:3000";
 
     if (error) {
         return NextResponse.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorDescription || error)}`);
@@ -94,6 +91,9 @@ export async function GET(req: Request) {
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 
+        console.log('Facebook pages response status:', pagesRes.status);
+        console.log('Facebook pages response data:', JSON.stringify(pagesData, null, 2));
+
         if (!pagesRes.ok) {
             console.error('Facebook fetch pages error:', pagesData);
             return NextResponse.redirect(`${baseUrl}/connections?error=fetch_pages_failed`);
@@ -104,7 +104,9 @@ export async function GET(req: Request) {
 
         // 4. Save each page to database
         const pages = pagesData.data || [];
+        console.log('Pages to save:', pages.length, pages);
         for (const page of pages) {
+            console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
             if (page.id && page.name && page.access_token) {
                 // Delete existing FB page connection if it exists to avoid duplicates
                 await prisma.externalConnection.deleteMany({
@@ -116,7 +118,7 @@ export async function GET(req: Request) {
                 });
 
                 // Save Facebook Page Connection using the long-lived Page Access Token
-                await prisma.externalConnection.create({
+                const savedConnection = await prisma.externalConnection.create({
                     data: {
                         userId,
                         provider: 'facebook',
@@ -128,6 +130,7 @@ export async function GET(req: Request) {
                         }),
                     },
                 });
+                console.log('Saved Facebook connection:', { id: savedConnection.id, name: savedConnection.name });
                 addedCount++;
 
                 // 5. If it has a linked Instagram Business Account, save that too
@@ -143,7 +146,7 @@ export async function GET(req: Request) {
                         }
                     });
 
-                    await prisma.externalConnection.create({
+                    const savedIgConnection = await prisma.externalConnection.create({
                         data: {
                             userId,
                             provider: 'instagram',
@@ -155,14 +158,18 @@ export async function GET(req: Request) {
                             }),
                         },
                     });
+                    console.log('Saved Instagram connection:', { id: savedIgConnection.id, name: savedIgConnection.name });
                     igAddedCount++;
                 }
             }
         }
 
-        return NextResponse.redirect(`${baseUrl}/connections?success=facebook&added=${addedCount}&igAdded=${igAddedCount}`);
-    } catch (err: any) {
+        const redirectUrl = `${baseUrl}/connections?success=facebook&added=${addedCount}&igAdded=${igAddedCount}`;
+        console.log('Facebook callback success, redirecting to:', redirectUrl);
+        return NextResponse.redirect(redirectUrl);
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'facebook_callback_failed';
         console.error('Facebook callback error:', err);
-        return NextResponse.redirect(`${baseUrl}/connections?error=${encodeURIComponent(err.message)}`);
+        return NextResponse.redirect(`${baseUrl}/connections?error=${encodeURIComponent(errorMessage)}`);
     }
 }
