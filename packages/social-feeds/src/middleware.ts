@@ -17,7 +17,9 @@ export const config = {
          * - login (login page)
          * - signup (signup page)
          * - pricing (pricing page)
+         * - forgot-password (forgot password page)
+         * - reset-password (reset password page)
          */
-        "/((?!api|_next/static|_next/image|favicon.ico|login|signup|pricing).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|login|signup|pricing|forgot-password|reset-password).*)",
     ],
 };
