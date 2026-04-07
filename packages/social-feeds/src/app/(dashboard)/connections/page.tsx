@@ -148,8 +148,18 @@ function ConnectionsPageContent() {
             } else {
                 toast.success('Facebook connected.');
             }
+            // Refetch connections after successful OAuth
+            fetch('/api/connections')
+                .then(res => res.json())
+                .then(connections => store.setAccounts(connections))
+                .catch(err => console.error('Error refetching connections:', err));
         } else if (success === 'linkedin') {
             toast.success('LinkedIn connected.');
+            // Refetch connections after successful OAuth
+            fetch('/api/connections')
+                .then(res => res.json())
+                .then(connections => store.setAccounts(connections))
+                .catch(err => console.error('Error refetching connections:', err));
         } else if (success === 'google') {
             toast.success('Google connected.');
         }
@@ -186,7 +196,7 @@ function ConnectionsPageContent() {
         fetchSheets(store.googleSheetsConfig.spreadsheetId);
     }, [store.googleSheetsConfig.spreadsheetId]);
 
-    // Load existing connections from database on component mount
+    // Load existing connections from database on component mount and after successful OAuth redirect
     useEffect(() => {
         const fetchConnections = async () => {
             try {
@@ -200,7 +210,7 @@ function ConnectionsPageContent() {
         };
 
         fetchConnections();
-    }, [store]);
+    }, []);
 
     const connectWithFacebookOAuth = () => {
         window.location.href = '/api/auth/facebook';
