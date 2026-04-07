@@ -186,6 +186,22 @@ function ConnectionsPageContent() {
         fetchSheets(store.googleSheetsConfig.spreadsheetId);
     }, [store.googleSheetsConfig.spreadsheetId]);
 
+    // Load existing connections from database on component mount
+    useEffect(() => {
+        const fetchConnections = async () => {
+            try {
+                const res = await fetch('/api/connections');
+                if (!res.ok) throw new Error('Failed to fetch connections');
+                const connections = await res.json();
+                store.setAccounts(connections);
+            } catch (error) {
+                console.error('Error loading connections:', error);
+            }
+        };
+
+        fetchConnections();
+    }, [store]);
+
     const connectWithFacebookOAuth = () => {
         window.location.href = '/api/auth/facebook';
     };
