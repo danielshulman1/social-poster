@@ -44,9 +44,8 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request permissions to access user's pages and posts
-    // Using standard scopes that work with Facebook Login
-    const scope = 'public_profile';
+    // Request email permission which is standard and usually approved
+    const scope = 'public_profile,email';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
