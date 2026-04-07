@@ -43,10 +43,27 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendPasswordResetEmail = async (email: string, resetToken: string): Promise<void> => {
-    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
+    // Construct the correct base URL. Try NEXT_PUBLIC_APP_URL, then NEXTAUTH_URL, then VERCEL_URL, fallback to localhost.
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    if (!appUrl && process.env.VERCEL_URL) {
+        appUrl = `https://${process.env.VERCEL_URL}`;
+    }
+    appUrl = appUrl || "http://localhost:3000";
+    // Strip trailing slash if present
+    if (appUrl.endsWith('/')) {
+        appUrl = appUrl.slice(0, -1);
+    }
+    
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+
+    if (!process.env.RESEND_API_KEY) {
+        console.warn("⚠️ RESEND_API_KEY is not defined. Password reset email cannot be sent.");
+        console.warn(`[DEVELOPMENT] Password Reset URL for ${email}: ${resetUrl}`);
+        return;
+    }
 
     try {
-        await resend.emails.send({
+        const { data, error } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
             to: email,
             subject: "Reset your password",
@@ -69,8 +86,15 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string):
                 </div>
             `,
         });
+
+        if (error) {
+            console.error("Resend API returned an error:", error);
+            console.warn(`[DEVELOPMENT fallback] Password Reset URL for ${email}: ${resetUrl}`);
+        } else {
+            console.log("Password reset email sent successfully:", data);
+        }
     } catch (error) {
-        console.error("Error sending password reset email:", error);
-        // Don't throw - caller handles the response
+        console.error("Error executing Resend code:", error);
+        console.warn(`[DEVELOPMENT fallback] Password Reset URL for ${email}: ${resetUrl}`);
     }
 };
