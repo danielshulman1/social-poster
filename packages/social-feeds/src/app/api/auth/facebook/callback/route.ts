@@ -84,7 +84,16 @@ export async function GET(req: Request) {
         const longTokenData = await longTokenRes.json();
         const finalUserToken = longTokenData.access_token || userAccessToken;
 
-        // 3. Fetch user's pages
+        // 3. First, check user info to verify token is valid
+        const userUrl = new URL('https://graph.facebook.com/v18.0/me');
+        userUrl.searchParams.set('access_token', finalUserToken);
+        userUrl.searchParams.set('fields', 'id,name,email');
+        const userRes = await fetch(userUrl.toString());
+        const userData = await userRes.json();
+        console.log('=== USER INFO ===');
+        console.log('User info:', JSON.stringify(userData, null, 2));
+
+        // 4. Fetch user's pages
         const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
         // Request all available fields to see what Facebook returns
