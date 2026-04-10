@@ -137,11 +137,15 @@ export async function GET(req: Request) {
                 console.log('Saved Facebook connection:', { id: savedConnection.id, name: savedConnection.name });
                 addedCount++;
 
-                // 5. Try to fetch Instagram accounts linked to this page using page access token
+                // 5. Try to fetch Instagram accounts linked to this page
+                // IMPORTANT: Use the USER access token (finalUserToken), not the page token.
+                // The instagram_business_basic permission is granted on the user token.
                 let igId: string | undefined;
+                let igUsername: string | undefined;
+                let igName: string | undefined;
                 try {
                     const igPageUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
-                    igPageUrl.searchParams.set('access_token', page.access_token);
+                    igPageUrl.searchParams.set('access_token', finalUserToken);
                     igPageUrl.searchParams.set('fields', 'instagram_business_account');
                     const igPageRes = await fetch(igPageUrl.toString());
                     const igPageData = await igPageRes.json();
@@ -150,8 +154,25 @@ export async function GET(req: Request) {
                     if (igPageData.instagram_business_account?.id) {
                         igId = igPageData.instagram_business_account.id;
                         console.log('Found Instagram ID:', { pageId: page.id, igId });
+
+                        // Fetch the actual Instagram username and profile info
+                        try {
+                            const igProfileUrl = new URL(`https://graph.facebook.com/v19.0/${igId}`);
+                            igProfileUrl.searchParams.set('access_token', finalUserToken);
+                            igProfileUrl.searchParams.set('fields', 'username,name,profile_picture_url');
+                            const igProfileRes = await fetch(igProfileUrl.toString());
+                            const igProfileData = await igProfileRes.json();
+                            console.log('Instagram profile data:', JSON.stringify(igProfileData));
+                            
+                            if (igProfileData.username) {
+                                igUsername = igProfileData.username;
+                                igName = igProfileData.name || igUsername;
+                            }
+                        } catch (profileErr) {
+                            console.log('Failed to fetch Instagram profile:', profileErr);
+                        }
                     } else {
-                        console.log('No Instagram account linked to page:', { pageId: page.id });
+                        console.log('No Instagram account linked to page:', { pageId: page.id, responseKeys: Object.keys(igPageData) });
                     }
                 } catch (e) {
                     console.log('Failed to fetch Instagram account:', e);
@@ -159,16 +180,15 @@ export async function GET(req: Request) {
 
                 // If we found an Instagram account, save it
                 if (igId) {
-                    const igName = `IG linked to ${page.name}`;
+                    const displayName = igUsername ? `@${igUsername}` : `IG linked to ${page.name}`;
 
-                    console.log('Found linked Instagram account:', { igId, igName, pageId: page.id });
+                    console.log('Found linked Instagram account:', { igId, igUsername, displayName, pageId: page.id });
 
                     // Delete existing IG connection to avoid duplicates
                     await prisma.externalConnection.deleteMany({
                         where: {
                             userId,
                             provider: 'instagram',
-                            name: igName
                         }
                     });
 
@@ -176,11 +196,12 @@ export async function GET(req: Request) {
                         data: {
                             userId,
                             provider: 'instagram',
-                            name: igName,
+                            name: displayName,
                             credentials: JSON.stringify({
-                                accessToken: page.access_token, // IG Graph uses the FB Page Access Token
-                                username: igId, // Using the IG ID as username
+                                accessToken: page.access_token, // IG Graph API uses the FB Page Access Token for publishing
+                                username: igUsername || igId,
                                 userId: igId,
+                                pageId: page.id,
                                 connectedAt: new Date().toISOString()
                             }),
                         },
