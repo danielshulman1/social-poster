@@ -183,6 +183,26 @@ function ConnectionsPageContent() {
                     })
                     .catch(err => console.error('Error refetching connections:', err));
             }, 500);
+        } else if (success === 'instagram') {
+            const igName = params.get('igName') || 'Instagram';
+            toast.success(`Instagram connected: ${igName}`);
+            setConnectionNotice({
+                tone: 'success',
+                title: 'Instagram connected',
+                description: `Successfully connected Instagram account ${igName}. You can now use it in your workflows.`,
+            });
+            // Refetch connections
+            setTimeout(() => {
+                fetch('/api/connections')
+                    .then(res => {
+                        if (!res.ok) return [];
+                        return res.json();
+                    })
+                    .then(connections => {
+                        store.setAccounts(connections);
+                    })
+                    .catch(err => console.error('Error refetching connections:', err));
+            }, 500);
         } else if (success === 'linkedin') {
             toast.success('LinkedIn connected.');
             setConnectionNotice({
@@ -300,6 +320,10 @@ function ConnectionsPageContent() {
 
     const connectWithFacebookOAuth = () => {
         window.location.href = '/api/auth/facebook';
+    };
+
+    const connectWithInstagramOAuth = () => {
+        window.location.href = '/api/auth/instagram';
     };
 
     const handleFetchPagesWithToken = async () => {
@@ -577,21 +601,32 @@ function ConnectionsPageContent() {
 
                 {/* SOCIAL ACCOUNTS TAB */}
                 <TabsContent value="social" className="space-y-6">
-                    <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-3xl border border-blue-200/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(96,165,250,0.04))] p-5">
                             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                 <Facebook className="h-4 w-4 text-primary" />
-                                Facebook and Instagram
+                                Facebook Pages
                             </div>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                Start with a fresh Facebook OAuth run. If Meta blocks the app, open Settings and confirm the exact callback and app credentials before retrying.
+                                Connect your Facebook Pages for posting. Uses Facebook OAuth.
                             </p>
                             <div className="mt-4 flex flex-wrap gap-3">
                                 <Button className="rounded-full bg-[#1877F2] px-5 text-white hover:bg-[#166fe5]" onClick={connectWithFacebookOAuth}>
-                                    Connect with Facebook <ArrowRight className="ml-2 h-4 w-4" />
+                                    Connect Facebook <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
-                                <Button variant="outline" className="rounded-full px-5" onClick={() => { window.location.href = '/settings'; }}>
-                                    Review Meta setup
+                            </div>
+                        </div>
+                        <div className="rounded-3xl border border-pink-200/60 bg-[linear-gradient(135deg,rgba(236,72,153,0.12),rgba(244,114,182,0.04))] p-5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <Instagram className="h-4 w-4 text-pink-600" />
+                                Instagram
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                Connect your Instagram Business or Creator account directly via Instagram Login.
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-3">
+                                <Button className="rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 px-5 text-white hover:opacity-90" onClick={connectWithInstagramOAuth}>
+                                    Connect Instagram <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
@@ -613,7 +648,7 @@ function ConnectionsPageContent() {
                                 Recovery path
                             </div>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                If OAuth keeps failing, use the manual Graph API token path below to fetch pages and save a page token directly.
+                                If OAuth keeps failing, use the manual token path via the Connect New Account button.
                             </p>
                         </div>
                     </div>
@@ -661,7 +696,25 @@ function ConnectionsPageContent() {
                                     <div className="grid gap-2">
                                         <Label>Access Token</Label>
 
-                                        {(newAccountPlatform === 'facebook' || newAccountPlatform === 'instagram') ? (
+                                        {newAccountPlatform === 'instagram' ? (
+                                            <div className="flex flex-col gap-3">
+                                                <Button
+                                                    onClick={connectWithInstagramOAuth}
+                                                    className="w-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white hover:opacity-90"
+                                                >
+                                                    <Instagram className="mr-2 h-4 w-4" />
+                                                    Connect with Instagram
+                                                </Button>
+                                                <p className="text-[10px] text-muted-foreground text-center">
+                                                    ✨ Recommended. Connect your Instagram Business or Creator account directly. Takes 30 seconds.
+                                                </p>
+                                                <div className="bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-800 rounded-md p-3">
+                                                    <p className="text-xs text-pink-800 dark:text-pink-300">
+                                                        Your Instagram account must be a <strong>Business</strong> or <strong>Creator</strong> account. Personal accounts are not supported by Meta&apos;s API.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : newAccountPlatform === 'facebook' ? (
                                             <div className="flex flex-col gap-3">
                                                 <Button
                                                     onClick={connectWithFacebookOAuth}
@@ -671,11 +724,11 @@ function ConnectionsPageContent() {
                                                     Connect with Facebook
                                                 </Button>
                                                 <p className="text-[10px] text-muted-foreground text-center">
-                                                    ✨ Recommended. This imports Facebook Pages and linked Instagram accounts automatically. Takes 30 seconds.
+                                                    ✨ Recommended. This imports your Facebook Pages automatically. Takes 30 seconds.
                                                 </p>
                                                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                                                     <p className="text-xs text-blue-800 dark:text-blue-300">
-                                                        <strong>Don't have credentials yet?</strong> Go to <a href="/settings" className="underline font-semibold">Settings</a> to add your Facebook App ID & Secret, then come back here.
+                                                        <strong>Don&apos;t have credentials yet?</strong> Go to <a href="/settings" className="underline font-semibold">Settings</a> to add your Facebook App ID &amp; Secret, then come back here.
                                                     </p>
                                                 </div>
 
@@ -757,7 +810,7 @@ function ConnectionsPageContent() {
                                     )}
                                 </div>
                                 <DialogFooter>
-                                    {newAccountPlatform !== 'facebook' && newAccountPlatform !== 'instagram' && newAccountPlatform !== 'linkedin' && (
+                                    {newAccountPlatform !== 'facebook' && newAccountPlatform !== 'instagram' && newAccountPlatform !== 'linkedin' && newAccountPlatform !== 'instagram' && (
                                         <Button onClick={handleAddAccount}>Connect Account</Button>
                                     )}
                                 </DialogFooter>

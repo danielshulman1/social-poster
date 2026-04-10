@@ -137,80 +137,9 @@ export async function GET(req: Request) {
                 console.log('Saved Facebook connection:', { id: savedConnection.id, name: savedConnection.name });
                 addedCount++;
 
-                // 5. Try to fetch Instagram accounts linked to this page
-                // IMPORTANT: Use the USER access token (finalUserToken), not the page token.
-                // The instagram_business_basic permission is granted on the user token.
-                let igId: string | undefined;
-                let igUsername: string | undefined;
-                let igName: string | undefined;
-                try {
-                    const igPageUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
-                    igPageUrl.searchParams.set('access_token', finalUserToken);
-                    igPageUrl.searchParams.set('fields', 'instagram_business_account');
-                    const igPageRes = await fetch(igPageUrl.toString());
-                    const igPageData = await igPageRes.json();
-                    console.log('Fetching Instagram account for page:', { pageId: page.id, response: JSON.stringify(igPageData) });
-
-                    if (igPageData.instagram_business_account?.id) {
-                        igId = igPageData.instagram_business_account.id;
-                        console.log('Found Instagram ID:', { pageId: page.id, igId });
-
-                        // Fetch the actual Instagram username and profile info
-                        try {
-                            const igProfileUrl = new URL(`https://graph.facebook.com/v19.0/${igId}`);
-                            igProfileUrl.searchParams.set('access_token', finalUserToken);
-                            igProfileUrl.searchParams.set('fields', 'username,name,profile_picture_url');
-                            const igProfileRes = await fetch(igProfileUrl.toString());
-                            const igProfileData = await igProfileRes.json();
-                            console.log('Instagram profile data:', JSON.stringify(igProfileData));
-                            
-                            if (igProfileData.username) {
-                                igUsername = igProfileData.username;
-                                igName = igProfileData.name || igUsername;
-                            }
-                        } catch (profileErr) {
-                            console.log('Failed to fetch Instagram profile:', profileErr);
-                        }
-                    } else {
-                        console.log('No Instagram account linked to page:', { pageId: page.id, responseKeys: Object.keys(igPageData) });
-                    }
-                } catch (e) {
-                    console.log('Failed to fetch Instagram account:', e);
-                }
-
-                // If we found an Instagram account, save it
-                if (igId) {
-                    const displayName = igUsername ? `@${igUsername}` : `IG linked to ${page.name}`;
-
-                    console.log('Found linked Instagram account:', { igId, igUsername, displayName, pageId: page.id });
-
-                    // Delete existing IG connection to avoid duplicates
-                    await prisma.externalConnection.deleteMany({
-                        where: {
-                            userId,
-                            provider: 'instagram',
-                        }
-                    });
-
-                    const savedIgConnection = await prisma.externalConnection.create({
-                        data: {
-                            userId,
-                            provider: 'instagram',
-                            name: displayName,
-                            credentials: JSON.stringify({
-                                accessToken: page.access_token, // IG Graph API uses the FB Page Access Token for publishing
-                                username: igUsername || igId,
-                                userId: igId,
-                                pageId: page.id,
-                                connectedAt: new Date().toISOString()
-                            }),
-                        },
-                    });
-                    console.log('Saved Instagram connection:', { id: savedIgConnection.id, name: savedIgConnection.name });
-                    igAddedCount++;
-                } else {
-                    console.log('No linked Instagram account found for page:', page.name);
-                }
+                // Note: Instagram accounts are now connected via a separate Instagram Login flow
+                // (/api/auth/instagram) since the instagram_business_account field is not accessible
+                // through Facebook Login permissions alone.
             }
         }
 
