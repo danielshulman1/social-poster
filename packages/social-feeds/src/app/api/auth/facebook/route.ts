@@ -45,8 +45,9 @@ export async function GET(req: Request) {
     })).toString('base64');
 
     // Request permissions to view and manage pages
-    // Note: instagram_business_account requires instagram_basic to be accessible
-    const scope = 'pages_show_list,pages_manage_posts,pages_manage_metadata,pages_read_engagement,business_management,instagram_basic,instagram_content_publish';
+    // Note: instagram_business_account field access comes via business_management scope
+    // The instagram_business_* scopes are for Instagram Login flow, NOT Facebook Login
+    const scope = 'pages_show_list,pages_manage_posts,pages_manage_metadata,pages_read_engagement,business_management';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
