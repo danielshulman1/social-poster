@@ -140,6 +140,7 @@ export async function GET(req: Request) {
                 // 5. Try to fetch Instagram accounts linked to this page
                 // First try the direct instagram_business_account field
                 let igId = page.instagram_business_account?.id;
+                console.log('Step 1 - Direct instagram_business_account field:', { igId });
 
                 // If not found in the pages response, fetch it separately using the page token
                 if (!igId) {
@@ -149,10 +150,12 @@ export async function GET(req: Request) {
                         igPageUrl.searchParams.set('fields', 'instagram_business_account');
                         const igPageRes = await fetch(igPageUrl.toString());
                         const igPageData = await igPageRes.json();
-                        console.log('Separate Instagram fetch result:', JSON.stringify(igPageData));
+                        console.log('Step 2 - Separate Instagram fetch result:', JSON.stringify(igPageData));
                         if (igPageData.instagram_business_account?.id) {
                             igId = igPageData.instagram_business_account.id;
                             console.log('Fetched Instagram ID separately:', { pageId: page.id, igId });
+                        } else {
+                            console.log('No instagram_business_account object in response');
                         }
                     } catch (e) {
                         console.log('Failed to fetch Instagram separately:', e);
@@ -161,13 +164,14 @@ export async function GET(req: Request) {
 
                 // If still not found, try fetching all Instagram accounts via user token
                 if (!igId) {
+                    console.log('Step 3 - Trying /me/instagram_business_accounts endpoint...');
                     try {
                         const igAccountsUrl = new URL('https://graph.facebook.com/v19.0/me/instagram_business_accounts');
                         igAccountsUrl.searchParams.set('access_token', finalUserToken);
                         igAccountsUrl.searchParams.set('fields', 'id,username,name');
                         const igAccountsRes = await fetch(igAccountsUrl.toString());
                         const igAccountsData = await igAccountsRes.json();
-                        console.log('Instagram accounts via user token:', JSON.stringify(igAccountsData));
+                        console.log('Step 3 - Instagram accounts via user token:', JSON.stringify(igAccountsData));
 
                         // For now, if we find any Instagram accounts, use the first one
                         // (In a full app, we'd need to match which account belongs to which page)
@@ -175,10 +179,14 @@ export async function GET(req: Request) {
                             const igAccount = igAccountsData.data[0];
                             igId = igAccount.id;
                             console.log('Found Instagram account via user token:', { igId, username: igAccount.username });
+                        } else {
+                            console.log('No Instagram accounts found in /me/instagram_business_accounts response');
                         }
                     } catch (e) {
                         console.log('Failed to fetch Instagram accounts via user token:', e);
                     }
+                } else {
+                    console.log('Skipping Step 3 - igId already found:', igId);
                 }
 
                 // If we found an Instagram account, save it
