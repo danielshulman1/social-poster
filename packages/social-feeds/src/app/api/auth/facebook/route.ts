@@ -44,9 +44,8 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request scopes needed to access pages
-    // For apps in development/testing, use empty scope which allows the user to grant permissions dynamically
-    const scope = '';
+    // Request pages_show_list to allow fetching user's pages
+    const scope = 'pages_show_list';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
