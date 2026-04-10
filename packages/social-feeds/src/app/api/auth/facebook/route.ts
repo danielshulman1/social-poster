@@ -44,9 +44,12 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request basic permissions - Facebook will allow these without explicit app review
-    // pages_manage_posts requires app review, so we only ask for what's available by default
-    const scope = 'public_profile';
+    // Request basic permissions
+    // Start with minimal scopes - user can grant more in the Facebook dialog
+    const scope = [
+        'public_profile',
+        'email',
+    ].join(',');
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
