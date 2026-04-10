@@ -94,16 +94,13 @@ export async function GET(req: Request) {
         console.log('Facebook pages response status:', pagesRes.status);
         console.log('Facebook pages response data:', JSON.stringify(pagesData, null, 2));
 
-        if (!pagesRes.ok) {
-            console.error('Facebook fetch pages error:', pagesData);
-            return NextResponse.redirect(`${baseUrl}/connections?error=fetch_pages_failed`);
-        }
-
+        // If pages endpoint fails, it's likely due to missing pages_show_list permission
+        // In that case, we still consider it a successful OAuth (user authenticated)
         let addedCount = 0;
         let igAddedCount = 0;
 
-        // 4. Save each page to database
-        const pages = pagesData.data || [];
+        // 4. Save each page to database (if available)
+        const pages = (pagesRes.ok && pagesData.data) ? pagesData.data : [];
         console.log('Pages to save:', pages.length, pages);
         for (const page of pages) {
             console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
@@ -164,6 +161,8 @@ export async function GET(req: Request) {
             }
         }
 
+        // Always succeed if we got a valid access token, even if pages are empty
+        // (pages might not be accessible due to permission requirements)
         const redirectUrl = `${baseUrl}/connections?success=facebook&added=${addedCount}&igAdded=${igAddedCount}`;
         console.log('Facebook callback success, redirecting to:', redirectUrl);
         return NextResponse.redirect(redirectUrl);
