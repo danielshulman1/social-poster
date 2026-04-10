@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://socialposter.easy-ai.co.uk/api/test/facebook?token=EAAaevDTVgfsBRMBTRppQLK1xiocB7eU1H6j0IkGECyA3lZBpOPWZB4ha4j2ZCeqKIsjFhpLzZBB3EZBrXzONaON6PfKWkjDMioNloDPIbrH5E02fAIykHmD5m6RP6XUQaDAOWwDyV5KHTszsR7WhYxmlH9KfyCOHgEXsaiMskmdFXlHeo8EuWQDAzzTIyavEDZCf3RdimezUmF74LJQBBdjBrMpimqpQcK4AZDZD\")",
+      "Bash(curl -s \"https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=EAAaevDTVgfsBRMBTRppQLK1xiocB7eU1H6j0IkGECyA3lZBpOPWZB4ha4j2ZCeqKIsjFhpLzZBB3EZBrXzONaON6PfKWkjDMioNloDPIbrH5E02fAIykHmD5m6RP6XUQaDAOWwDyV5KHTszsR7WhYxmlH9KfyCOHgEXsaiMskmdFXlHeo8EuWQDAzzTIyavEDZCf3RdimezUmF74LJQBBdjBrMpimqpQcK4AZDZD\")",
+      "Bash(curl -s \"https://graph.facebook.com/v19.0/659088833948673?fields=instagram_business_account&access_token=EAAaevDTVgfsBRDCwiLhlyGk7vZBZCRNNf4SsigHJPFQYtnJ30l1hcElfkGcOeW9QPwdOPecEWQ3vbiMAc5XaO4V6ijEfqZBZCxsNqG4wKkndHBdOhOVRi2XGLoOxofAj1kDpeqejBjLE0fD7GTcmZAYGoo3EmLdyCEemeadpMKWo99qOWiERPToEDKpAwhIF3KFEHnZBhbJZAfpohS6swiYJsWUm27RuaIkm7iBVfJa\")",
+      "Bash(curl -s \"https://graph.facebook.com/v19.0/659088833948673/instagram_accounts?access_token=EAAaevDTVgfsBRDCwiLhlyGk7vZBZCRNNf4SsigHJPFQYtnJ30l1hcElfkGcOeW9QPwdOPecEWQ3vbiMAc5XaO4V6ijEfqZBZCxsNqG4wKkndHBdOhOVRi2XGLoOxofAj1kDpeqejBjLE0fD7GTcmZAYGoo3EmLdyCEemeadpMKWo99qOWiERPToEDKpAwhIF3KFEHnZBhbJZAfpohS6swiYJsWUm27RuaIkm7iBVfJa\")",
+      "Bash(curl -s \"https://graph.facebook.com/v19.0/659088833948673?fields=id,name,instagram_business_account,instagram_accounts,connected_instagram_account&access_token=EAAaevDTVgfsBRDCwiLhlyGk7vZBZCRNNf4SsigHJPFQYtnJ30l1hcElfkGcOeW9QPwdOPecEWQ3vbiMAc5XaO4V6ijEfqZBZCxsNqG4wKkndHBdOhOVRi2XGLoOxofAj1kDpeqejBjLE0fD7GTcmZAYGoo3EmLdyCEemeadpMKWo99qOWiERPToEDKpAwhIF3KFEHnZBhbJZAfpohS6swiYJsWUm27RuaIkm7iBVfJa\")",
+      "WebFetch(domain:localhost)",
+      "Bash(curl -s \"http://localhost:3010/api/test/facebook?token=EAAaevDTVgfsBRG5oy05UPsLKnQiKBXh93KVDk76IuTTHilOYOLH0Y7ZA5X2CwMAnjFfnUxZCgqoeiXvZAy1HYTiUKZCu0NuzDVi1Or54b23KIOeegQWpzXpMrJdr5mIuaRneUIMsZBePcUP1a5SpwXZASkfH5dqCAFGGjSsS44l8aafMLAUjfZB38vs0btL1aoZD\")"
+    ]
+  }
+}

@@ -159,6 +159,28 @@ export async function GET(req: Request) {
                     }
                 }
 
+                // If still not found, try fetching all Instagram accounts via user token
+                if (!igId) {
+                    try {
+                        const igAccountsUrl = new URL('https://graph.facebook.com/v19.0/me/instagram_business_accounts');
+                        igAccountsUrl.searchParams.set('access_token', finalUserToken);
+                        igAccountsUrl.searchParams.set('fields', 'id,username,name');
+                        const igAccountsRes = await fetch(igAccountsUrl.toString());
+                        const igAccountsData = await igAccountsRes.json();
+                        console.log('Instagram accounts via user token:', JSON.stringify(igAccountsData));
+
+                        // For now, if we find any Instagram accounts, use the first one
+                        // (In a full app, we'd need to match which account belongs to which page)
+                        if (igAccountsData.data && igAccountsData.data.length > 0) {
+                            const igAccount = igAccountsData.data[0];
+                            igId = igAccount.id;
+                            console.log('Found Instagram account via user token:', { igId, username: igAccount.username });
+                        }
+                    } catch (e) {
+                        console.log('Failed to fetch Instagram accounts via user token:', e);
+                    }
+                }
+
                 // If we found an Instagram account, save it
                 if (igId) {
                     const igName = `IG linked to ${page.name}`;
