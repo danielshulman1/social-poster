@@ -136,10 +136,37 @@ export async function GET(req: Request) {
         let addedCount = 0;
         let igAddedCount = 0;
 
-        // 4. Save each page to database (if available)
+        // 4. For each business/page, we need to get its pages and access tokens
         const pages = (pagesRes.ok && pagesData.data) ? pagesData.data : [];
-        console.log('Pages to save:', pages.length, pages);
-        for (const page of pages) {
+        console.log('Pages/Businesses to save:', pages.length, pages);
+
+        let allPages = [];
+
+        // For each business, fetch its pages
+        for (const business of pages) {
+            console.log('Fetching pages for business:', business.id, business.name);
+
+            // Get pages under this business
+            const businessPagesUrl = new URL(`https://graph.facebook.com/v18.0/${business.id}/pages`);
+            businessPagesUrl.searchParams.set('access_token', finalUserToken);
+            businessPagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
+
+            try {
+                const businessPagesRes = await fetch(businessPagesUrl.toString());
+                const businessPagesData = await businessPagesRes.json();
+
+                if (businessPagesData.data && Array.isArray(businessPagesData.data)) {
+                    console.log(`Found ${businessPagesData.data.length} pages under ${business.name}`);
+                    allPages = allPages.concat(businessPagesData.data);
+                }
+            } catch (err) {
+                console.error(`Error fetching pages for business ${business.id}:`, err);
+            }
+        }
+
+        console.log('All pages with tokens:', allPages.length, allPages);
+
+        for (const page of allPages) {
             console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
             if (page.id && page.name && page.access_token) {
                 // Delete existing FB page connection if it exists to avoid duplicates
