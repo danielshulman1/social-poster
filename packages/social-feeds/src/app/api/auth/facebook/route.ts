@@ -44,9 +44,9 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request only public_profile - the only scope available without app review
-    // See: https://developers.facebook.com/docs/facebook-login/permissions
-    const scope = 'public_profile';
+    // Request scopes needed to access pages
+    // For apps in development/testing, use empty scope which allows the user to grant permissions dynamically
+    const scope = '';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
