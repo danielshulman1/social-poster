@@ -84,98 +84,32 @@ export async function GET(req: Request) {
         const longTokenData = await longTokenRes.json();
         const finalUserToken = longTokenData.access_token || userAccessToken;
 
-        // 3. First, check user info to verify token is valid
-        const userUrl = new URL('https://graph.facebook.com/v18.0/me');
-        userUrl.searchParams.set('access_token', finalUserToken);
-        userUrl.searchParams.set('fields', 'id,name,email');
-        const userRes = await fetch(userUrl.toString());
-        const userData = await userRes.json();
-        console.log('=== USER INFO ===');
-        console.log('User info:', JSON.stringify(userData, null, 2));
-
-        // 4. Fetch user's pages using the correct endpoint that works with user tokens
-        // Use /me/owned_businesses or /me/adaccounts instead of /me/accounts for newer API
-        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/businesses');
+        // 3. Fetch user's pages - use /me/accounts which should return pages with access tokens
+        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        pagesUrl.searchParams.set('fields', 'id,name');
-        let pagesRes = await fetch(pagesUrl.toString());
-        let pagesData = await pagesRes.json();
-
-        console.log('=== TRY BUSINESSES ENDPOINT ===');
-        console.log('Response:', JSON.stringify(pagesData, null, 2));
-
-        // If businesses endpoint doesn't work, try the accounts endpoint with a different approach
-        if (!pagesData.data || pagesData.data.length === 0) {
-            console.log('=== FALLBACK: TRY ACCOUNTS ENDPOINT ===');
-            const accountsUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
-            accountsUrl.searchParams.set('access_token', finalUserToken);
-            accountsUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles,picture');
-            pagesRes = await fetch(accountsUrl.toString());
-            pagesData = await pagesRes.json();
-            console.log('Accounts endpoint response:', JSON.stringify(pagesData, null, 2));
-        }
+        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
+        const pagesRes = await fetch(pagesUrl.toString());
+        const pagesData = await pagesRes.json();
 
         console.log('=== FACEBOOK PAGES REQUEST ===');
-        console.log('Access token used (first 20 chars):', finalUserToken.substring(0, 20) + '...');
         console.log('Pages endpoint response status:', pagesRes.status);
-        console.log('Pages endpoint response:', JSON.stringify(pagesData, null, 2));
+        console.log('Full response:', JSON.stringify(pagesData, null, 2));
 
         if (pagesData?.error) {
             console.error('Facebook API Error:', pagesData.error);
         }
 
-        if (pagesData?.data?.length > 0) {
-            console.log('✓ Found', pagesData.data.length, 'pages');
-            console.log('First page:', JSON.stringify(pagesData.data[0], null, 2));
-        } else {
-            console.log('✗ No pages found. Pages data:', pagesData?.data);
-        }
-
-        // If pages endpoint fails, it's likely due to missing pages_show_list permission
-        // In that case, we still consider it a successful OAuth (user authenticated)
         let addedCount = 0;
         let igAddedCount = 0;
 
-        // 4. Get all pages the user has access to with their access tokens
+        // Extract pages from response
         const pages = (pagesRes.ok && pagesData.data) ? pagesData.data : [];
-        console.log('Businesses found:', pages.length, pages);
-
-        let allPages = [];
-
-        // For each business, get its assigned users and then their pages
-        for (const business of pages) {
-            console.log('Processing business:', business.id, business.name);
-
-            try {
-                // Try to get assigned users for this business
-                const assignedUsersUrl = new URL(`https://graph.facebook.com/v18.0/${business.id}/assigned_users`);
-                assignedUsersUrl.searchParams.set('access_token', finalUserToken);
-                assignedUsersUrl.searchParams.set('fields', 'id,name,pages');
-
-                const assignedRes = await fetch(assignedUsersUrl.toString());
-                const assignedData = await assignedRes.json();
-
-                console.log(`Assigned users response for ${business.id}:`, JSON.stringify(assignedData, null, 2));
-
-                if (assignedData?.data && Array.isArray(assignedData.data)) {
-                    for (const user of assignedData.data) {
-                        if (user.pages?.data) {
-                            console.log(`Found pages for user ${user.id}:`, user.pages.data);
-                            allPages = allPages.concat(user.pages.data);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error(`Error fetching assigned users for business ${business.id}:`, err);
-            }
+        console.log('Pages found:', pages.length);
+        if (pages.length > 0) {
+            console.log('First page:', JSON.stringify(pages[0], null, 2));
         }
 
-        console.log('All pages with tokens:', allPages.length);
-        if (allPages.length > 0) {
-            console.log('First page with token:', JSON.stringify(allPages[0], null, 2));
-        }
-
-        for (const page of allPages) {
+        for (const page of pages) {
             console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
             if (page.id && page.name && page.access_token) {
                 // Delete existing FB page connection if it exists to avoid duplicates
