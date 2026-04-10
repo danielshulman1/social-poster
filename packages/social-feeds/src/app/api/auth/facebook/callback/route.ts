@@ -93,6 +93,10 @@ export async function GET(req: Request) {
 
         console.log('Facebook pages response status:', pagesRes.status);
         console.log('Facebook pages response data:', JSON.stringify(pagesData, null, 2));
+        console.log('Pages data array:', pagesData?.data);
+        if (pagesData?.data && pagesData.data.length > 0) {
+            console.log('First page object:', JSON.stringify(pagesData.data[0], null, 2));
+        }
 
         // If pages endpoint fails, it's likely due to missing pages_show_list permission
         // In that case, we still consider it a successful OAuth (user authenticated)
