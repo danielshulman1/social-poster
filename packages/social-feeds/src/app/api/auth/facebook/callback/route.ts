@@ -84,10 +84,10 @@ export async function GET(req: Request) {
         const longTokenData = await longTokenRes.json();
         const finalUserToken = longTokenData.access_token || userAccessToken;
 
-        // 3. Fetch user's pages
-        const pagesUrl = new URL('https://graph.facebook.com/me/accounts');
+        // 3. Fetch user's pages - use v18.0 for consistency
+        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
+        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles');
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 

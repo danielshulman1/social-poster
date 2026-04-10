@@ -44,8 +44,9 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request pages_show_list to see pages and pages_manage_posts to get page access tokens
-    const scope = 'pages_show_list,pages_manage_posts';
+    // Request pages_show_list and pages_manage_posts permissions
+    // These allow viewing pages and managing posts to get page access tokens
+    const scope = 'pages_show_list,pages_manage_posts,pages_read_engagement';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
