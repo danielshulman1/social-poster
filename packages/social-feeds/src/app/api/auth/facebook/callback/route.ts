@@ -85,9 +85,9 @@ export async function GET(req: Request) {
         const finalUserToken = longTokenData.access_token || userAccessToken;
 
         // 3. Fetch user's pages - use /me/accounts which should return pages with access tokens
-        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
+        const pagesUrl = new URL('https://graph.facebook.com/v19.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account{id}');
+        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 
@@ -144,11 +144,12 @@ export async function GET(req: Request) {
                 // If not found in the pages response, fetch it separately using the page token
                 if (!igId) {
                     try {
-                        const igPageUrl = new URL(`https://graph.facebook.com/v18.0/${page.id}`);
+                        const igPageUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
                         igPageUrl.searchParams.set('access_token', page.access_token);
                         igPageUrl.searchParams.set('fields', 'instagram_business_account');
                         const igPageRes = await fetch(igPageUrl.toString());
                         const igPageData = await igPageRes.json();
+                        console.log('Separate Instagram fetch result:', JSON.stringify(igPageData));
                         if (igPageData.instagram_business_account?.id) {
                             igId = igPageData.instagram_business_account.id;
                             console.log('Fetched Instagram ID separately:', { pageId: page.id, igId });
