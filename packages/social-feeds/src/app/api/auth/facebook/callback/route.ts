@@ -136,35 +136,44 @@ export async function GET(req: Request) {
         let addedCount = 0;
         let igAddedCount = 0;
 
-        // 4. For each business/page, we need to get its pages and access tokens
+        // 4. Get all pages the user has access to with their access tokens
         const pages = (pagesRes.ok && pagesData.data) ? pagesData.data : [];
-        console.log('Pages/Businesses to save:', pages.length, pages);
+        console.log('Businesses found:', pages.length, pages);
 
         let allPages = [];
 
-        // For each business, fetch its pages
+        // For each business, get its assigned users and then their pages
         for (const business of pages) {
-            console.log('Fetching pages for business:', business.id, business.name);
-
-            // Get pages under this business
-            const businessPagesUrl = new URL(`https://graph.facebook.com/v18.0/${business.id}/pages`);
-            businessPagesUrl.searchParams.set('access_token', finalUserToken);
-            businessPagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
+            console.log('Processing business:', business.id, business.name);
 
             try {
-                const businessPagesRes = await fetch(businessPagesUrl.toString());
-                const businessPagesData = await businessPagesRes.json();
+                // Try to get assigned users for this business
+                const assignedUsersUrl = new URL(`https://graph.facebook.com/v18.0/${business.id}/assigned_users`);
+                assignedUsersUrl.searchParams.set('access_token', finalUserToken);
+                assignedUsersUrl.searchParams.set('fields', 'id,name,pages');
 
-                if (businessPagesData.data && Array.isArray(businessPagesData.data)) {
-                    console.log(`Found ${businessPagesData.data.length} pages under ${business.name}`);
-                    allPages = allPages.concat(businessPagesData.data);
+                const assignedRes = await fetch(assignedUsersUrl.toString());
+                const assignedData = await assignedRes.json();
+
+                console.log(`Assigned users response for ${business.id}:`, JSON.stringify(assignedData, null, 2));
+
+                if (assignedData?.data && Array.isArray(assignedData.data)) {
+                    for (const user of assignedData.data) {
+                        if (user.pages?.data) {
+                            console.log(`Found pages for user ${user.id}:`, user.pages.data);
+                            allPages = allPages.concat(user.pages.data);
+                        }
+                    }
                 }
             } catch (err) {
-                console.error(`Error fetching pages for business ${business.id}:`, err);
+                console.error(`Error fetching assigned users for business ${business.id}:`, err);
             }
         }
 
-        console.log('All pages with tokens:', allPages.length, allPages);
+        console.log('All pages with tokens:', allPages.length);
+        if (allPages.length > 0) {
+            console.log('First page with token:', JSON.stringify(allPages[0], null, 2));
+        }
 
         for (const page of allPages) {
             console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
