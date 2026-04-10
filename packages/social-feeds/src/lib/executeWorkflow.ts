@@ -10,6 +10,16 @@ import {
     resolvePublishBlogRequestUrl,
     validateHttpRequestTarget,
 } from "@/lib/httpRequest";
+import {
+    appendWorkflowExecutionEvent,
+    createWorkflowExecutionLog,
+    finalizeWorkflowExecutionLog,
+    recordWorkflowExecutionResult,
+    serializeWorkflowExecutionLog,
+    truncateForLog,
+    type WorkflowExecutionResult,
+    type WorkflowExecutionStatus,
+} from "@/lib/workflowExecutionLog";
 
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -132,6 +142,17 @@ function parseStartRowFromRange(rangeOpt: string | undefined): number {
 const normalizeEnv = (value?: string) =>
     (value || "").trim().replace(/^["']|["']$/g, "");
 
+type ErrorWithExecutionId = Error & { executionId?: string };
+
+const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : typeof error === "string" ? error : "Workflow execution failed";
+
+const attachExecutionId = (error: unknown, executionId: string) => {
+    const wrapped = (error instanceof Error ? error : new Error(getErrorMessage(error))) as ErrorWithExecutionId;
+    wrapped.executionId = executionId;
+    return wrapped;
+};
+
 async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
     try {
         const connections = await prisma.externalConnection.findMany({
@@ -210,13 +231,109 @@ export async function executeWorkflow(
         throw new Error("Workflow is not active");
     }
 
-    // Parse definition
-    const definition = workflow.definition ? JSON.parse(workflow.definition) : {};
+    const executionStartedAt = new Date();
+    const executionLog = createWorkflowExecutionLog({
+        workflowId,
+        workflowName: workflow.name,
+        triggerType,
+        requestUrl,
+        startedAt: executionStartedAt,
+    });
+
+    const execution = await prisma.workflowExecution.create({
+        data: {
+            workflowId: workflowId,
+            triggerType: triggerType,
+            status: "running",
+            startedAt: executionStartedAt,
+            logs: serializeWorkflowExecutionLog(executionLog),
+        },
+    });
+
+    const persistExecutionLog = async (
+        status?: WorkflowExecutionStatus,
+        completedAt?: Date,
+    ) => {
+        await prisma.workflowExecution.update({
+            where: { id: execution.id },
+            data: {
+                ...(status ? { status } : {}),
+                ...(completedAt ? { completedAt } : {}),
+                logs: serializeWorkflowExecutionLog(executionLog),
+            },
+        });
+    };
+
+    appendWorkflowExecutionEvent(executionLog, {
+        level: "info",
+        type: "run.started",
+        message: `Workflow "${workflow.name}" started via ${triggerType} trigger.`,
+        details: {
+            workflowId,
+            triggerType,
+        },
+    });
+    await persistExecutionLog();
+
+    let definition: any = {};
+    try {
+        definition = workflow.definition ? JSON.parse(workflow.definition) : {};
+    } catch {
+        const completedAt = new Date();
+        appendWorkflowExecutionEvent(executionLog, {
+            level: "error",
+            type: "run.failed",
+            message: "Workflow execution failed before completion: Workflow definition contains invalid JSON.",
+            details: {
+                failureReason: "Workflow definition contains invalid JSON.",
+            },
+        });
+        finalizeWorkflowExecutionLog(executionLog, "failed", completedAt);
+        await prisma.workflowExecution.update({
+            where: { id: execution.id },
+            data: {
+                status: "failed",
+                completedAt,
+                logs: serializeWorkflowExecutionLog(executionLog),
+            },
+        });
+        throw attachExecutionId(new Error("Workflow definition contains invalid JSON."), execution.id);
+    }
+
     const nodes = definition.nodes || [];
     const edges = definition.edges || [];
 
+    appendWorkflowExecutionEvent(executionLog, {
+        level: "info",
+        type: "workflow.loaded",
+        message: `Workflow definition loaded with ${nodes.length} nodes and ${edges.length} edges.`,
+        details: {
+            nodeCount: nodes.length,
+            edgeCount: edges.length,
+        },
+    });
+    await persistExecutionLog();
+
     if (nodes.length === 0) {
-        throw new Error("Workflow has no nodes");
+        const completedAt = new Date();
+        appendWorkflowExecutionEvent(executionLog, {
+            level: "error",
+            type: "run.failed",
+            message: "Workflow execution failed before completion: Workflow has no nodes",
+            details: {
+                failureReason: "Workflow has no nodes",
+            },
+        });
+        finalizeWorkflowExecutionLog(executionLog, "failed", completedAt);
+        await prisma.workflowExecution.update({
+            where: { id: execution.id },
+            data: {
+                status: "failed",
+                completedAt,
+                logs: serializeWorkflowExecutionLog(executionLog),
+            },
+        });
+        throw attachExecutionId(new Error("Workflow has no nodes"), execution.id);
     }
 
     // Load user's API key and connections
@@ -229,16 +346,18 @@ export async function executeWorkflow(
         where: { userId: userId },
     });
 
-    // Create execution record
-    const execution = await prisma.workflowExecution.create({
-        data: {
-            workflowId: workflowId,
-            triggerType: triggerType,
-            status: "running",
+    appendWorkflowExecutionEvent(executionLog, {
+        level: "info",
+        type: "workflow.context_loaded",
+        message: `Execution context loaded with ${connections.length} external connection(s).`,
+        details: {
+            connectionCount: connections.length,
+            hasOpenAiKey: Boolean(user?.openaiApiKey),
+            hasGoogleApiKey: Boolean(user?.googleApiKey),
         },
     });
+    await persistExecutionLog();
 
-    // Build execution order via BFS
     const nodeMap = new Map(nodes.map((n: any) => [n.id, n]));
     const edgesBySource = new Map<string, string[]>();
     for (const edge of edges) {
@@ -250,15 +369,29 @@ export async function executeWorkflow(
     const targetSet = new Set(edges.map((e: any) => e.target));
     const roots = nodes.filter((n: any) => !targetSet.has(n.id));
 
-    // For schedule trigger, only execute if a schedule-trigger node exists and is the root
     if (triggerType === "schedule") {
         const hasScheduleRoot = roots.some((n: any) => n.type === 'schedule-trigger');
         if (!hasScheduleRoot) {
+            const completedAt = new Date();
+            const message = "Workflow does not have a valid schedule-trigger root.";
+            appendWorkflowExecutionEvent(executionLog, {
+                level: "error",
+                type: "run.failed",
+                message: `Workflow execution failed before completion: ${message}`,
+                details: {
+                    failureReason: message,
+                },
+            });
+            finalizeWorkflowExecutionLog(executionLog, "failed", completedAt);
             await prisma.workflowExecution.update({
                 where: { id: execution.id },
-                data: { status: "failed", completedAt: new Date(), logs: JSON.stringify({ error: "No schedule-trigger root node found" }) }
+                data: {
+                    status: "failed",
+                    completedAt,
+                    logs: serializeWorkflowExecutionLog(executionLog),
+                }
             });
-            throw new Error("Workflow does not have a valid schedule-trigger root.");
+            throw attachExecutionId(new Error(message), execution.id);
         }
     }
 
@@ -279,22 +412,49 @@ export async function executeWorkflow(
         }
     }
 
+    appendWorkflowExecutionEvent(executionLog, {
+        level: "info",
+        type: "workflow.execution_order_built",
+        message: `Execution order resolved for ${executionOrder.length} node(s).`,
+        details: {
+            rootCount: roots.length,
+            executionNodeCount: executionOrder.length,
+        },
+    });
+    await persistExecutionLog();
+
     // Execute each node
-    const results: Record<string, any> = {};
+    const results: Record<string, WorkflowExecutionResult> = {};
     let lastOutput = '';
     let lastTextOutput = '';  // Tracks the most recent TEXT content
     let lastImageUrl = '';    // Tracks the most recent IMAGE URL
 
     for (const node of executionOrder) {
+        const nodeType = node.type || 'unknown';
+        const nodeLabel =
+            typeof node.data?.label === "string" && node.data.label.trim()
+                ? node.data.label.trim()
+                : undefined;
+        const nodeStartedAt = new Date();
         const step = await prisma.executionStep.create({
             data: {
                 executionId: execution.id,
                 nodeId: node.id,
-                nodeType: node.type || 'unknown',
+                nodeType,
                 status: "running",
                 input: JSON.stringify(node.data),
             },
         });
+
+        appendWorkflowExecutionEvent(executionLog, {
+            level: "info",
+            type: "node.started",
+            message: `Node ${nodeLabel || node.id} started.`,
+            nodeId: node.id,
+            nodeType,
+            nodeLabel,
+        });
+        await persistExecutionLog();
 
         try {
             let output = '';
@@ -861,7 +1021,7 @@ export async function executeWorkflow(
                     let creds: any = {};
                     try { creds = JSON.parse(connection.credentials); } catch { }
                     const pageToken = creds.accessToken;
-                    const pageId = creds.username || connection.name;
+                    const pageId = creds.pageId || creds.username || connection.name;
 
                     if (!pageToken) throw new Error('No access token found for this Facebook page.');
 
@@ -1573,36 +1733,106 @@ export async function executeWorkflow(
                 if (output) lastTextOutput = output;
             }
 
-            results[node.id] = { status: 'completed', output };
+            const nodeCompletedAt = new Date();
+            const result: WorkflowExecutionResult = {
+                nodeId: node.id,
+                nodeType,
+                nodeLabel,
+                status: 'completed',
+                output,
+                startedAt: nodeStartedAt.toISOString(),
+                completedAt: nodeCompletedAt.toISOString(),
+            };
+
+            results[node.id] = result;
+            recordWorkflowExecutionResult(executionLog, node.id, result);
 
             await prisma.executionStep.update({
                 where: { id: step.id },
-                data: { status: "completed", output, completedAt: new Date() },
+                data: { status: "completed", output, completedAt: nodeCompletedAt },
             });
+
+            appendWorkflowExecutionEvent(executionLog, {
+                level: "info",
+                type: "node.completed",
+                message: `Node ${nodeLabel || node.id} completed.`,
+                nodeId: node.id,
+                nodeType,
+                nodeLabel,
+                details: output
+                    ? { outputPreview: truncateForLog(output) }
+                    : undefined,
+            });
+            await persistExecutionLog();
 
         } catch (error: any) {
-            results[node.id] = { status: 'failed', error: error.message };
+            const failureMessage = getErrorMessage(error);
+            const nodeCompletedAt = new Date();
+            const result: WorkflowExecutionResult = {
+                nodeId: node.id,
+                nodeType,
+                nodeLabel,
+                status: 'failed',
+                error: failureMessage,
+                startedAt: nodeStartedAt.toISOString(),
+                completedAt: nodeCompletedAt.toISOString(),
+            };
+
+            results[node.id] = result;
+            recordWorkflowExecutionResult(executionLog, node.id, result);
+
             await prisma.executionStep.update({
                 where: { id: step.id },
-                data: { status: "failed", error: error.message, completedAt: new Date() },
+                data: { status: "failed", error: failureMessage, completedAt: nodeCompletedAt },
             });
+
+            appendWorkflowExecutionEvent(executionLog, {
+                level: "error",
+                type: "node.failed",
+                message: `Node ${nodeLabel || node.id} failed: ${failureMessage}`,
+                nodeId: node.id,
+                nodeType,
+                nodeLabel,
+                details: {
+                    failureReason: truncateForLog(failureMessage),
+                },
+            });
+            await persistExecutionLog();
         }
     }
 
-    const hasFailures = Object.values(results).some((r: any) => r.status === 'failed');
+    const hasFailures = Object.values(results).some((result) => result.status === 'failed');
+    const finalStatus: WorkflowExecutionStatus = hasFailures ? "failed" : "completed";
+    const completedAt = new Date();
+
+    appendWorkflowExecutionEvent(executionLog, {
+        level: hasFailures ? "error" : "info",
+        type: hasFailures ? "run.failed" : "run.completed",
+        message: hasFailures
+            ? `Workflow finished with ${executionLog.summary.failedNodes} failed node(s).`
+            : "Workflow completed successfully.",
+        details: {
+            completedNodes: executionLog.summary.completedNodes,
+            failedNodes: executionLog.summary.failedNodes,
+        },
+    });
+    finalizeWorkflowExecutionLog(executionLog, finalStatus, completedAt);
+
     await prisma.workflowExecution.update({
         where: { id: execution.id },
         data: {
-            status: hasFailures ? "failed" : "completed",
-            completedAt: new Date(),
-            logs: JSON.stringify(results),
+            status: finalStatus,
+            completedAt,
+            logs: serializeWorkflowExecutionLog(executionLog),
         },
     });
 
     return {
         success: true,
         executionId: execution.id,
-        status: hasFailures ? "failed" : "completed",
+        status: finalStatus,
         results,
+        failureReasons: executionLog.summary.failureReasons,
+        logsSummary: executionLog.summary,
     };
 }
