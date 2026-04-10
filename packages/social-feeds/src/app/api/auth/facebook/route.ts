@@ -53,7 +53,8 @@ export async function GET(req: Request) {
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('scope', scope);
     authUrl.searchParams.set('response_type', 'code');
-    authUrl.searchParams.set('display', 'page');
+    authUrl.searchParams.set('display', 'popup');
+    authUrl.searchParams.set('auth_type', 'rerequest');
 
     const response = NextResponse.redirect(authUrl.toString());
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
