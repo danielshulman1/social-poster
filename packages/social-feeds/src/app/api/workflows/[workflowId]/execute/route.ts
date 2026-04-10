@@ -12,6 +12,12 @@ export async function POST(req: Request, props: { params: Promise<{ workflowId: 
         return NextResponse.json(result);
     } catch (error: any) {
         console.error("Workflow execution error:", error);
-        return NextResponse.json({ error: error.message || "Execution failed" }, { status: 500 });
+        return NextResponse.json(
+            {
+                error: error.message || "Execution failed",
+                executionId: error.executionId,
+            },
+            { status: 500 }
+        );
     }
 }

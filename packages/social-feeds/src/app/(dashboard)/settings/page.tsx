@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Loader2, Eye, EyeOff, Key } from 'lucide-react';
+import { Trash2, Loader2, Eye, EyeOff, Key, CheckCircle2, Radio, Bot, ArrowUpRight, UserRound } from 'lucide-react';
 import { useWorkflowStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -321,23 +321,88 @@ export default function SettingsPage() {
         }
     };
 
+    const aiReadyCount = Number(hasExistingKey) + Number(hasGoogleApiKey) + Number(hasOpenrouterApiKey);
+    const socialReadyCount = Number(hasLinkedinCredentials) + Number(hasFacebookAppCredentials);
+    const settingsHealthLabel = socialReadyCount > 0 && aiReadyCount > 0 ? 'Operational' : 'Needs setup';
+
     if (isLoading) {
         return <div className="flex h-full items-center justify-center py-20"><Loader2 className="animate-spin" /></div>;
     }
 
     return (
-        <div className="container mx-auto py-8">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                    <p className="text-muted-foreground mt-1">Manage your account and application preferences.</p>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <section className="mb-8 overflow-hidden rounded-[2rem] border border-border/70 bg-card/90 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+                <div className="grid gap-8 p-6 lg:grid-cols-[1.4fr_0.9fr] lg:p-8">
+                    <div className="space-y-4">
+                        <Badge className="rounded-full bg-primary/10 px-3 py-1 text-primary hover:bg-primary/10">Settings Control Room</Badge>
+                        <div className="space-y-3">
+                            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground">Configure credentials, routing, and AI defaults without guessing what comes next.</h1>
+                            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                                This page now mirrors the real integration flow: save the right app credentials, confirm the exact callback values, and move straight into Connections with less trial-and-error.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <div className="rounded-full border border-border/70 bg-background/70 px-3 py-1.5">Meta redirect: <span className="font-medium text-foreground">{facebookRedirectUri || 'Loading...'}</span></div>
+                            <div className="rounded-full border border-border/70 bg-background/70 px-3 py-1.5">Readiness: <span className="font-medium text-foreground">{settingsHealthLabel}</span></div>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                        <div className="rounded-3xl border border-blue-200/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(96,165,250,0.04))] p-4">
+                            <div className="flex items-center justify-between">
+                                <UserRound className="h-5 w-5 text-primary" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Profile</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{displayName || 'Unnamed'}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{email}</p>
+                        </div>
+                        <div className="rounded-3xl border border-blue-200/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.1),rgba(255,255,255,0.02))] p-4">
+                            <div className="flex items-center justify-between">
+                                <Bot className="h-5 w-5 text-primary" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">AI Keys</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{aiReadyCount}/3</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Providers configured</p>
+                        </div>
+                        <div className="rounded-3xl border border-rose-200/60 bg-[linear-gradient(135deg,rgba(244,63,94,0.12),rgba(255,255,255,0.02))] p-4">
+                            <div className="flex items-center justify-between">
+                                <Radio className="h-5 w-5 text-rose-500" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Social Apps</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{socialReadyCount}/2</p>
+                            <p className="mt-1 text-sm text-muted-foreground">OAuth apps ready</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div className="mb-6 grid gap-4 md:grid-cols-3">
+                <div className="rounded-3xl border border-border/70 bg-card/80 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        Account ready
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">Profile, API keys, and OAuth apps are separated below so each save action has a clear outcome.</p>
+                </div>
+                <div className="rounded-3xl border border-border/70 bg-card/80 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <Radio className="h-4 w-4 text-primary" />
+                        Social routing
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">Facebook and LinkedIn cards include their exact callback URLs so you can mirror them in the provider dashboards.</p>
+                </div>
+                <div className="rounded-3xl border border-border/70 bg-card/80 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <ArrowUpRight className="h-4 w-4 text-rose-500" />
+                        Next step
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">Once an app is saved here, move to Connections and authorize the account with a fresh OAuth run.</p>
                 </div>
             </div>
 
             <div className="space-y-6">
                 {/* PROFILE */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+                    <CardHeader className="border-b border-border/60 bg-muted/30">
                         <CardTitle>Profile</CardTitle>
                         <CardDescription>Your account information.</CardDescription>
                     </CardHeader>
@@ -358,8 +423,8 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* API KEYS */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+                    <CardHeader className="border-b border-border/60 bg-muted/30">
                         <CardTitle className="flex items-center gap-2">
                             <Key className="h-5 w-5" />
                             API Keys
@@ -611,8 +676,8 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* PERSONAS */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+                    <CardHeader className="border-b border-border/60 bg-muted/30">
                         <CardTitle>AI Personas</CardTitle>
                         <CardDescription>Manage master prompts for your AI workflows.</CardDescription>
                     </CardHeader>
@@ -664,8 +729,8 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* NOTIFICATIONS */}
-                <Card>
-                    <CardHeader>
+                <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">
+                    <CardHeader className="border-b border-border/60 bg-muted/30">
                         <CardTitle>Notifications</CardTitle>
                         <CardDescription>Configure how you receive alerts.</CardDescription>
                     </CardHeader>
@@ -689,8 +754,8 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* DANGER ZONE */}
-                <Card className="border-red-200">
-                    <CardHeader>
+                <Card className="overflow-hidden border-red-200 bg-card/90 shadow-sm">
+                    <CardHeader className="border-b border-red-100 bg-red-50/60 dark:bg-red-950/20">
                         <CardTitle className="text-red-600">Danger Zone</CardTitle>
                     </CardHeader>
                     <CardContent>

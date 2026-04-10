@@ -6,12 +6,12 @@ import {
 } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Info, ExternalLink } from "lucide-react";
+import { Info, ExternalLink, Sparkles, ShieldCheck } from "lucide-react";
 
 export function ConnectionGuide() {
     return (
-        <Card className="mt-8 border-2 border-muted/50">
-            <CardHeader className="bg-muted/10">
+        <Card className="mt-8 overflow-hidden border-border/70 bg-card/90 shadow-sm">
+            <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.08),rgba(244,63,94,0.05))]">
                 <div className="flex items-center gap-2">
                     <Info className="h-5 w-5 text-primary" />
                     <CardTitle>Step-by-Step Connection Guide</CardTitle>
@@ -19,6 +19,22 @@ export function ConnectionGuide() {
                 <CardDescription>
                     Follow these detailed instructions to connect your accounts and configure the system.
                 </CardDescription>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-blue-200/60 bg-background/80 p-3 text-xs text-muted-foreground">
+                        <div className="mb-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            Recommended path
+                        </div>
+                        Save provider credentials in Settings first, then start OAuth from Connections so the callback URLs and app IDs stay aligned.
+                    </div>
+                    <div className="rounded-2xl border border-amber-200/60 bg-background/80 p-3 text-xs text-muted-foreground">
+                        <div className="mb-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                            <ShieldCheck className="h-4 w-4 text-amber-500" />
+                            Recovery path
+                        </div>
+                        Use manual token import only when a provider blocks OAuth or when you need to test page access before app review is complete.
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="p-0">
                 <Accordion type="single" collapsible className="w-full">
@@ -40,9 +56,9 @@ export function ConnectionGuide() {
                                     <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-md border border-blue-200 dark:border-blue-800 mb-4">
                                         <h5 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Method A: Automatic (Recommended)</h5>
                                         <ol className="list-decimal pl-5 space-y-2 text-sm">
-                                            <li>Ensure your <strong>App ID</strong> is set in the <code>.env</code> file.</li>
+                                            <li>Save your Facebook App ID and App Secret in <strong>Settings</strong>.</li>
                                             <li>Click the blue <strong>"Connect with Facebook"</strong> button above.</li>
-                                            <li>Approve the permissions in the popup window.</li>
+                                            <li>Approve the requested permissions in the Meta popup.</li>
                                             <li>Select your page from the list that appears.</li>
                                         </ol>
                                     </div>
@@ -53,19 +69,14 @@ export function ConnectionGuide() {
                                             Go to the <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">Graph API Explorer <ExternalLink className="h-3 w-3" /></a>.
                                         </li>
                                         <li>
-                                            <strong>Create App:</strong> Create a new app. On the <strong>"Add use cases"</strong> screen, select <strong>"Authenticate and request data from users with Facebook Login"</strong>.
-                                        </li>
-                                        <li>
                                             <strong>User or Page:</strong> Select <strong>"User Token"</strong> from the dropdown.
                                         </li>
                                         <li>
                                             <strong>Permissions:</strong> Click "Add a Permission" and ensure these are listed:
                                             <div className="grid grid-cols-2 gap-1 mt-1 mb-1 font-mono text-[10px] bg-muted p-2 rounded">
-                                                <span>pages_show_list</span>
-                                                <span>pages_read_engagement</span>
-                                                <span>pages_manage_posts</span>
-                                                <span>pages_manage_metadata</span>
                                                 <span>public_profile</span>
+                                                <span>pages_show_list</span>
+                                                <span>pages_manage_posts</span>
                                             </div>
                                         </li>
                                         <li>
@@ -176,7 +187,7 @@ export function ConnectionGuide() {
                                         Click the <span className="font-bold">Settings (Gear Icon)</span> in the sidebar.
                                     </li>
                                     <li>
-                                        Scroll down to <strong>Persona Library</strong>.
+                                        Scroll down to <strong>AI Personas</strong>.
                                     </li>
                                     <li>
                                         <strong>Create New:</strong> Give it a name (e.g., "Tech Influencer").

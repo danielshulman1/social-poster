@@ -26,7 +26,11 @@ import {
     RefreshCw,
     Plus,
     Trash2,
-    Save
+    Save,
+    ArrowRight,
+    ShieldCheck,
+    Settings2,
+    Link2
 } from 'lucide-react';
 import { useWorkflowStore } from '@/lib/store';
 import { ConnectionGuide } from '@/components/connections/ConnectionGuide';
@@ -43,6 +47,11 @@ function ConnectionsPageContent() {
     const [newRSSName, setNewRSSName] = useState('');
 
     const [newAccountToken, setNewAccountToken] = useState('');
+    const [connectionNotice, setConnectionNotice] = useState<null | {
+        tone: 'success' | 'warning' | 'info';
+        title: string;
+        description: string;
+    }>(null);
 
     // Removed Facebook SDK App ID state logic
 
@@ -145,8 +154,18 @@ function ConnectionsPageContent() {
             const igAdded = Number(params.get('igAdded') || 0);
             if (added > 0 || igAdded > 0) {
                 toast.success(`Connected ${added} Facebook page(s) and ${igAdded} Instagram account(s).`);
+                setConnectionNotice({
+                    tone: 'success',
+                    title: 'Facebook authorization completed',
+                    description: `Imported ${added} Facebook page(s) and ${igAdded} linked Instagram account(s).`,
+                });
             } else {
                 toast.success('Facebook connected.');
+                setConnectionNotice({
+                    tone: 'success',
+                    title: 'Facebook authorization completed',
+                    description: 'The OAuth flow succeeded. If no pages appeared, re-run with page access selected in Meta.',
+                });
             }
             // Refetch connections after successful OAuth with a small delay
             setTimeout(() => {
@@ -166,6 +185,11 @@ function ConnectionsPageContent() {
             }, 500);
         } else if (success === 'linkedin') {
             toast.success('LinkedIn connected.');
+            setConnectionNotice({
+                tone: 'success',
+                title: 'LinkedIn connected',
+                description: 'Your LinkedIn OAuth flow completed successfully.',
+            });
             // Refetch connections after successful OAuth with a small delay
             setTimeout(() => {
                 fetch('/api/connections')
@@ -184,25 +208,60 @@ function ConnectionsPageContent() {
             }, 500);
         } else if (success === 'google') {
             toast.success('Google connected.');
+            setConnectionNotice({
+                tone: 'success',
+                title: 'Google Sheets connected',
+                description: 'You can now load spreadsheet tabs and wire content rows into workflows.',
+            });
         }
 
         if (error) {
             const decodedError = error;
             if (decodedError === 'missing_facebook_config') {
                 toast.error('Facebook App ID/Secret missing. Add them in Settings first.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'Facebook app credentials missing',
+                    description: 'Save your Meta App ID and App Secret in Settings before starting OAuth.',
+                });
             } else if (decodedError === 'missing_linkedin_config') {
                 toast.error('LinkedIn Client ID/Secret missing. Add them in Settings first.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'LinkedIn credentials missing',
+                    description: 'Add the LinkedIn Client ID and Client Secret in Settings before retrying.',
+                });
             } else if (decodedError === 'linkedin_profile_failed') {
                 toast.error('LinkedIn authorization completed, but the profile lookup failed. Try connecting again.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'LinkedIn callback incomplete',
+                    description: 'OAuth returned, but the profile lookup failed. Retry from a fresh Connections page load.',
+                });
             } else if (decodedError.startsWith('token_failed')) {
                 const detail = decodedError.split(':').slice(1).join(':').trim();
                 toast.error(detail
                     ? `Facebook token exchange failed: ${detail}`
                     : 'Facebook token exchange failed. Check your app credentials and redirect URI.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'Facebook token exchange failed',
+                    description: detail || 'Check the Meta app redirect URI, enabled permissions, and the exact app credentials saved in Settings.',
+                });
             } else if (decodedError === 'fetch_pages_failed') {
                 toast.error('Facebook login succeeded but pages could not be loaded. Re-check permissions and page access.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'Facebook login worked, but pages were not returned',
+                    description: 'The app received an access token but could not enumerate pages. Confirm you selected the pages during Meta authorization.',
+                });
             } else {
                 toast.error(`Facebook connection failed: ${decodedError}`);
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'Connection flow failed',
+                    description: decodedError,
+                });
             }
         }
 
@@ -434,17 +493,82 @@ function ConnectionsPageContent() {
         setNewRSSUrl('');
     };
 
+    const activeAccountCount = store.accounts.filter((account) => account.status === 'active').length;
+    const needsAttentionCount = store.accounts.filter((account) => account.status !== 'active').length;
+    const sheetConfigured = Boolean(store.googleSheetsConfig.spreadsheetId && store.googleSheetsConfig.sheetName);
+
     return (
-        <div className="container mx-auto py-8">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Connections</h1>
-                    <p className="text-muted-foreground mt-1">Manage your integrations for social platforms, data sources, and AI.</p>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <section className="mb-8 overflow-hidden rounded-[2rem] border border-border/70 bg-card/90 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+                <div className="grid gap-8 p-6 lg:grid-cols-[1.4fr_0.95fr] lg:p-8">
+                    <div className="space-y-4">
+                        <Badge className="rounded-full bg-primary/10 px-3 py-1 text-primary hover:bg-primary/10">Connections Hub</Badge>
+                        <div className="space-y-3">
+                            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground">Connect channels, confirm access, and recover from OAuth errors without leaving the flow.</h1>
+                            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                                SocialPoster now surfaces the exact setup path for each integration, shows what is already connected, and keeps fallback token import as a secondary route rather than the main one.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <Button className="rounded-full px-5" onClick={() => setIsAddAccountOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" /> Connect New Account
+                            </Button>
+                            <Button variant="outline" className="rounded-full px-5" onClick={() => { window.location.href = '/settings'; }}>
+                                <Settings2 className="mr-2 h-4 w-4" /> Open Setup Settings
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                        <div className="rounded-3xl border border-blue-200/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(96,165,250,0.04))] p-4">
+                            <div className="flex items-center justify-between">
+                                <Link2 className="h-5 w-5 text-primary" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Accounts</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{store.accounts.length}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Connected destinations</p>
+                        </div>
+                        <div className="rounded-3xl border border-emerald-200/60 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(255,255,255,0.02))] p-4">
+                            <div className="flex items-center justify-between">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Healthy</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{activeAccountCount}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Active connections</p>
+                        </div>
+                        <div className="rounded-3xl border border-rose-200/60 bg-[linear-gradient(135deg,rgba(244,63,94,0.12),rgba(255,255,255,0.02))] p-4">
+                            <div className="flex items-center justify-between">
+                                <ShieldCheck className="h-5 w-5 text-rose-500" />
+                                <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Sheets</span>
+                            </div>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{sheetConfigured ? 'Ready' : 'Setup'}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{sheetConfigured ? 'Spreadsheet mapped' : 'Spreadsheet not mapped yet'}</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </section>
+
+            {connectionNotice && (
+                <div className={`mb-6 rounded-3xl border p-4 ${
+                    connectionNotice.tone === 'success'
+                        ? 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+                        : connectionNotice.tone === 'info'
+                            ? 'border-blue-200 bg-blue-50/80 dark:border-blue-900/40 dark:bg-blue-950/20'
+                            : 'border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/20'
+                }`}>
+                    <div className="flex items-start gap-3">
+                        {connectionNotice.tone === 'success'
+                            ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
+                            : <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />}
+                        <div className="space-y-1">
+                            <p className="text-sm font-semibold text-foreground">{connectionNotice.title}</p>
+                            <p className="text-sm text-muted-foreground">{connectionNotice.description}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Tabs defaultValue="social" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 mb-8">
+                <TabsList className="mb-8 grid h-auto w-full grid-cols-2 gap-2 rounded-3xl border border-border/70 bg-card/70 p-2 md:grid-cols-4">
                     <TabsTrigger value="social">Social Accounts</TabsTrigger>
                     <TabsTrigger value="sheets">Google Sheets</TabsTrigger>
                     <TabsTrigger value="ai">AI Providers</TabsTrigger>
@@ -452,22 +576,65 @@ function ConnectionsPageContent() {
                 </TabsList>
 
                 {/* SOCIAL ACCOUNTS TAB */}
-                <TabsContent value="social" className="space-y-4">
-                    <div className="flex justify-end mb-4 gap-2">
+                <TabsContent value="social" className="space-y-6">
+                    <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                        <div className="rounded-3xl border border-blue-200/60 bg-[linear-gradient(135deg,rgba(37,99,235,0.12),rgba(96,165,250,0.04))] p-5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <Facebook className="h-4 w-4 text-primary" />
+                                Facebook and Instagram
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                Start with a fresh Facebook OAuth run. If Meta blocks the app, open Settings and confirm the exact callback and app credentials before retrying.
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-3">
+                                <Button className="rounded-full bg-[#1877F2] px-5 text-white hover:bg-[#166fe5]" onClick={connectWithFacebookOAuth}>
+                                    Connect with Facebook <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" className="rounded-full px-5" onClick={() => { window.location.href = '/settings'; }}>
+                                    Review Meta setup
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="rounded-3xl border border-border/70 bg-card/85 p-5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <Linkedin className="h-4 w-4 text-[#0A66C2]" />
+                                LinkedIn
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                Save the client credentials in Settings, then authorize the account directly from this page.
+                            </p>
+                            <Button className="mt-4 rounded-full bg-[#0A66C2] px-5 text-white hover:bg-[#004182]" onClick={() => { window.location.href = '/api/auth/linkedin'; }}>
+                                Connect LinkedIn
+                            </Button>
+                        </div>
+                        <div className="rounded-3xl border border-border/70 bg-card/85 p-5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                                Recovery path
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                If OAuth keeps failing, use the manual Graph API token path below to fetch pages and save a page token directly.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end mb-2 gap-2">
                         <Dialog open={isAddAccountOpen} onOpenChange={setIsAddAccountOpen}>
                             <DialogTrigger asChild>
-                                <Button>
+                                <Button className="rounded-full px-5">
                                     <Plus className="mr-2 h-4 w-4" /> Connect New Account
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="max-w-2xl rounded-[2rem] border-border/70 bg-card/95 p-0 shadow-2xl">
                                 <DialogHeader>
-                                    <DialogTitle>Connect Social Account</DialogTitle>
-                                    <DialogDescription>
-                                        Select the platform and enter a name for this connection.
-                                    </DialogDescription>
+                                    <div className="rounded-t-[2rem] border-b border-border/60 bg-muted/30 px-6 py-6">
+                                        <DialogTitle className="text-2xl">Connect Social Account</DialogTitle>
+                                        <DialogDescription className="mt-2">
+                                            Select the platform and enter a name for this connection.
+                                        </DialogDescription>
+                                    </div>
                                 </DialogHeader>
-                                <div className="grid gap-4 py-4">
+                                <div className="grid gap-4 px-6 py-5">
                                     <div className="grid gap-2">
                                         <Label>Platform</Label>
                                         <Select value={newAccountPlatform} onValueChange={(val: any) => setNewAccountPlatform(val)}>
@@ -519,7 +686,7 @@ function ConnectionsPageContent() {
                                                     <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
                                                         <li>Go to the <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">Facebook Graph API Explorer</a></li>
                                                         <li>Select your App, and set <strong>User or Page</strong> to "User Token"</li>
-                                                        <li>Add Permissions: <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>pages_manage_posts</code> {(newAccountPlatform === 'instagram') && <code>, instagram_basic, instagram_content_publish</code>}</li>
+                                                        <li>Add Permissions: <code>public_profile</code>, <code>pages_show_list</code>, <code>pages_manage_posts</code></li>
                                                         <li>Click "Generate Access Token" and paste it below.</li>
                                                     </ol>
                                                 </div>
@@ -600,8 +767,8 @@ function ConnectionsPageContent() {
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {store.accounts.map((account) => (
-                            <Card key={account.id}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Card key={account.id} className="overflow-hidden border-border/70 bg-card/90 shadow-sm transition-transform duration-200 hover:-translate-y-0.5">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/60 bg-muted/25 pb-3">
                                     <CardTitle className="text-sm font-medium capitalize">{account.platform} {account.platform === 'facebook' ? 'Page' : 'Account'}</CardTitle>
                                     {account.platform === 'facebook' && <Facebook className="h-4 w-4 text-blue-600" />}
                                     {account.platform === 'linkedin' && <Linkedin className="h-4 w-4 text-blue-700" />}
@@ -611,7 +778,7 @@ function ConnectionsPageContent() {
                                     {account.platform === 'wix' && <Globe className="h-4 w-4 text-purple-600" />}
                                     {account.platform === 'squarespace' && <Globe className="h-4 w-4 text-zinc-700" />}
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="pt-5">
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className="text-xl font-bold truncate">{account.name}</span>
                                         {account.status === 'active'
@@ -623,8 +790,8 @@ function ConnectionsPageContent() {
                                         {account.username ? `@${account.username}` : 'Connected via OAuth'}
                                     </p>
                                 </CardContent>
-                                <CardFooter>
-                                    <Button variant="ghost" size="sm" className="w-full text-red-500 hover:text-red-600" onClick={async () => {
+                                <CardFooter className="border-t border-border/60 bg-muted/20">
+                                    <Button variant="ghost" size="sm" className="w-full rounded-xl text-red-500 hover:text-red-600" onClick={async () => {
                                         try {
                                             await fetch(`/api/connections?id=${account.id}`, { method: 'DELETE' });
                                             store.removeAccount(account.id);
@@ -634,17 +801,17 @@ function ConnectionsPageContent() {
                                             toast.error('Failed to disconnect');
                                         }
                                     }}>
-                                        <RefreshCw className="mr-2 h-3 w-3" /> Disconnect
+                                        <Trash2 className="mr-2 h-3 w-3" /> Disconnect
                                     </Button>
                                 </CardFooter>
                             </Card>
                         ))}
 
                         {store.accounts.length === 0 && (
-                            <Card className="border-dashed flex items-center justify-center p-6 h-full min-h-[150px] col-span-full">
-                                <div className="text-center text-muted-foreground">
-                                    <p>No accounts connected.</p>
-                                    <p className="text-sm">Click "Connect New Account" to get started.</p>
+                            <Card className="col-span-full flex min-h-[220px] items-center justify-center border-dashed border-border/70 bg-card/60">
+                                <div className="max-w-md text-center text-muted-foreground">
+                                    <p className="text-base font-medium text-foreground">No accounts connected yet.</p>
+                                    <p className="mt-2 text-sm">Start with Facebook or LinkedIn above, then use the dialog for manual token-based connections when needed.</p>
                                 </div>
                             </Card>
                         )}

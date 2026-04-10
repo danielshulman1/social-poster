@@ -75,7 +75,11 @@ export default function EditorPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                toast.error(data.error || 'Execution failed');
+                toast.error(data.error || 'Execution failed', {
+                    description: data.executionId
+                        ? `Run log saved under ${data.executionId}. Open Activity Log for the failure trail.`
+                        : 'Open Activity Log for the failure trail.',
+                });
                 return;
             }
 
@@ -95,7 +99,9 @@ export default function EditorPage() {
                     }
                 }
             } else {
-                toast.warning('Workflow completed with errors');
+                toast.warning('Workflow completed with errors', {
+                    description: 'Open Activity Log to review the run trail and failure reasons.',
+                });
                 const results = data.results || {};
                 for (const [nodeId, result] of Object.entries(results)) {
                     const r = result as any;

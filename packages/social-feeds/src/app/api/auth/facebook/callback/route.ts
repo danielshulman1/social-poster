@@ -87,7 +87,7 @@ export async function GET(req: Request) {
         // 3. Fetch user's pages - use /me/accounts which should return pages with access tokens
         const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account');
+        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account{id}');
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 
@@ -139,7 +139,10 @@ export async function GET(req: Request) {
 
                 // 5. If it has a linked Instagram Business Account, save that too
                 if (page.instagram_business_account && page.instagram_business_account.id) {
+                    const igId = page.instagram_business_account.id;
                     const igName = `IG linked to ${page.name}`;
+
+                    console.log('Found linked Instagram account:', { igId, igName, pageId: page.id });
 
                     // Delete existing IG connection to avoid duplicates
                     await prisma.externalConnection.deleteMany({
@@ -157,13 +160,16 @@ export async function GET(req: Request) {
                             name: igName,
                             credentials: JSON.stringify({
                                 accessToken: page.access_token, // IG Graph uses the FB Page Access Token
-                                username: page.instagram_business_account.id, // Using the IG ID as username
+                                username: igId, // Using the IG ID as username
+                                userId: igId,
                                 connectedAt: new Date().toISOString()
                             }),
                         },
                     });
                     console.log('Saved Instagram connection:', { id: savedIgConnection.id, name: savedIgConnection.name });
                     igAddedCount++;
+                } else {
+                    console.log('No linked Instagram account for page:', page.name);
                 }
             }
         }
