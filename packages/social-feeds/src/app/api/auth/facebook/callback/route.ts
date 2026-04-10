@@ -93,13 +93,27 @@ export async function GET(req: Request) {
         console.log('=== USER INFO ===');
         console.log('User info:', JSON.stringify(userData, null, 2));
 
-        // 4. Fetch user's pages
-        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
+        // 4. Fetch user's pages using the correct endpoint that works with user tokens
+        // Use /me/owned_businesses or /me/adaccounts instead of /me/accounts for newer API
+        const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/businesses');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        // Request all available fields to see what Facebook returns
-        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles,picture');
-        const pagesRes = await fetch(pagesUrl.toString());
-        const pagesData = await pagesRes.json();
+        pagesUrl.searchParams.set('fields', 'id,name');
+        let pagesRes = await fetch(pagesUrl.toString());
+        let pagesData = await pagesRes.json();
+
+        console.log('=== TRY BUSINESSES ENDPOINT ===');
+        console.log('Response:', JSON.stringify(pagesData, null, 2));
+
+        // If businesses endpoint doesn't work, try the accounts endpoint with a different approach
+        if (!pagesData.data || pagesData.data.length === 0) {
+            console.log('=== FALLBACK: TRY ACCOUNTS ENDPOINT ===');
+            const accountsUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
+            accountsUrl.searchParams.set('access_token', finalUserToken);
+            accountsUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles,picture');
+            pagesRes = await fetch(accountsUrl.toString());
+            pagesData = await pagesRes.json();
+            console.log('Accounts endpoint response:', JSON.stringify(pagesData, null, 2));
+        }
 
         console.log('=== FACEBOOK PAGES REQUEST ===');
         console.log('Access token used (first 20 chars):', finalUserToken.substring(0, 20) + '...');
