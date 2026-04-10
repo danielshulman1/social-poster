@@ -44,8 +44,8 @@ export async function GET(req: Request) {
         createdAt: Date.now(),
     })).toString('base64');
 
-    // Request permissions to view and manage pages + Instagram accounts
-    const scope = 'pages_show_list,pages_manage_posts,pages_manage_metadata,pages_read_engagement,business_management,instagram_basic';
+    // Request permissions to view and manage pages
+    const scope = 'pages_show_list,pages_manage_posts,pages_manage_metadata,pages_read_engagement,business_management';
 
     const authUrl = new URL('https://www.facebook.com/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
