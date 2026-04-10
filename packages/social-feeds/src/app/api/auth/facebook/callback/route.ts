@@ -137,9 +137,29 @@ export async function GET(req: Request) {
                 console.log('Saved Facebook connection:', { id: savedConnection.id, name: savedConnection.name });
                 addedCount++;
 
-                // 5. If it has a linked Instagram Business Account, save that too
-                if (page.instagram_business_account && page.instagram_business_account.id) {
-                    const igId = page.instagram_business_account.id;
+                // 5. Try to fetch Instagram accounts linked to this page
+                // First try the direct instagram_business_account field
+                let igId = page.instagram_business_account?.id;
+
+                // If not found in the pages response, fetch it separately using the page token
+                if (!igId) {
+                    try {
+                        const igPageUrl = new URL(`https://graph.facebook.com/v18.0/${page.id}`);
+                        igPageUrl.searchParams.set('access_token', page.access_token);
+                        igPageUrl.searchParams.set('fields', 'instagram_business_account');
+                        const igPageRes = await fetch(igPageUrl.toString());
+                        const igPageData = await igPageRes.json();
+                        if (igPageData.instagram_business_account?.id) {
+                            igId = igPageData.instagram_business_account.id;
+                            console.log('Fetched Instagram ID separately:', { pageId: page.id, igId });
+                        }
+                    } catch (e) {
+                        console.log('Failed to fetch Instagram separately:', e);
+                    }
+                }
+
+                // If we found an Instagram account, save it
+                if (igId) {
                     const igName = `IG linked to ${page.name}`;
 
                     console.log('Found linked Instagram account:', { igId, igName, pageId: page.id });
@@ -169,7 +189,7 @@ export async function GET(req: Request) {
                     console.log('Saved Instagram connection:', { id: savedIgConnection.id, name: savedIgConnection.name });
                     igAddedCount++;
                 } else {
-                    console.log('No linked Instagram account for page:', page.name);
+                    console.log('No linked Instagram account found for page:', page.name);
                 }
             }
         }
