@@ -84,18 +84,28 @@ export async function GET(req: Request) {
         const longTokenData = await longTokenRes.json();
         const finalUserToken = longTokenData.access_token || userAccessToken;
 
-        // 3. Fetch user's pages - use v18.0 for consistency
+        // 3. Fetch user's pages
         const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
         pagesUrl.searchParams.set('access_token', finalUserToken);
-        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles');
+        // Request all available fields to see what Facebook returns
+        pagesUrl.searchParams.set('fields', 'id,name,access_token,instagram_business_account,roles,picture');
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 
-        console.log('Facebook pages response status:', pagesRes.status);
-        console.log('Facebook pages response data:', JSON.stringify(pagesData, null, 2));
-        console.log('Pages data array:', pagesData?.data);
-        if (pagesData?.data && pagesData.data.length > 0) {
-            console.log('First page object:', JSON.stringify(pagesData.data[0], null, 2));
+        console.log('=== FACEBOOK PAGES REQUEST ===');
+        console.log('Access token used (first 20 chars):', finalUserToken.substring(0, 20) + '...');
+        console.log('Pages endpoint response status:', pagesRes.status);
+        console.log('Pages endpoint response:', JSON.stringify(pagesData, null, 2));
+
+        if (pagesData?.error) {
+            console.error('Facebook API Error:', pagesData.error);
+        }
+
+        if (pagesData?.data?.length > 0) {
+            console.log('✓ Found', pagesData.data.length, 'pages');
+            console.log('First page:', JSON.stringify(pagesData.data[0], null, 2));
+        } else {
+            console.log('✗ No pages found. Pages data:', pagesData?.data);
         }
 
         // If pages endpoint fails, it's likely due to missing pages_show_list permission
