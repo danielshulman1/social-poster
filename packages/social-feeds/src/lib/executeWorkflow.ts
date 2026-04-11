@@ -1275,7 +1275,7 @@ export async function executeWorkflow(
                     let igCreds: any = {};
                     try { igCreds = JSON.parse(igConnection.credentials); } catch { }
                     const igToken = normalizeAccessToken(igCreds.accessToken);
-                    const igUserId = igCreds.username || igCreds.userId;
+                    const igUserId = igCreds.userId || igCreds.username;
 
                     if (!igToken) throw new Error('No access token found for this Instagram account. Disconnect and reconnect via Facebook OAuth on the Connections page.');
 
