@@ -1300,8 +1300,8 @@ export async function executeWorkflow(
                         );
                     }
 
-                    const igContent = lastOutput || node.data?.content || '';
-                    const imageUrl = node.data?.imageUrl || (lastOutput && lastOutput.startsWith('http') ? lastOutput : '');
+                    const igContent = lastTextOutput || lastOutput || node.data?.content || '';
+                    const imageUrl = node.data?.imageUrl || (lastImageUrl || (lastOutput && lastOutput.startsWith('http') ? lastOutput : ''));
 
                     if (imageUrl) {
                         const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media`, {
@@ -1360,7 +1360,7 @@ export async function executeWorkflow(
                     const userId = creds.userId || creds.username;
                     if (!accessToken || !userId) throw new Error('Threads connection requires accessToken and userId.');
 
-                    const text = (lastOutput || node.data?.content || '').slice(0, 500);
+                    const text = (lastTextOutput || lastOutput || node.data?.content || '').slice(0, 500);
                     if (!text) throw new Error('No content to post to Threads.');
 
                     const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
@@ -1416,7 +1416,7 @@ export async function executeWorkflow(
                     if (!siteUrl) throw new Error('Set WordPress site URL in node config.');
 
                     const title = (node.data?.title as string) || `Auto Post ${new Date().toISOString()}`;
-                    const content = lastOutput || node.data?.content || '';
+                    const content = lastTextOutput || lastOutput || node.data?.content || '';
                     if (!content) throw new Error('No content to publish.');
 
                     const endpoint = `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/posts`;
@@ -1467,7 +1467,7 @@ export async function executeWorkflow(
                     if (!accessToken) throw new Error('Missing access token for this connection.');
 
                     const title = (node.data?.title as string) || `Auto Post ${new Date().toISOString()}`;
-                    const content = lastOutput || node.data?.content || '';
+                    const content = lastTextOutput || lastOutput || node.data?.content || '';
                     if (!content) throw new Error('No content to publish.');
 
                     const platform = node.type.startsWith('wix') ? 'wix' : 'squarespace';
@@ -1716,6 +1716,10 @@ export async function executeWorkflow(
                     output = `HTTP ${method} ${url} -> ${httpRes.status}\n${responseOutput}`;
                     break;
                 }
+
+                case 'router':
+                    output = lastTextOutput || lastOutput || '';
+                    break;
 
                 default:
                     output = `Node "${node.type}" executed.`;
