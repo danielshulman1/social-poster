@@ -1,5 +1,6 @@
 'use client';
 
+// Rebuild trigger: v2
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, getUserPersona, getUserSocialConnections } from '@/lib/supabase';
