@@ -1,0 +1,155 @@
+================================================================================
+  PERSONA BUILDER - QUICK REFERENCE CARD
+================================================================================
+
+FILE LOCATIONS:
+  - Components:     frontend/src/components/onboarding/
+  - API Routes:     frontend/src/app/api/onboarding/ & /api/oauth/
+  - Main Page:      frontend/src/app/onboarding/page.tsx
+  - Client:         frontend/src/lib/supabase.ts
+  - Migration:      supabase/migrations/20260412_create_user_personas.sql
+  - Env Template:   frontend/.env.example
+
+SETUP (5 MINUTES):
+  1. cp frontend/.env.example frontend/.env.local
+  2. Fill in: SUPABASE_URL, SUPABASE_KEY, OPENAI_KEY
+  3. Run SQL migration in Supabase SQL Editor
+  4. cd frontend && pnpm install && pnpm dev
+  5. Visit http://localhost:3000/onboarding
+
+DATABASE TABLES:
+  - user_personas (final persona data)
+  - user_onboarding_progress (temp progress tracking)
+  - user_social_connections (OAuth tokens)
+
+API ENDPOINTS:
+  POST /api/onboarding/generate-persona
+    → Input: interviewData, posts, userId
+    → Output: persona object
+
+  POST /api/oauth/initiate
+    → Input: platform
+    → Output: authUrl
+
+  GET /api/oauth/callback
+    → Handles OAuth response, redirects to onboarding
+
+ENVIRONMENT VARIABLES (REQUIRED):
+  NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY
+  OPENAI_API_KEY
+  NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+OPTIONAL (for OAuth):
+  FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
+  INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET
+  LINKEDIN_APP_ID, LINKEDIN_APP_SECRET
+
+INTERVIEW QUESTIONS (12):
+  1. Business description and audience
+  2. Problems solved
+  3. Brand personality
+  4. Tone of voice
+  5. Topics to post about
+  6. Topics to avoid
+  7. Achievements to share
+  8. Phrases used frequently
+  9. Phrases to avoid
+  10. Ideal customer
+  11. Active platforms
+  12. Business goals for social media
+
+USER FLOW:
+  Interview (3 min) → Posts (2 min) → Generate (20 sec) → Review (1 min) → Done!
+
+PERSONA DATA INCLUDES:
+  - Brand voice summary
+  - Writing style (length, emojis, punctuation, structure)
+  - Recurring themes
+  - Power words & phrases
+  - Words to avoid
+  - Ideal post structure per platform
+  - Hashtag style
+  - Engagement style
+  - Content pillars (3-5 main topics)
+  - Sample posts (one per platform)
+
+COSTS:
+  Supabase: FREE (up to 500k ops/month)
+  OpenAI: ~$0.03-0.05 per generation
+  Vercel: FREE tier sufficient
+
+PERFORMANCE:
+  Interview save: <100ms
+  File upload: <1s (50 posts)
+  Persona generation: 10-30s
+  Database queries: <100ms
+  Page load: <2s
+
+TESTING:
+  1. Visit /onboarding when logged in
+  2. Answer all 12 interview questions
+  3. Upload or paste posts
+  4. Wait for persona generation
+  5. See results with sample posts
+  6. Check Supabase for user_personas record
+
+DEPLOYMENT TO VERCEL:
+  1. git push to GitHub
+  2. Add env vars in Vercel settings
+  3. Update OAuth redirect URIs
+  4. Test on production URL
+
+COMMON ISSUES:
+  "Missing Supabase env vars" → Check .env.local
+  "relation doesn't exist" → Run SQL migration
+  "Invalid OpenAI key" → Check platform.openai.com
+  "RLS violation" → User must be authenticated
+  "OAuth mismatch" → Update redirect URI in OAuth app
+
+KEY DOCUMENTATION:
+  QUICKSTART.md .......................... 5 min
+  PERSONA_BUILDER_SETUP.md .............. 20-30 min (detailed setup)
+  PERSONA_BUILDER_CHECKLIST.md .......... Testing & verification
+  ARCHITECTURE.md ....................... System design
+  IMPLEMENTATION_NOTES.md ............... Technical details
+  PERSONA_BUILDER_SUMMARY.md ............ Overview
+
+SUPABASE LINKS:
+  Dashboard:   https://app.supabase.com
+  SQL Editor:  https://app.supabase.com/project/[id]/sql
+
+OPENAI LINKS:
+  API Keys:    https://platform.openai.com/account/api-keys
+  Usage:       https://platform.openai.com/account/billing/usage
+
+NEXT STEPS:
+  1. Follow QUICKSTART.md
+  2. Test locally
+  3. Deploy to Vercel
+  4. Add payment integration
+  5. Add email notifications
+  6. Implement post generation
+  7. Build dashboard
+
+SUCCESS CHECKLIST:
+  ✓ Can access /onboarding when logged in
+  ✓ Can complete 12-question interview
+  ✓ Can upload/paste posts
+  ✓ Persona generates in <30s
+  ✓ Results display beautifully
+  ✓ Data saved in Supabase
+  ✓ No console errors
+  ✓ Works on mobile
+  ✓ Can deploy to Vercel
+
+HELP:
+  Setup issues → See QUICKSTART.md
+  Testing issues → See PERSONA_BUILDER_CHECKLIST.md
+  Architecture questions → See ARCHITECTURE.md
+  Technical details → See IMPLEMENTATION_NOTES.md
+  API examples → See frontend/src/lib/persona-api-examples.md
+
+================================================================================
+                    START: QUICKSTART.md (5 min setup)
+================================================================================

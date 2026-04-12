@@ -1,0 +1,198 @@
+================================================================================
+                    DEPLOYMENT CHECKLIST - MARK AS YOU GO
+================================================================================
+
+CODE DEPLOYMENT:
+[✓] Code written and tested locally
+[✓] Committed to git with detailed message
+[✓] Pushed to GitHub main branch
+[✓] Vercel automatically building
+
+VERCEL DEPLOYMENT:
+[ ] Visit https://vercel.com/projects
+[ ] Select "social-poster" project
+[ ] Check build status → should show "Ready" or "Building"
+[ ] Wait for deployment to complete (usually 2-5 min)
+
+STRIPE SETUP (Required for payments to work):
+
+[ ] Log in to Stripe Dashboard
+[ ] Create 3 Products:
+    [ ] Product 1: "Starter Plan"
+        [ ] Price: £47/month (recurring)
+        [ ] Copy price ID: price_XXXX
+    [ ] Product 2: "Core Plan"
+        [ ] Price: £97/month (recurring)
+        [ ] Copy price ID: price_XXXX
+    [ ] Product 3: "Premium Plan"
+        [ ] Price: £197/month (recurring)
+        [ ] Copy price ID: price_XXXX
+
+[ ] Create Webhook:
+    [ ] Go to Webhooks
+    [ ] Click "Add an endpoint"
+    [ ] Endpoint URL: https://yourdomain.com/api/stripe/webhook
+    [ ] Select events:
+        [ ] checkout.session.completed
+        [ ] customer.subscription.deleted
+    [ ] Create endpoint
+    [ ] Copy signing secret: whsec_XXXX
+
+[ ] Get API Keys:
+    [ ] Go to API Keys section
+    [ ] Copy Secret Key: sk_live_XXXX (or sk_test_XXXX for testing)
+
+VERCEL ENVIRONMENT VARIABLES (Required for deployment):
+
+[ ] Go to Vercel Project Settings
+[ ] Go to Environment Variables
+[ ] Add these 6 variables:
+
+[ ] STRIPE_SECRET_KEY
+    Value: sk_live_... (or sk_test_...)
+
+[ ] STRIPE_WEBHOOK_SECRET
+    Value: whsec_...
+
+[ ] STRIPE_PRICE_STARTER
+    Value: price_... (from product 1)
+
+[ ] STRIPE_PRICE_CORE
+    Value: price_... (from product 2)
+
+[ ] STRIPE_PRICE_PREMIUM
+    Value: price_... (from product 3)
+
+[ ] NEXT_PUBLIC_APP_URL
+    Value: https://yourdomain.com
+
+[ ] Wait for Vercel to redeploy (should happen automatically)
+
+TESTING (After env vars are set):
+
+[ ] Visit https://yourdomain.com/dashboard/settings
+[ ] See "Upgrade Plan" button
+[ ] Click "Upgrade Plan"
+[ ] Select tier (e.g., "Starter")
+[ ] Click "Upgrade Now"
+[ ] Should redirect to Stripe Checkout
+[ ] Enter test card: 4242 4242 4242 4242
+    - Expiry: 12/34
+    - CVC: any 3 digits
+[ ] Click "Pay"
+[ ] Should redirect back to https://yourdomain.com/dashboard?payment=success
+[ ] Check Stripe Dashboard → Webhooks → Endpoint → Recent Events
+    [ ] Should see "checkout.session.completed" event ✓
+[ ] Check database: user_tiers table
+    [ ] User's tier should be updated to selected tier ✓
+
+PERSONA BUILDER TESTING:
+
+[ ] Log in to app
+[ ] Set user's setup_fee_paid = true in database
+[ ] Visit https://yourdomain.com/onboarding/persona
+[ ] Should show Step 1: Interview
+[ ] Answer 2 questions (don't need to complete all)
+    [ ] Progress bar should show progress
+[ ] Verify interview_progress table has answers stored
+[ ] Visit admin panel
+    [ ] Should see user in list
+    [ ] Can see their tier
+
+ADMIN FEATURES:
+
+[ ] Visit https://yourdomain.com/dashboard/admin
+[ ] See list of users
+[ ] Click on a user
+[ ] Should be able to change their tier
+[ ] Should see "Reset Onboarding" button
+[ ] Click reset → should see confirmation
+[ ] Check user_personas table: persona data should be cleared
+
+PRODUCTION CHECKLIST:
+
+[ ] All 6 Stripe env vars are set and correct
+[ ] Vercel deployment is "Ready"
+[ ] Test payment succeeded
+[ ] Webhook received payment event
+[ ] User tier updated in database
+[ ] Settings page loads and shows current tier
+[ ] Admin panel works correctly
+[ ] Persona builder flows work
+[ ] All error messages display correctly
+[ ] Performance is acceptable (check Vercel metrics)
+
+MONITORING (After Launch):
+
+[ ] Check Vercel Dashboard daily for errors
+[ ] Check Stripe Dashboard for payments
+[ ] Check database for new tiers/signups
+[ ] Monitor email notifications sent
+[ ] Watch for webhook failures
+
+DOCUMENTATION:
+
+[ ] Read START_HERE_COMPLETE.md (understanding)
+[ ] Read QUICK_START.md (setup reference)
+[ ] Read DEPLOYMENT_STATUS.md (current status)
+[ ] Bookmark COMPLETE_SYSTEM_DEPLOYMENT.md (troubleshooting)
+[ ] Keep FILE_REFERENCE.md for developer reference
+
+POST-DEPLOYMENT:
+
+[ ] Create monitoring alerts in Stripe
+[ ] Set up error tracking (Sentry, etc.)
+[ ] Create runbooks for common issues
+[ ] Train support team on system
+[ ] Announce features to users
+[ ] Monitor adoption/feedback
+
+FINAL VERIFICATION:
+
+[ ] User can see current tier in settings
+[ ] User can upgrade tier via Stripe
+[ ] Payment works with test card
+[ ] Webhook fires on payment
+[ ] Database updates on payment
+[ ] User can access persona builder
+[ ] Admin can manage users
+[ ] Admin can reset personas
+[ ] All error cases handled gracefully
+[ ] Docs are accessible and clear
+
+SIGN OFF:
+
+Date: _______________
+Checked by: _______________
+Status: PRODUCTION LIVE ✓
+
+================================================================================
+                    IF YOU GET STUCK
+================================================================================
+
+1. Stripe env vars not working?
+   → Check exact variable names match: STRIPE_SECRET_KEY (no typos)
+   → Make sure they're in Vercel Environment Variables, not .env
+   → Vercel needs to rebuild after adding env vars
+
+2. Payment redirects to error?
+   → Check STRIPE_PRICE_* IDs are correct
+   → Check products are set to "subscription" mode (not one-time)
+   → Check Stripe account is in "live" mode if using live keys
+
+3. Webhook doesn't fire?
+   → Check endpoint URL is exactly right
+   → Check webhook secret matches STRIPE_WEBHOOK_SECRET
+   → Check Stripe can reach your domain (firewall, etc)
+   → Check Stripe webhook logs for delivery attempts
+
+4. User tier doesn't update?
+   → Check webhook was received (check Stripe logs)
+   → Check server logs in Vercel for errors
+   → Check database connection string is correct
+   → Check user_id in webhook matches database user
+
+For more help:
+→ COMPLETE_SYSTEM_DEPLOYMENT.md → Search "troubleshooting"
+
+================================================================================
