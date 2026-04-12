@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, getUserPersona, getUserSocialConnections } from '@/lib/supabase';
 import { ProtectedLayout } from '@/components/protected-layout';
-import { Wand2, LogOut, Settings, Zap } from 'lucide-react';
+import { Wand2, LogOut, Settings, Zap, RotateCcw } from 'lucide-react';
 
 interface UserPersona {
   id: string;
@@ -24,6 +24,9 @@ export default function DashboardPage() {
   const [persona, setPersona] = useState<UserPersona | null>(null);
   const [socials, setSocials] = useState<SocialConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminReset, setShowAdminReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -38,6 +41,11 @@ export default function DashboardPage() {
         }
 
         setUser(user);
+
+        // Check if user is admin (using user metadata or email)
+        const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+        const userIsAdmin = adminEmails.includes(user.email || '');
+        setIsAdmin(userIsAdmin);
 
         // Load persona
         const personaData = await getUserPersona(user.id);
@@ -69,6 +77,30 @@ export default function DashboardPage() {
 
   const handleGoToSettings = () => {
     router.push('/settings');
+  };
+
+  const handleResetPersona = async () => {
+    if (!window.confirm('Delete this persona? Users will be able to create a new one.')) {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const { error } = await supabase
+        .from('user_personas')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setPersona(null);
+      setShowAdminReset(false);
+    } catch (error) {
+      console.error('Error resetting persona:', error);
+      alert('Failed to reset persona');
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (loading) {
@@ -162,9 +194,53 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-500">
-                  Created: {new Date(persona.created_at).toLocaleDateString()}
-                </p>
+                <div className="flex items-end justify-between">
+                  <p className="text-sm text-gray-500">
+                    Created: {new Date(persona.created_at).toLocaleDateString()}
+                  </p>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowAdminReset(!showAdminReset)}
+                      className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                    >
+                      Admin: Reset Persona
+                    </button>
+                  )}
+                </div>
+
+                {/* Admin Reset Confirmation */}
+                {isAdmin && showAdminReset && (
+                  <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-900 mb-3">
+                      This will delete the persona and allow the user to create a new one.
+                    </p>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setShowAdminReset(false)}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleResetPersona}
+                        disabled={resetting}
+                        className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {resetting ? (
+                          <>
+                            <span className="animate-spin">⟳</span>
+                            Resetting...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-3 h-3" />
+                            Delete Persona
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
@@ -183,19 +259,6 @@ export default function DashboardPage() {
               </div>
             )}
           </section>
-
-          {/* Action Button */}
-          {persona && (
-            <div className="text-center">
-              <button
-                onClick={handleCreatePersona}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                <Zap className="w-5 h-5" />
-                Create New Persona
-              </button>
-            </div>
-          )}
         </main>
       </div>
     </ProtectedLayout>
