@@ -43,19 +43,28 @@ export default function DashboardPage() {
         setUser(user);
 
         // Check if user is admin (using user metadata or email)
-        const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',');
+        const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean);
         const userIsAdmin = adminEmails.includes(user.email || '');
         setIsAdmin(userIsAdmin);
 
         // Load persona
-        const personaData = await getUserPersona(user.id);
-        if (personaData) {
-          setPersona(personaData.persona_data);
+        const personaRecord = await getUserPersona(user.id);
+        if (personaRecord && personaRecord.persona_data) {
+          setPersona(personaRecord.persona_data as UserPersona);
         }
 
         // Load social connections
         const connections = await getUserSocialConnections(user.id);
         setSocials(connections.map((c) => ({ platform: c.platform, platform_user_id: c.platform_user_id })));
+
+        // Debug logging
+        console.log('Dashboard loaded:', {
+          userEmail: user.email,
+          isAdmin: userIsAdmin,
+          adminEmails: adminEmails,
+          hasPersona: !!personaRecord,
+          personaData: personaRecord?.persona_data ? 'exists' : 'null',
+        });
       } catch (error) {
         console.error('Error loading dashboard:', error);
       } finally {
