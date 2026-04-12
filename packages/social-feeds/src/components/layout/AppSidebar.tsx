@@ -14,12 +14,14 @@ import {
     LogOut,
     Shield,
     Sparkles,
-    ArrowUpRight
+    ArrowUpRight,
+    Wand2
 } from 'lucide-react';
 
 const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/', label: 'Workflows', icon: Workflow }, // Canvas is home for now, or move to /workflows
+    { href: '/persona', label: 'AI Persona', icon: Wand2 },
     { href: '/connections', label: 'Connections', icon: Radio },
     { href: '/activity', label: 'Activity Log', icon: Activity },
     { href: '/settings', label: 'Settings', icon: Settings },

@@ -42,6 +42,7 @@ model User {
   workflows     Workflow[]
   externalConnections ExternalConnection[]
   subscription  Subscription?
+  persona       UserPersona?
 }
 
 model Account {
@@ -179,4 +180,13 @@ model PublishResult {
   status      String   // "success", "failed"
   error       String?
   publishedAt DateTime @default(now())
+}
+
+model UserPersona {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personaData  Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

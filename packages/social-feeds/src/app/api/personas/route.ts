@@ -1,31 +1,93 @@
-import { NextResponse } from "next/server";
-import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
-
-// TODO: Add Persona model to Prisma Schema
-// For now, return default personas or use a JSON field in User settings if implemented
-const defaultPersonas = [
-    {
-        id: '1',
-        name: 'Authentic Human',
-        prompt: 'You are a genuine, relatable human being. Write like a real person, not an AI. Use conversational language, varied sentence length, and show personality. Avoid corporate jargon, buzzwords (like "unlock", "elevate", "game-changer"), and robotic transitions. Be concise but engaging.'
-    },
-    {
-        id: '2',
-        name: 'Thought Leader (Casual)',
-        prompt: 'You are an industry expert sharing insights in a casual, accessible way. Share knowledge without sounding academic or stiff. Use "I" statements, real-world examples, and a confident but humble tone. Avoid cliches.'
-    },
-    {
-        id: '3',
-        name: 'Witty & Engaging',
-        prompt: 'You are a witty social media personality. Your posts are punchy, clever, and maybe a little cheeky. Use humor where appropriate, but keep it professional enough for a broad audience. Focus on high engagement.'
-    }
-];
-
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request) {
-    const auth = await getApiAuthContext(req);
-    if (!auth?.userId) return unauthorizedText();
+import { NextResponse, NextRequest } from 'next/server';
+import { getApiAuthContext, unauthorizedText, forbiddenText } from '@/lib/apiAuth';
+import { prisma } from '@/lib/prisma';
 
-    return NextResponse.json(defaultPersonas);
+export async function GET(req: NextRequest) {
+  const auth = await getApiAuthContext(req);
+  if (!auth?.userId) return unauthorizedText('Unauthorized');
+
+  try {
+    const persona = await prisma.userPersona.findUnique({
+      where: { userId: auth.userId },
+    });
+
+    return NextResponse.json(persona || null);
+  } catch (error) {
+    console.error('Error fetching persona:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await getApiAuthContext(req);
+  if (!auth?.userId) return unauthorizedText('Unauthorized');
+
+  try {
+    const body = await req.json();
+    const { personaData } = body;
+
+    if (!personaData) {
+      return NextResponse.json(
+        { error: 'personaData is required' },
+        { status: 400 }
+      );
+    }
+
+    const persona = await prisma.userPersona.upsert({
+      where: { userId: auth.userId },
+      update: {
+        personaData,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: auth.userId,
+        personaData,
+      },
+    });
+
+    return NextResponse.json(persona);
+  } catch (error) {
+    console.error('Error saving persona:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const auth = await getApiAuthContext(req);
+  if (!auth?.userId) return unauthorizedText('Unauthorized');
+
+  // Check if user is admin
+  if (auth.role !== 'admin') return forbiddenText('Admin access required');
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'userId parameter is required' },
+        { status: 400 }
+      );
+    }
+
+    // Admin can delete any user's persona
+    const persona = await prisma.userPersona.findUnique({
+      where: { userId },
+    });
+
+    if (!persona) {
+      return NextResponse.json({ error: 'Persona not found' }, { status: 404 });
+    }
+
+    await prisma.userPersona.delete({
+      where: { userId },
+    });
+
+    return NextResponse.json({ message: 'Persona deleted' });
+  } catch (error) {
+    console.error('Error deleting persona:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
 }
