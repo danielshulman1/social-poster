@@ -47,24 +47,29 @@ export default function DashboardPage() {
         const userIsAdmin = adminEmails.includes(user.email || '');
         setIsAdmin(userIsAdmin);
 
-        // Load persona
-        const personaRecord = await getUserPersona(user.id);
-        if (personaRecord && personaRecord.persona_data) {
-          setPersona(personaRecord.persona_data as UserPersona);
+        try {
+          // Load persona
+          const personaRecord = await getUserPersona(user.id);
+          if (personaRecord && personaRecord.persona_data) {
+            setPersona(personaRecord.persona_data as UserPersona);
+          }
+
+          // Load social connections
+          const connections = await getUserSocialConnections(user.id);
+          setSocials(connections.map((c) => ({ platform: c.platform, platform_user_id: c.platform_user_id })));
+
+          // Debug logging
+          console.log('Dashboard loaded:', {
+            userEmail: user.email,
+            isAdmin: userIsAdmin,
+            adminEmails: adminEmails,
+            hasPersona: !!personaRecord,
+            personaData: personaRecord?.persona_data ? 'exists' : 'null',
+          });
+        } catch (dataError) {
+          console.error('Error loading persona/connections:', dataError);
+          // Continue without throwing - show empty state
         }
-
-        // Load social connections
-        const connections = await getUserSocialConnections(user.id);
-        setSocials(connections.map((c) => ({ platform: c.platform, platform_user_id: c.platform_user_id })));
-
-        // Debug logging
-        console.log('Dashboard loaded:', {
-          userEmail: user.email,
-          isAdmin: userIsAdmin,
-          adminEmails: adminEmails,
-          hasPersona: !!personaRecord,
-          personaData: personaRecord?.persona_data ? 'exists' : 'null',
-        });
       } catch (error) {
         console.error('Error loading dashboard:', error);
       } finally {
