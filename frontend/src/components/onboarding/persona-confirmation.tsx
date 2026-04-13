@@ -41,40 +41,40 @@ export function PersonaConfirmation({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4 sm:p-6">
       <div className="w-full max-w-4xl mx-auto">
         {/* Success header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <Check className="w-8 h-8 text-green-600" />
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full mb-3 sm:mb-4">
+            <Check className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Your Persona is Ready!</h1>
-          <p className="text-xl text-gray-600">
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">Your Persona is Ready!</h1>
+          <p className="text-base sm:text-xl text-gray-600">
             Your AI-powered brand persona has been created and saved.
           </p>
         </div>
 
         {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-4 mb-12">
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <p className="text-gray-600 text-sm">Posts Analyzed</p>
-            <p className="text-3xl font-bold text-gray-900">{postsAnalyzed}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12">
+          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-200">
+            <p className="text-gray-600 text-xs sm:text-sm">Posts Analyzed</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{postsAnalyzed}</p>
           </div>
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <p className="text-gray-600 text-sm">Platforms Connected</p>
-            <p className="text-3xl font-bold text-gray-900">{platformsConnected.length}</p>
+          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-200">
+            <p className="text-gray-600 text-xs sm:text-sm">Platforms Connected</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{platformsConnected.length}</p>
           </div>
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <p className="text-gray-600 text-sm">Content Pillars</p>
-            <p className="text-3xl font-bold text-gray-900">{persona.contentPillars.length}</p>
+          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-200">
+            <p className="text-gray-600 text-xs sm:text-sm">Content Pillars</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{persona.contentPillars.length}</p>
           </div>
         </div>
 
         {/* Persona Overview */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Brand Voice</h2>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Your Brand Voice</h2>
 
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Brand Voice Summary */}
             <section>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Brand Voice Summary</h3>
@@ -152,43 +152,45 @@ export function PersonaConfirmation({
         </div>
 
         {/* Sample Posts */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Sample Posts in Your Voice</h2>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-8 mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Sample Posts in Your Voice</h2>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {Object.entries(persona.samplePosts).map(([platform, post], idx) => (
-              <div key={platform} className="border border-gray-200 rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900 capitalize">
+              <div key={platform} className="border border-gray-200 rounded-lg p-3 sm:p-6">
+                <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
+                  <h4 className="text-base sm:text-lg font-semibold text-gray-900 capitalize">
                     {platform} Post
                   </h4>
                   <button
                     onClick={() => handleCopyPost(idx)}
-                    className="inline-flex items-center gap-2 px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                    className="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 text-xs sm:text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors whitespace-nowrap"
                   >
                     {copiedIndex === idx ? (
                       <>
-                        <Check className="w-4 h-4" />
-                        Copied!
+                        <Check className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Copied!</span>
+                        <span className="sm:hidden">OK</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-4 h-4" />
-                        Copy
+                        <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Copy</span>
+                        <span className="sm:hidden">Copy</span>
                       </>
                     )}
                   </button>
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap">{post}</p>
+                <p className="text-gray-700 whitespace-pre-wrap text-xs sm:text-base">{post}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Next Steps */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">What Happens Next?</h3>
-          <ul className="space-y-2 text-blue-900">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+          <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2 sm:mb-3">What Happens Next?</h3>
+          <ul className="space-y-1 sm:space-y-2 text-blue-900 text-xs sm:text-base">
             <li className="flex gap-3">
               <span className="font-semibold">1.</span>
               <span>Your brand persona has been saved to your account</span>
@@ -209,18 +211,18 @@ export function PersonaConfirmation({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
           <button
             onClick={handleDownloadPersona}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-xs sm:text-base"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3 h-3 sm:w-4 sm:h-4" />
             Download Persona
           </button>
 
           <button
             onClick={onComplete}
-            className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="px-4 sm:px-8 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-base"
           >
             Go to Dashboard
           </button>

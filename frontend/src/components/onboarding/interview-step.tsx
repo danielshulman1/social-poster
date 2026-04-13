@@ -131,15 +131,15 @@ export function InterviewStep({
   const progress = ((currentQuestion + 1) / INTERVIEW_QUESTIONS.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl">
         {/* Progress bar */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-semibold text-gray-700">
+            <h2 className="text-xs sm:text-sm font-semibold text-gray-700">
               Question {currentQuestion + 1} of {INTERVIEW_QUESTIONS.length}
             </h2>
-            <span className="text-sm text-gray-500">{Math.round(progress)}%</span>
+            <span className="text-xs sm:text-sm text-gray-500">{Math.round(progress)}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -150,8 +150,8 @@ export function InterviewStep({
         </div>
 
         {/* Question card */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
             {INTERVIEW_QUESTIONS[currentQuestion].question}
           </h1>
 
@@ -160,7 +160,7 @@ export function InterviewStep({
             onChange={(e) => setCurrentInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={INTERVIEW_QUESTIONS[currentQuestion].placeholder}
-            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
             rows={6}
             autoFocus
           />
@@ -169,18 +169,18 @@ export function InterviewStep({
         </div>
 
         {/* Navigation buttons */}
-        <div className="flex gap-4 justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between">
           <button
             onClick={handlePrevious}
             disabled={currentQuestion === 0}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm sm:text-base"
           >
             ← Previous
           </button>
 
           <button
             onClick={handleNext}
-            className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="px-4 sm:px-8 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
           >
             {currentQuestion === INTERVIEW_QUESTIONS.length - 1 ? 'Complete Interview' : 'Next →'}
           </button>

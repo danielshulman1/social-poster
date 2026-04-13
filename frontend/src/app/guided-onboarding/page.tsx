@@ -193,70 +193,70 @@ export default function GuidedOnboardingPage() {
   // Render steps
   if (currentStep === 'welcome') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4 sm:p-6">
         <div className="w-full max-w-4xl mx-auto flex flex-col justify-center min-h-screen">
           {/* Logo/Brand */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gray-900 mb-3 sm:mb-4">
               Welcome! 👋
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-2">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto mb-2 px-2">
               Let's get your social media content engine running
             </p>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 px-2">
               This guided tour will take about 15-20 minutes
             </p>
           </div>
 
           {/* What you'll do */}
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 mb-8 sm:mb-12">
             <div className="bg-white rounded-lg p-8 border border-gray-200 shadow-sm">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Here's What We'll Do</h2>
 
-              <div className="space-y-6">
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">
                     1
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Connect Social Media</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Connect Social Media</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Import your existing posts to understand your voice
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">
                     2
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Create Brand Persona</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Create Brand Persona</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Answer questions about your business and brand voice
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">
                     3
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Set Up Content Flows</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Set Up Content Flows</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Create automated schedules for AI-generated posts
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold">
+                <div className="flex gap-3 sm:gap-4">
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-sm sm:text-base">
                     4
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Start Posting</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Start Posting</h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       Your AI starts generating content in your voice
                     </p>
                   </div>
@@ -265,9 +265,9 @@ export default function GuidedOnboardingPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                <h3 className="font-semibold text-green-900 mb-3">✓ What You'll Get</h3>
-                <ul className="space-y-2 text-green-900 text-sm">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6">
+                <h3 className="font-semibold text-green-900 mb-3 text-sm sm:text-base">✓ What You'll Get</h3>
+                <ul className="space-y-2 text-green-900 text-xs sm:text-sm">
                   <li>• AI that writes like you, not like a robot</li>
                   <li>• Automated posting on your schedule</li>
                   <li>• More time for what matters</li>
@@ -276,12 +276,12 @@ export default function GuidedOnboardingPage() {
                 </ul>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 className="font-semibold text-blue-900 mb-3">⏱️ Time Required</h3>
-                <p className="text-blue-900 text-sm mb-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+                <h3 className="font-semibold text-blue-900 mb-3 text-sm sm:text-base">⏱️ Time Required</h3>
+                <p className="text-blue-900 text-xs sm:text-sm mb-4">
                   <strong>Total: 15-20 minutes</strong>
                 </p>
-                <ul className="space-y-2 text-blue-900 text-sm">
+                <ul className="space-y-2 text-blue-900 text-xs sm:text-sm">
                   <li>• Social connection: 3-5 min (optional)</li>
                   <li>• Interview: 5-10 min</li>
                   <li>• Posts upload: 2-5 min</li>
@@ -289,9 +289,9 @@ export default function GuidedOnboardingPage() {
                 </ul>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-                <h3 className="font-semibold text-amber-900 mb-3">ℹ️ Pro Tip</h3>
-                <p className="text-amber-900 text-sm">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 sm:p-6">
+                <h3 className="font-semibold text-amber-900 mb-3 text-sm sm:text-base">ℹ️ Pro Tip</h3>
+                <p className="text-amber-900 text-xs sm:text-sm">
                   You can pause and continue later. Your progress is automatically saved at each step.
                 </p>
               </div>
@@ -299,17 +299,17 @@ export default function GuidedOnboardingPage() {
           </div>
 
           {/* CTA */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <button
               onClick={() => router.push('/dashboard')}
-              className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               Maybe Later
             </button>
 
             <button
               onClick={() => setCurrentStep('social-connection')}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              className="px-4 sm:px-8 py-2 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               Let's Get Started →
             </button>
