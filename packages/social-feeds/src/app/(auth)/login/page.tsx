@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { toast } from "sonner";
-import { isOnboardingComplete } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 
 export default function LoginPage() {
@@ -40,16 +39,29 @@ export default function LoginPage() {
                 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
                 if (supabaseUrl && supabaseAnonKey) {
-                    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-                    const { data: { user } } = await supabase.auth.getUser();
+                    try {
+                        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+                        const { data: { user } } = await supabase.auth.getUser();
 
-                    if (user) {
-                        const onboardingDone = await isOnboardingComplete(user.id);
-                        if (!onboardingDone) {
-                            router.push("/guided-onboarding");
-                            router.refresh();
-                            return;
+                        if (user) {
+                            // Check if user persona exists and onboarding is complete
+                            const { data: persona } = await supabase
+                                .from('user_personas')
+                                .select('onboarding_complete')
+                                .eq('user_id', user.id)
+                                .single();
+
+                            if (!persona?.onboarding_complete) {
+                                router.push("/guided-onboarding");
+                                router.refresh();
+                                return;
+                            }
                         }
+                    } catch (supabaseError) {
+                        // If there's an error checking onboarding, redirect to onboarding to be safe
+                        router.push("/guided-onboarding");
+                        router.refresh();
+                        return;
                     }
                 }
 
