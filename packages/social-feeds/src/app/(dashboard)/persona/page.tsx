@@ -48,6 +48,7 @@ export default function PersonaPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingPosts, setIsFetchingPosts] = useState(false);
+  const [auditStatus, setAuditStatus] = useState<{ locked: boolean; authorizedAt: string | null; canRun: boolean } | null>(null);
 
   // Check if user already has a persona and fetch posts from social accounts
   useEffect(() => {
@@ -58,6 +59,9 @@ export default function PersonaPage() {
           const data = await res.json();
           if (data && data.personaData) {
             setPersona(data.personaData as PersonaData);
+            if (data.auditStatus) {
+              setAuditStatus(data.auditStatus);
+            }
             setStep(4);
           }
         }
@@ -220,8 +224,37 @@ export default function PersonaPage() {
           ))}
         </div>
 
+        {/* Audit Locked */}
+        {auditStatus?.locked && step !== 4 && (
+          <Card className="border-red-200 bg-red-50 mb-8">
+            <CardHeader>
+              <CardTitle className="text-red-900">Persona Audit Locked</CardTitle>
+              <CardDescription className="text-red-800">
+                Your persona audit has already been used. Contact your administrator to authorize another audit run.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-red-800">
+                Once your admin authorizes it, you'll be able to run the audit again.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Audit Authorized (waiting for user to run) */}
+        {auditStatus?.authorizedAt && !auditStatus?.locked && step !== 4 && (
+          <Card className="border-yellow-200 bg-yellow-50 mb-8">
+            <CardHeader>
+              <CardTitle className="text-yellow-900">Audit Re-authorized by Admin</CardTitle>
+              <CardDescription className="text-yellow-800">
+                Your administrator has authorized one more persona audit. Complete the form below to regenerate.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
         {/* Step 1: Interview */}
-        {step === 1 && (
+        {step === 1 && !auditStatus?.locked && (
           <Card>
             <CardHeader>
               <CardTitle>Step 1: Brand Interview</CardTitle>

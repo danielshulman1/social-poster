@@ -10,6 +10,18 @@ export async function POST(req: NextRequest) {
   if (!auth?.userId) return unauthorizedText('Unauthorized');
 
   try {
+    // Check if user has already used their audit
+    const existingPersona = await prisma.userPersona.findUnique({
+      where: { userId: auth.userId },
+    });
+
+    if (existingPersona?.auditUsed && !existingPersona?.auditAuthorizedAt) {
+      return NextResponse.json(
+        { error: 'Persona audit has already been used. Admin authorization required to run again.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { interviewAnswers, postSamples } = body;
 
@@ -84,6 +96,21 @@ Example format:
     if (!personaData.brandVoiceSummary || !Array.isArray(personaData.contentPillars)) {
       throw new Error('Invalid persona data structure');
     }
+
+    // Mark audit as used and clear authorization (it's been consumed)
+    await prisma.userPersona.upsert({
+      where: { userId: auth.userId },
+      update: {
+        personaData,
+        auditUsed: true,
+        auditAuthorizedAt: null, // Clear the authorization after using
+      },
+      create: {
+        userId: auth.userId,
+        personaData,
+        auditUsed: true,
+      },
+    });
 
     return NextResponse.json(personaData);
   } catch (error: any) {

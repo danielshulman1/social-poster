@@ -13,7 +13,20 @@ export async function GET(req: NextRequest) {
       where: { userId: auth.userId },
     });
 
-    return NextResponse.json(persona || null);
+    // Include audit status in response
+    if (persona) {
+      return NextResponse.json({
+        ...persona,
+        auditStatus: {
+          used: persona.auditUsed,
+          authorizedAt: persona.auditAuthorizedAt,
+          locked: persona.auditUsed && !persona.auditAuthorizedAt,
+          canRun: !persona.auditUsed || !!persona.auditAuthorizedAt,
+        },
+      });
+    }
+
+    return NextResponse.json(null);
   } catch (error) {
     console.error('Error fetching persona:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

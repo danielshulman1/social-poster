@@ -13,6 +13,7 @@ export async function GET(req: Request) {
         const users = await prisma.user.findMany({
             include: {
                 subscription: true,
+                persona: true,
                 _count: {
                     select: { workflows: true },
                 },
@@ -35,6 +36,13 @@ export async function GET(req: Request) {
                     plan: u.subscription.priceId,
                 }
                 : null,
+            persona: u.persona ? {
+                hasPersona: true,
+                auditUsed: u.persona.auditUsed,
+                authorizedAt: u.persona.auditAuthorizedAt,
+                locked: u.persona.auditUsed && !u.persona.auditAuthorizedAt,
+                canAuthorize: u.persona.auditUsed,
+            } : null,
         }));
 
         return NextResponse.json(safeUsers);

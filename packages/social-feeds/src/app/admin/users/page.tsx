@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Loader2, CheckCircle2, Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -21,6 +22,13 @@ interface User {
         status: string;
         plan: string;
     };
+    persona?: {
+        hasPersona: boolean;
+        auditUsed: boolean;
+        authorizedAt: string | null;
+        locked: boolean;
+        canAuthorize: boolean;
+    };
 }
 
 export default function AdminUsersPage() {
@@ -28,6 +36,7 @@ export default function AdminUsersPage() {
     const router = useRouter();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [authorizing, setAuthorizing] = useState<string | null>(null);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -55,6 +64,26 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleAuthorizeAudit = async (userId: string) => {
+        setAuthorizing(userId);
+        try {
+            const res = await fetch("/api/admin/personas/authorize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId }),
+            });
+
+            if (!res.ok) throw new Error("Failed to authorize");
+
+            toast.success("User authorized for one more persona audit");
+            fetchUsers(); // Refresh list
+        } catch (error: any) {
+            toast.error(error.message || "Failed to authorize audit");
+        } finally {
+            setAuthorizing(null);
+        }
+    };
+
     if (isLoading) return <div className="p-8">Loading users...</div>;
 
     return (
@@ -77,6 +106,7 @@ export default function AdminUsersPage() {
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
                                 <TableHead>Subscription</TableHead>
+                                <TableHead>Persona Audit</TableHead>
                                 <TableHead>Workflows</TableHead>
                                 <TableHead>Joined</TableHead>
                             </TableRow>
@@ -98,6 +128,41 @@ export default function AdminUsersPage() {
                                             </Badge>
                                         ) : (
                                             <span className="text-muted-foreground text-sm">Free</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        {!user.persona ? (
+                                            <span className="text-muted-foreground text-sm">—</span>
+                                        ) : user.persona.locked ? (
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="destructive" className="gap-1">
+                                                    <Lock className="w-3 h-3" />
+                                                    Locked
+                                                </Badge>
+                                                <Button
+                                                    size="xs"
+                                                    variant="outline"
+                                                    onClick={() => handleAuthorizeAudit(user.id)}
+                                                    disabled={authorizing === user.id}
+                                                    className="text-xs"
+                                                >
+                                                    {authorizing === user.id ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                        "Authorize"
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ) : user.persona.authorizedAt ? (
+                                            <Badge variant="outline" className="gap-1 bg-yellow-50">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Authorized
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="gap-1 bg-green-50">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                Active
+                                            </Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>{user.workflowCount}</TableCell>
