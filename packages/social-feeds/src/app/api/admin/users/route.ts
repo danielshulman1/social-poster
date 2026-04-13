@@ -95,8 +95,52 @@ export async function DELETE(req: Request) {
         }
 
         // Delete all related data in correct order (respecting foreign keys)
-        // Delete workflows and their related data first
-        await prisma.workflow.deleteMany({
+        // Get all workflows for this user
+        const workflows = await prisma.workflow.findMany({
+            where: { userId },
+            select: { id: true },
+        });
+
+        const workflowIds = workflows.map((w) => w.id);
+
+        // Delete execution steps (depends on executions)
+        if (workflowIds.length > 0) {
+            await prisma.executionStep.deleteMany({
+                where: {
+                    execution: {
+                        workflowId: { in: workflowIds },
+                    },
+                },
+            });
+
+            // Delete workflow executions
+            await prisma.workflowExecution.deleteMany({
+                where: { workflowId: { in: workflowIds } },
+            });
+
+            // Delete schedule rules
+            await prisma.scheduleRule.deleteMany({
+                where: { workflowId: { in: workflowIds } },
+            });
+
+            // Delete source items
+            await prisma.sourceItem.deleteMany({
+                where: { workflowId: { in: workflowIds } },
+            });
+
+            // Delete publish results
+            await prisma.publishResult.deleteMany({
+                where: { workflowId: { in: workflowIds } },
+            });
+
+            // Delete workflows
+            await prisma.workflow.deleteMany({
+                where: { userId },
+            });
+        }
+
+        // Delete external connections
+        await prisma.externalConnection.deleteMany({
             where: { userId },
         });
 
@@ -106,11 +150,11 @@ export async function DELETE(req: Request) {
         });
 
         // Delete persona
-        await prisma.persona.deleteMany({
+        await prisma.userPersona.deleteMany({
             where: { userId },
         });
 
-        // Delete the user
+        // Delete the user (Sessions and Accounts are already deleted via cascade)
         await prisma.user.delete({
             where: { id: userId },
         });
