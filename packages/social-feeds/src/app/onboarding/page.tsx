@@ -54,6 +54,34 @@ const stepCardClass = (active: boolean, complete: boolean) => {
     return "border-border/70 bg-card/90";
 };
 
+const socialInstructions = [
+    "Open Connections.",
+    "Choose the platform you want to connect first, such as Facebook or LinkedIn.",
+    "Complete the OAuth or token flow for that platform.",
+    "Come back here and click Refresh status once the account appears as connected.",
+];
+
+const aiInstructions = [
+    "Get your OpenAI API key from platform.openai.com/api-keys.",
+    "Paste the key into the field below.",
+    "Click Save OpenAI key.",
+    "If you want to use a different provider instead, open Settings and save that provider there.",
+];
+
+const personaInstructions = [
+    "Open Persona setup.",
+    "Answer the interview questions about your brand, audience, and tone.",
+    "Add sample posts if you have them.",
+    "Generate the persona and save it.",
+];
+
+const workflowInstructions = [
+    "Click Create my first workflow.",
+    "The app will generate a starter workflow for you.",
+    "Review the editor and connect the nodes you need.",
+    "Save the workflow so your setup is fully complete.",
+];
+
 export default function OnboardingPage() {
     const router = useRouter();
     const [status, setStatus] = useState<OnboardingStatus | null>(null);
@@ -204,6 +232,19 @@ export default function OnboardingPage() {
                                     ? `${status.steps.social.count} connection${status.steps.social.count === 1 ? "" : "s"} detected.`
                                     : "No social accounts connected yet."}
                             </p>
+                            <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
+                                <ol className="space-y-2 text-sm text-muted-foreground">
+                                    {socialInstructions.map((instruction, index) => (
+                                        <li key={instruction} className="flex gap-3">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <span>{instruction}</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
                             {status.steps.social.connections.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
                                     {status.steps.social.connections.map((connection) => (
@@ -245,6 +286,19 @@ export default function OnboardingPage() {
                                     ? `Configured provider: ${status.steps.ai.provider}.`
                                     : "Add an OpenAI key here, or use Settings if you prefer another provider."}
                             </p>
+                            <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
+                                <ol className="space-y-2 text-sm text-muted-foreground">
+                                    {aiInstructions.map((instruction, index) => (
+                                        <li key={instruction} className="flex gap-3">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <span>{instruction}</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
                             {!status.steps.ai.complete && (
                                 <div className="space-y-3">
                                     <div className="space-y-2">
@@ -301,6 +355,19 @@ export default function OnboardingPage() {
                                     ? `Persona saved${status.steps.persona.updatedAt ? ` on ${new Date(status.steps.persona.updatedAt).toLocaleDateString()}` : ""}.`
                                     : "Walk through the persona interview to create your brand voice profile."}
                             </p>
+                            <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
+                                <ol className="space-y-2 text-sm text-muted-foreground">
+                                    {personaInstructions.map((instruction, index) => (
+                                        <li key={instruction} className="flex gap-3">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <span>{instruction}</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
                             <Link href="/persona">
                                 <Button className="w-full" variant={status.steps.persona.complete ? "outline" : "default"}>
                                     {status.steps.persona.complete ? "Review persona" : "Open persona setup"}
@@ -333,6 +400,19 @@ export default function OnboardingPage() {
                                     ? `${status.steps.workflow.count} workflow${status.steps.workflow.count === 1 ? "" : "s"} created.`
                                     : "Create your first workflow after the setup steps above are complete."}
                             </p>
+                            <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
+                                <ol className="space-y-2 text-sm text-muted-foreground">
+                                    {workflowInstructions.map((instruction, index) => (
+                                        <li key={instruction} className="flex gap-3">
+                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                                                {index + 1}
+                                            </span>
+                                            <span>{instruction}</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
                             {status.steps.workflow.complete ? (
                                 <Link href="/">
                                     <Button className="w-full" variant="outline">
