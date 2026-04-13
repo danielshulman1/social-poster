@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Lock, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, Lock, AlertCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface User {
@@ -37,6 +37,7 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [authorizing, setAuthorizing] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState<string | null>(null);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -84,6 +85,33 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleDeleteUser = async (userId: string, userEmail: string) => {
+        if (!confirm(`Are you sure you want to delete ${userEmail}? This action cannot be undone.`)) {
+            return;
+        }
+
+        setDeleting(userId);
+        try {
+            const res = await fetch("/api/admin/users", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId }),
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || "Failed to delete user");
+            }
+
+            toast.success(`User ${userEmail} has been deleted`);
+            fetchUsers(); // Refresh list
+        } catch (error: any) {
+            toast.error(error.message || "Failed to delete user");
+        } finally {
+            setDeleting(null);
+        }
+    };
+
     if (isLoading) return <div className="p-8">Loading users...</div>;
 
     return (
@@ -109,6 +137,7 @@ export default function AdminUsersPage() {
                                 <TableHead>Persona Audit</TableHead>
                                 <TableHead>Workflows</TableHead>
                                 <TableHead>Joined</TableHead>
+                                <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -167,6 +196,22 @@ export default function AdminUsersPage() {
                                     </TableCell>
                                     <TableCell>{user.workflowCount}</TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => handleDeleteUser(user.id, user.email)}
+                                            disabled={deleting === user.id || user.role === "admin"}
+                                            className="gap-1"
+                                        >
+                                            {deleting === user.id ? (
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                            ) : (
+                                                <Trash2 className="w-3 h-3" />
+                                            )}
+                                            Delete
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
