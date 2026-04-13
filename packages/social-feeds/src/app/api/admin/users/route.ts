@@ -11,9 +11,25 @@ export async function GET(req: Request) {
 
     try {
         const users = await prisma.user.findMany({
-            include: {
-                subscription: true,
-                persona: true,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                image: true,
+                createdAt: true,
+                subscription: {
+                    select: {
+                        status: true,
+                        priceId: true,
+                    },
+                },
+                persona: {
+                    select: {
+                        auditUsed: true,
+                        auditAuthorizedAt: true,
+                    },
+                },
                 _count: {
                     select: { workflows: true },
                 },
@@ -78,6 +94,11 @@ export async function DELETE(req: Request) {
         // Prevent deleting other admins
         const userToDelete = await prisma.user.findUnique({
             where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                role: true,
+            },
         });
 
         if (!userToDelete) {
@@ -155,7 +176,7 @@ export async function DELETE(req: Request) {
         });
 
         // Delete the user (Sessions and Accounts are already deleted via cascade)
-        await prisma.user.delete({
+        await prisma.user.deleteMany({
             where: { id: userId },
         });
 

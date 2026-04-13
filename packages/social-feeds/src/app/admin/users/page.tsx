@@ -58,7 +58,7 @@ export default function AdminUsersPage() {
             if (!res.ok) throw new Error("Failed to fetch users");
             const data = await res.json();
             setUsers(data);
-        } catch (error) {
+        } catch {
             toast.error("Error fetching users");
         } finally {
             setIsLoading(false);
@@ -78,8 +78,8 @@ export default function AdminUsersPage() {
 
             toast.success("User authorized for one more persona audit");
             fetchUsers(); // Refresh list
-        } catch (error: any) {
-            toast.error(error.message || "Failed to authorize audit");
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Failed to authorize audit");
         } finally {
             setAuthorizing(null);
         }
@@ -106,9 +106,9 @@ export default function AdminUsersPage() {
 
             toast.success(`User ${userEmail} has been deleted`);
             fetchUsers(); // Refresh list
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Delete error:", error);
-            toast.error(error?.message || "Failed to delete user");
+            toast.error(error instanceof Error ? error.message : "Failed to delete user");
         } finally {
             setDeleting(null);
         }
