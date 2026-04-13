@@ -33,8 +33,8 @@ export default function SignupPage() {
                 throw new Error(data.message || "Registration failed");
             }
 
-            toast.success("Account created! Please login.");
-            router.push("/login");
+            toast.success("Account created! Starting your guided tour...");
+            router.push("/guided-onboarding");
         } catch (error: any) {
             toast.error(error.message);
         } finally {
