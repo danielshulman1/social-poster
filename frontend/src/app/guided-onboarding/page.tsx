@@ -17,6 +17,7 @@ import {
   InterviewData,
   CollectedPost,
   UserOnboardingProgress,
+  saveUserPersona,
 } from '@/lib/supabase';
 import { Loader } from 'lucide-react';
 
@@ -153,8 +154,32 @@ export default function GuidedOnboardingPage() {
     setCurrentStep('complete');
   };
 
-  const handleCompleteOnboarding = () => {
-    router.push('/dashboard');
+  const handleCompleteOnboarding = async () => {
+    if (!userId || !progress) return;
+
+    try {
+      setLoading(true);
+
+      // Mark onboarding as complete
+      const persona = await getUserPersona(userId);
+      if (persona) {
+        await saveUserPersona(
+          userId,
+          persona.persona_data,
+          progress.interview_responses as InterviewData,
+          persona.platforms_connected,
+          persona.posts_analysed_count
+        );
+      }
+
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err) {
+      console.error('Error completing onboarding:', err);
+      setError('Failed to complete onboarding. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {

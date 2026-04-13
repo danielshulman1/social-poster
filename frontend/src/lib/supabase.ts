@@ -221,3 +221,13 @@ export async function getUserSocialConnections(
   if (error) throw error;
   return data || [];
 }
+
+export async function isOnboardingComplete(userId: string): Promise<boolean> {
+  try {
+    const persona = await getUserPersona(userId);
+    return persona?.onboarding_complete ?? false;
+  } catch (error) {
+    console.error('Error checking onboarding status:', error);
+    return false;
+  }
+}
