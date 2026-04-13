@@ -6,6 +6,7 @@ export async function POST(req: Request) {
     try {
         const { email, password, name } = await req.json();
         const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+        const normalizedName = typeof name === "string" ? name.trim() : "";
 
         if (!normalizedEmail || !password) {
             return NextResponse.json(
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
 
         const existingUser = await prisma.user.findUnique({
             where: { email: normalizedEmail },
+            select: { id: true },
         });
 
         if (existingUser) {
@@ -30,8 +32,12 @@ export async function POST(req: Request) {
         const user = await prisma.user.create({
             data: {
                 email: normalizedEmail,
-                name,
+                name: normalizedName || null,
                 password: hashedPassword,
+            },
+            select: {
+                id: true,
+                email: true,
             },
         });
 

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,10 +34,22 @@ export default function SignupPage() {
                 throw new Error(data.message || "Registration failed");
             }
 
+            const signInResult = await signIn("credentials", {
+                email,
+                password,
+                redirect: false,
+            });
+
+            if (signInResult?.error) {
+                toast.success("Account created. Please log in to continue.");
+                router.push("/login");
+                return;
+            }
+
             toast.success("Account created! Starting your guided tour...");
             router.push("/guided-onboarding");
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Registration failed");
         } finally {
             setIsLoading(false);
         }
