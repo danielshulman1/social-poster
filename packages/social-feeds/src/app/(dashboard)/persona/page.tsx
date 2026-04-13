@@ -160,14 +160,24 @@ export default function PersonaPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to generate persona');
+        let errorMsg = 'Failed to generate persona';
+        try {
+          const error = await res.json();
+          errorMsg = error.error || errorMsg;
+        } catch (e) {
+          // If response isn't JSON, use default message
+        }
+        throw new Error(errorMsg);
       }
 
       const generatedPersona = await res.json();
+      if (!generatedPersona.brandVoiceSummary || !generatedPersona.contentPillars) {
+        throw new Error('Invalid persona generated - missing required fields');
+      }
       setPersona(generatedPersona);
       setStep(4);
     } catch (error: any) {
+      console.error('Persona generation error:', error);
       toast.error(error.message || 'Failed to generate persona');
       setStep(2);
       setIsGenerating(false);

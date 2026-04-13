@@ -84,17 +84,43 @@ Example format:
 
     const responseText = message.choices[0].message.content || '';
 
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid response format from OpenAI');
-    }
+    // Extract and parse JSON from response
+    let personaData: any = null;
 
-    const personaData = JSON.parse(jsonMatch[0]);
+    try {
+      // Try to parse the entire response first
+      personaData = JSON.parse(responseText);
+    } catch (e) {
+      // If that fails, try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Invalid response format from OpenAI - no JSON found');
+      }
+
+      try {
+        personaData = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        // Try to clean up the JSON by finding the last closing brace
+        const jsonStr = jsonMatch[0];
+        for (let i = jsonStr.length - 1; i >= 0; i--) {
+          try {
+            const cleaned = jsonStr.substring(0, i + 1);
+            personaData = JSON.parse(cleaned);
+            break;
+          } catch (e) {
+            // Continue trying
+          }
+        }
+
+        if (!personaData) {
+          throw new Error('Failed to parse JSON: ' + parseError);
+        }
+      }
+    }
 
     // Validate the response
     if (!personaData.brandVoiceSummary || !Array.isArray(personaData.contentPillars)) {
-      throw new Error('Invalid persona data structure');
+      throw new Error('Invalid persona data structure - missing brandVoiceSummary or contentPillars');
     }
 
     // Mark audit as used and clear authorization (it's been consumed)
