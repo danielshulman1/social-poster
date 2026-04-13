@@ -13,6 +13,7 @@ import {
     Bot,
     CheckCircle2,
     ChevronRight,
+    ExternalLink,
     Loader2,
     Radio,
     RefreshCw,
@@ -55,32 +56,69 @@ const stepCardClass = (active: boolean, complete: boolean) => {
 };
 
 const socialInstructions = [
-    "Open Connections.",
-    "Choose the platform you want to connect first, such as Facebook or LinkedIn.",
-    "Complete the OAuth or token flow for that platform.",
-    "Come back here and click Refresh status once the account appears as connected.",
+    "Open Settings first and save the social app credentials you plan to use.",
+    "Open Connections and start the provider OAuth flow from there.",
+    "Approve access for the page or profile you want to publish from.",
+    "Come back here and click Refresh status once the connected account appears.",
 ];
 
 const aiInstructions = [
-    "Get your OpenAI API key from platform.openai.com/api-keys.",
-    "Paste the key into the field below.",
-    "Click Save OpenAI key.",
-    "If you want to use a different provider instead, open Settings and save that provider there.",
+    "Open the OpenAI API keys page in a new tab.",
+    "Create a new secret key and copy it immediately because OpenAI only shows the full value once.",
+    "Paste the key into the field below and click Save OpenAI key.",
+    "If you want Google or OpenRouter instead, open Settings and save that provider there.",
 ];
 
 const personaInstructions = [
     "Open Persona setup.",
-    "Answer the interview questions about your brand, audience, and tone.",
-    "Add sample posts if you have them.",
-    "Generate the persona and save it.",
+    "Write down your business type, target audience, offers, and the topics you want to post about.",
+    "Answer the persona questions using the tone you want the AI to copy.",
+    "Add sample posts or examples if you already have content that sounds like you.",
+    "Generate the persona, review the wording, and save it.",
 ];
 
 const workflowInstructions = [
     "Click Create my first workflow.",
-    "The app will generate a starter workflow for you.",
-    "Review the editor and connect the nodes you need.",
+    "The app will generate a starter workflow and open the editor.",
+    "Add or confirm a source node, an AI step, and at least one publish destination node.",
+    "Choose the connected social account on the destination node and select the persona you created earlier.",
     "Save the workflow so your setup is fully complete.",
 ];
+
+const facebookOAuthInstructions = (facebookRedirectUri: string, appDomain: string) => [
+    "Open Settings in this app and save your Facebook App ID and App Secret.",
+    "In Meta for Developers, create or open your app, then add the Facebook Login product.",
+    `Under App Settings > Basic, add ${appDomain || "your app domain"} as the App Domain if Meta asks for it.`,
+    `Under Facebook Login > Settings, enable Client OAuth Login and Web OAuth Login, then add ${facebookRedirectUri || "your Facebook callback URL"} to Valid OAuth Redirect URIs.`,
+    "Return to Connections and click Connect with Facebook.",
+    "Log in to Facebook, approve the requested permissions, and make sure you select the pages you want this app to manage.",
+    "After Meta redirects back, this app exchanges the OAuth code automatically and imports your pages for you.",
+];
+
+const linkedinOAuthInstructions = (linkedinRedirectUri: string) => [
+    "Open LinkedIn Developers and create an app if you do not already have one.",
+    "In the Products tab, request Share on LinkedIn and Sign In with LinkedIn using OpenID Connect.",
+    "In the Auth tab, copy the Client ID and Client Secret.",
+    "Open Settings in this app and save those LinkedIn credentials.",
+    `Still in LinkedIn Auth settings, add ${linkedinRedirectUri || "your LinkedIn callback URL"} as an authorized redirect URL.`,
+    "Return to Connections and click Connect LinkedIn.",
+    "Sign in, approve access, and let LinkedIn redirect back so this app can exchange the OAuth code automatically.",
+];
+
+function InstructionList({ steps }: { steps: string[] }) {
+    return (
+        <ol className="space-y-2 text-sm text-muted-foreground">
+            {steps.map((instruction, index) => (
+                <li key={instruction} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                        {index + 1}
+                    </span>
+                    <span>{instruction}</span>
+                </li>
+            ))}
+        </ol>
+    );
+}
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -165,6 +203,10 @@ export default function OnboardingPage() {
 
     const allDone = status.completed;
     const activeStep = allDone ? 0 : status.currentStep;
+    const appOrigin = typeof window !== "undefined" ? window.location.origin : "";
+    const appDomain = appOrigin ? new URL(appOrigin).hostname : "";
+    const facebookRedirectUri = appOrigin ? `${appOrigin}/api/auth/facebook/callback` : "";
+    const linkedinRedirectUri = appOrigin ? `${appOrigin}/api/auth/linkedin/callback` : "";
     const canCreateWorkflow =
         status.steps.social.complete &&
         status.steps.ai.complete &&
@@ -234,16 +276,67 @@ export default function OnboardingPage() {
                             </p>
                             <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
                                 <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
-                                <ol className="space-y-2 text-sm text-muted-foreground">
-                                    {socialInstructions.map((instruction, index) => (
-                                        <li key={instruction} className="flex gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                                {index + 1}
-                                            </span>
-                                            <span>{instruction}</span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                <InstructionList steps={socialInstructions} />
+                            </div>
+                            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
+                                <p className="mb-2 text-sm font-medium text-foreground">About the OAuth code</p>
+                                <p className="text-sm leading-6 text-muted-foreground">
+                                    You do not paste a Facebook or LinkedIn OAuth code into this app manually. When you click the
+                                    connection button in <span className="font-medium text-foreground">Connections</span>, the provider sends
+                                    the code back to this app&apos;s callback URL and the server exchanges it for tokens automatically.
+                                </p>
+                            </div>
+                            <div className="space-y-4 rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-medium text-foreground">Facebook setup</p>
+                                        <a
+                                            href="https://developers.facebook.com/"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs text-primary underline"
+                                        >
+                                            Open Meta Developers
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                    <InstructionList steps={facebookOAuthInstructions(facebookRedirectUri, appDomain)} />
+                                </div>
+                                <div className="rounded-xl border border-border/70 bg-card/70 p-3 text-xs text-muted-foreground">
+                                    <p>
+                                        Facebook callback URL: <span className="font-mono text-foreground">{facebookRedirectUri || "Loading..."}</span>
+                                    </p>
+                                    <p className="mt-1">
+                                        If Meta says <span className="font-medium text-foreground">URL blocked</span>, the callback above is
+                                        missing or does not exactly match the value saved in your Meta app.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="space-y-4 rounded-2xl border border-border/70 bg-background/70 p-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-medium text-foreground">LinkedIn setup</p>
+                                        <a
+                                            href="https://www.linkedin.com/developers/apps"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs text-primary underline"
+                                        >
+                                            Open LinkedIn Developers
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                    <InstructionList steps={linkedinOAuthInstructions(linkedinRedirectUri)} />
+                                </div>
+                                <div className="rounded-xl border border-border/70 bg-card/70 p-3 text-xs text-muted-foreground">
+                                    <p>
+                                        LinkedIn callback URL: <span className="font-mono text-foreground">{linkedinRedirectUri || "Loading..."}</span>
+                                    </p>
+                                    <p className="mt-1">
+                                        LinkedIn needs both the correct redirect URL and the required app products before the Connect
+                                        LinkedIn button will work reliably.
+                                    </p>
+                                </div>
                             </div>
                             {status.steps.social.connections.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
@@ -288,16 +381,21 @@ export default function OnboardingPage() {
                             </p>
                             <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
                                 <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
-                                <ol className="space-y-2 text-sm text-muted-foreground">
-                                    {aiInstructions.map((instruction, index) => (
-                                        <li key={instruction} className="flex gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                                {index + 1}
-                                            </span>
-                                            <span>{instruction}</span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                <InstructionList steps={aiInstructions} />
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-card/70 p-3 text-xs text-muted-foreground">
+                                <p>
+                                    OpenAI keys are created at{" "}
+                                    <a
+                                        href="https://platform.openai.com/api-keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-primary underline"
+                                    >
+                                        platform.openai.com/api-keys
+                                    </a>
+                                    . Create the key there, then paste it here.
+                                </p>
                             </div>
                             {!status.steps.ai.complete && (
                                 <div className="space-y-3">
@@ -357,16 +455,13 @@ export default function OnboardingPage() {
                             </p>
                             <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
                                 <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
-                                <ol className="space-y-2 text-sm text-muted-foreground">
-                                    {personaInstructions.map((instruction, index) => (
-                                        <li key={instruction} className="flex gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                                {index + 1}
-                                            </span>
-                                            <span>{instruction}</span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                <InstructionList steps={personaInstructions} />
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-card/70 p-3 text-xs text-muted-foreground">
+                                <p>
+                                    Good persona inputs are: who you help, the problems you solve, your tone of voice, topics you post
+                                    about, phrases you like to use, and examples of posts that already sound right.
+                                </p>
                             </div>
                             <Link href="/persona">
                                 <Button className="w-full" variant={status.steps.persona.complete ? "outline" : "default"}>
@@ -402,16 +497,13 @@ export default function OnboardingPage() {
                             </p>
                             <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
                                 <p className="mb-3 text-sm font-medium text-foreground">How to do this</p>
-                                <ol className="space-y-2 text-sm text-muted-foreground">
-                                    {workflowInstructions.map((instruction, index) => (
-                                        <li key={instruction} className="flex gap-3">
-                                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                                {index + 1}
-                                            </span>
-                                            <span>{instruction}</span>
-                                        </li>
-                                    ))}
-                                </ol>
+                                <InstructionList steps={workflowInstructions} />
+                            </div>
+                            <div className="rounded-xl border border-border/70 bg-card/70 p-3 text-xs text-muted-foreground">
+                                <p>
+                                    Minimum working workflow: one source node, one AI step, and one destination node that uses a connected
+                                    social account. Save once those are wired together.
+                                </p>
                             </div>
                             {status.steps.workflow.complete ? (
                                 <Link href="/">
