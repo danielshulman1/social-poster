@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { toast } from "sonner";
-import { createClient } from "@supabase/supabase-js";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -34,41 +33,29 @@ export default function LoginPage() {
             } else {
                 toast.success("Logged in successfully");
 
-                // Check if onboarding is complete
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                try {
+                    const personaRes = await fetch("/api/personas", {
+                        cache: "no-store",
+                    });
 
-                if (supabaseUrl && supabaseAnonKey) {
-                    try {
-                        const supabase = createClient(supabaseUrl, supabaseAnonKey);
-                        const { data: { user } } = await supabase.auth.getUser();
-
-                        if (user) {
-                            // Check if user persona exists and onboarding is complete
-                            const { data: persona } = await supabase
-                                .from('user_personas')
-                                .select('onboarding_complete')
-                                .eq('user_id', user.id)
-                                .single();
-
-                            if (!persona?.onboarding_complete) {
-                                router.push("/guided-onboarding");
-                                router.refresh();
-                                return;
-                            }
+                    if (personaRes.ok) {
+                        const persona = await personaRes.json();
+                        if (!persona?.personaData) {
+                            router.push("/persona");
+                            router.refresh();
+                            return;
                         }
-                    } catch (supabaseError) {
-                        // If there's an error checking onboarding, redirect to onboarding to be safe
-                        router.push("/guided-onboarding");
-                        router.refresh();
-                        return;
+                    } else if (personaRes.status !== 401) {
+                        throw new Error("Failed to check onboarding status");
                     }
+                } catch {
+                    toast.error("Logged in, but we couldn't check onboarding status.");
                 }
 
                 router.push("/");
                 router.refresh();
             }
-        } catch (error) {
+        } catch {
             toast.error("Something went wrong");
         } finally {
             setIsLoading(false);
@@ -120,7 +107,7 @@ export default function LoginPage() {
                         {isLoading ? "Logging in..." : "Login"}
                     </Button>
                     <div className="text-sm text-center text-muted-foreground">
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <Link href="/signup" className="underline underline-offset-4 hover:text-primary">
                             Sign up
                         </Link>
