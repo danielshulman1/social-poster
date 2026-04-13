@@ -34,18 +34,18 @@ export default function LoginPage() {
                 toast.success("Logged in successfully");
 
                 try {
-                    const personaRes = await fetch("/api/personas", {
+                    const onboardingRes = await fetch("/api/onboarding/status", {
                         cache: "no-store",
                     });
 
-                    if (personaRes.ok) {
-                        const persona = await personaRes.json();
-                        if (!persona?.personaData) {
-                            router.push("/persona");
+                    if (onboardingRes.ok) {
+                        const onboarding = await onboardingRes.json();
+                        if (onboarding?.needsOnboarding) {
+                            router.push("/onboarding");
                             router.refresh();
                             return;
                         }
-                    } else if (personaRes.status !== 401) {
+                    } else if (onboardingRes.status !== 401) {
                         throw new Error("Failed to check onboarding status");
                     }
                 } catch {

@@ -15,10 +15,12 @@ import {
     Shield,
     Sparkles,
     ArrowUpRight,
-    Wand2
+    Wand2,
+    ListChecks
 } from 'lucide-react';
 
 const menuItems = [
+    { href: '/onboarding', label: 'Onboarding', icon: ListChecks },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/', label: 'Workflows', icon: Workflow }, // Canvas is home for now, or move to /workflows
     { href: '/persona', label: 'AI Persona', icon: Wand2 },
