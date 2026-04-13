@@ -98,15 +98,17 @@ export default function AdminUsersPage() {
                 body: JSON.stringify({ userId }),
             });
 
+            const data = await res.json();
+
             if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || "Failed to delete user");
+                throw new Error(data?.error || "Failed to delete user");
             }
 
             toast.success(`User ${userEmail} has been deleted`);
             fetchUsers(); // Refresh list
         } catch (error: any) {
-            toast.error(error.message || "Failed to delete user");
+            console.error("Delete error:", error);
+            toast.error(error?.message || "Failed to delete user");
         } finally {
             setDeleting(null);
         }

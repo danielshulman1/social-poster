@@ -121,6 +121,9 @@ export async function DELETE(req: Request) {
         });
     } catch (error) {
         console.error("Failed to delete user:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
     }
 }
