@@ -140,10 +140,32 @@ Example format:
 
     return NextResponse.json(personaData);
   } catch (error: any) {
-    console.error('Error generating persona:', error);
+    console.error('Error generating persona:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      type: error.type,
+      fullError: error,
+    });
+
+    // Provide helpful error messages
+    let errorMessage = 'Failed to generate persona';
+
+    if (error.message?.includes('API')) {
+      errorMessage = 'OpenAI API error - check your API key configuration';
+    } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      errorMessage = 'Invalid OpenAI API key - please check your configuration';
+    } else if (error.message?.includes('429')) {
+      errorMessage = 'OpenAI rate limit exceeded - please try again in a moment';
+    } else if (error.message?.includes('JSON')) {
+      errorMessage = 'Invalid response format from AI - please try again';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Failed to generate persona' },
-      { status: 500 }
+      { error: errorMessage },
+      { status: error.status || 500 }
     );
   }
 }
