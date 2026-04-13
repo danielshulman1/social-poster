@@ -40,17 +40,17 @@ export default function SignUpPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-6 py-12">
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 sm:px-6 py-12">
             <div className="w-full max-w-xl relative">
                 <div
                     aria-hidden="true"
                     className="absolute inset-0 rounded-[28px] bg-gradient-to-b from-white/8 via-transparent to-transparent blur-3xl"
                 />
-                <div className="relative bg-[#111111] border border-white/5 rounded-[28px] shadow-[0_20px_80px_rgba(0,0,0,0.55)] px-10 py-12 space-y-8">
+                <div className="relative bg-[#111111] border border-white/5 rounded-[28px] shadow-[0_20px_80px_rgba(0,0,0,0.55)] px-6 sm:px-10 py-8 sm:py-12 space-y-8">
                     {/* Title */}
                     <div className="text-center space-y-3">
                         <p className="text-xs uppercase tracking-[0.18em] text-white/60">Welcome</p>
-                        <h1 className="text-4xl font-bold text-white">Create Account</h1>
+                        <h1 className="text-2xl sm:text-4xl font-bold text-white break-words">Create Account</h1>
                     </div>
 
                     {/* Error Message */}

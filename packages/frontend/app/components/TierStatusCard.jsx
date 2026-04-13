@@ -59,7 +59,7 @@ export default function TierStatusCard() {
     return null;
   }
 
-  const tierConfig = getTierConfig()[tier.current_tier];
+  const tierConfig = getTierConfig(tier.current_tier);
   const isFreeTier = tier.current_tier === 'free';
 
   return (
@@ -83,14 +83,14 @@ export default function TierStatusCard() {
         <div className="mb-8 pb-8 border-b border-white/5">
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-3xl font-bold text-white">
-              {formatPrice(tierConfig.monthlyPrice)}
+              £{(tierConfig.monthlyPrice / 100).toFixed(2)}
             </span>
             <span className="text-white/50">/month</span>
           </div>
 
           {tierConfig.setupFee > 0 && (
             <p className="text-sm text-white/60">
-              + {formatPrice(tierConfig.setupFee)} setup fee (one-time)
+              + £{(tierConfig.setupFee / 100).toFixed(2)} setup fee (one-time)
             </p>
           )}
 
@@ -106,37 +106,44 @@ export default function TierStatusCard() {
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-gradient-accent" />
             <span className="text-white/80">
-              {tierConfig.maxPlatforms} platform{tierConfig.maxPlatforms !== 1 ? 's' : ''}
+              {tierConfig.features.maxPlatforms} platform{tierConfig.features.maxPlatforms !== 1 ? 's' : ''}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-gradient-accent" />
             <span className="text-white/80">
-              {tierConfig.postsPerWeek} posts per week
+              {tierConfig.features.postsPerWeek} posts per week
             </span>
           </div>
 
-          {tierConfig.voiceTraining && (
+          {tierConfig.features.voiceTraining && (
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-gradient-accent" />
               <span className="text-white/80">Voice training included</span>
             </div>
           )}
 
-          {tierConfig.prioritySupport && (
+          {tierConfig.features.prioritySupport && (
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-gradient-accent" />
               <span className="text-white/80">Priority support</span>
             </div>
           )}
 
-          {tierConfig.checkInCalls > 0 && (
+          {tierConfig.features.checkInCallsPerMonth && (
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-gradient-accent" />
               <span className="text-white/80">
-                {tierConfig.checkInCalls} check-in call{tierConfig.checkInCalls !== 1 ? 's' : ''} per month
+                {tierConfig.features.checkInCallsPerMonth} check-in call{tierConfig.features.checkInCallsPerMonth !== 1 ? 's' : ''} per month
               </span>
+            </div>
+          )}
+
+          {tierConfig.features.strategyCalls && (
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-gradient-accent" />
+              <span className="text-white/80">Strategy calls included</span>
             </div>
           )}
         </div>

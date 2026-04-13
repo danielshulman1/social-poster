@@ -3,6 +3,7 @@
  * For protecting pages and API routes based on tier
  */
 
+import { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { getUserTier, isSubscriptionActive } from '../utils/tier-db';
 import { TIERS } from '../utils/tier-config';
@@ -94,13 +95,16 @@ export async function requireTier(request, requiredTier = TIERS.FREE) {
  * Usage: const { hasAccess, tier } = useTierCheck();
  */
 export function useTierCheck() {
-  const [tierInfo, setTierInfo] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const [tierInfo, setTierInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function checkTier() {
       try {
-        const response = await fetch('/api/auth/tier-check');
+        const token = localStorage.getItem('auth_token');
+        const response = await fetch('/api/auth/tier-check', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!response.ok) {
           setTierInfo(null);
         } else {
@@ -178,7 +182,7 @@ function UpgradePrompt({ requiredTier }) {
         This feature requires a {requiredTier} tier subscription or higher.
       </p>
       <a
-        href="/upgrade"
+        href="/dashboard/upgrade"
         className="mt-4 inline-block rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700"
       >
         View Plans & Upgrade

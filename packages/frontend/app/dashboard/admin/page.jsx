@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, Users, Mail, CheckCircle2, TrendingUp, Plus, X, MoreVertical, Trash2, Key, ListTodo } from 'lucide-react';
+import { Shield, Users, Mail, CheckCircle2, TrendingUp, Plus, X, MoreVertical, Trash2, Key, ListTodo, CreditCard } from 'lucide-react';
+import { TIERS, getTierConfig } from '../utils/tier-config';
 
 export default function AdminPage() {
     const [hasAccess, setHasAccess] = useState(null);
@@ -39,6 +40,12 @@ export default function AdminPage() {
         newPassword: '',
     });
     const [openDropdownId, setOpenDropdownId] = useState(null);
+    const [showTierModal, setShowTierModal] = useState(false);
+    const [selectedUserForTier, setSelectedUserForTier] = useState(null);
+    const [selectedTier, setSelectedTier] = useState('free');
+    const [setupFeePaid, setSetupFeePaid] = useState(false);
+    const [tierUserLoading, setTierUserLoading] = useState(false);
+    const [tierMessage, setTierMessage] = useState('');
 
     useEffect(() => {
         checkAccess();
@@ -272,6 +279,102 @@ export default function AdminPage() {
         setSelectedUser(user);
         setResetPassword({ userId: user.id, newPassword: '' });
         setShowResetPasswordModal(true);
+    };
+
+    const openTierModal = async (user) => {
+        setSelectedUserForTier(user);
+        setTierUserLoading(true);
+        setTierMessage('');
+        setSelectedTier('free');
+        setSetupFeePaid(false);
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`/api/admin/users/tier?userId=${user.id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setSelectedTier(data.tierInfo.current_tier);
+                setSetupFeePaid(data.tierInfo.setup_fee_paid || false);
+            }
+        } catch (error) {
+            console.error('Failed to load tier:', error);
+        } finally {
+            setTierUserLoading(false);
+            setShowTierModal(true);
+        }
+    };
+
+    const handleUpdateUserTier = async (e) => {
+        e.preventDefault();
+        if (!selectedUserForTier) return;
+
+        try {
+            setTierUserLoading(true);
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch('/api/admin/users/tier', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: selectedUserForTier.id,
+                    newTier: selectedTier,
+                    setupFeePaid,
+                }),
+            });
+
+            if (res.ok) {
+                setTierMessage('✓ Tier updated successfully');
+                setTimeout(() => {
+                    setShowTierModal(false);
+                    checkAccess();
+                }, 1000);
+            } else {
+                const data = await res.json();
+                setTierMessage(`✗ ${data.error || 'Failed to update tier'}`);
+            }
+        } catch (error) {
+            setTierMessage(`✗ ${error.message}`);
+        } finally {
+            setTierUserLoading(false);
+        }
+    };
+
+    const handleCancelUserSubscription = async () => {
+        if (!selectedUserForTier) return;
+        if (!confirm('Cancel this user\'s subscription? They will revert to FREE tier.')) return;
+
+        try {
+            setTierUserLoading(true);
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch('/api/admin/users/tier/cancel', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userId: selectedUserForTier.id }),
+            });
+
+            if (res.ok) {
+                setTierMessage('✓ Subscription cancelled');
+                setTimeout(() => {
+                    setShowTierModal(false);
+                    checkAccess();
+                }, 1000);
+            } else {
+                const data = await res.json();
+                setTierMessage(`✗ ${data.error || 'Failed to cancel'}`);
+            }
+        } catch (error) {
+            setTierMessage(`✗ ${error.message}`);
+        } finally {
+            setTierUserLoading(false);
+        }
     };
 
     const getActivityIcon = (type) => {
@@ -580,6 +683,46 @@ export default function AdminPage() {
                 </div>
             </div>
 
+            {/* Tier Management Section */}
+            <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-sora font-bold text-black dark:text-white flex items-center gap-3">
+                        <CreditCard className="h-6 w-6" />
+                        Tier Management
+                    </h2>
+                </div>
+                <div className="rounded-2xl border border-[#E6E6E6] dark:border-[#333333] bg-white dark:bg-[#1E1E1E] overflow-hidden">
+                    <div className="divide-y divide-[#E6E6E6] dark:divide-[#333333]">
+                        {users.length === 0 ? (
+                            <div className="p-8 text-center text-gray-600 dark:text-gray-400">
+                                No users found
+                            </div>
+                        ) : (
+                            users.map((user) => (
+                                <div key={user.id} className="p-4 hover:bg-[#F9F9F9] dark:hover:bg-[#252525] transition-colors flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className="font-plus-jakarta font-semibold text-black dark:text-white">
+                                                {user.first_name && user.last_name ? `${user.first_name} ${user.last_name}` : user.email}
+                                            </h3>
+                                        </div>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 font-inter">
+                                            {user.email}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => openTierModal(user)}
+                                        className="px-4 py-2 rounded-lg bg-blue-600 dark:bg-blue-600 text-white font-plus-jakarta text-sm font-semibold hover:bg-blue-700 transition-colors flex-shrink-0 ml-4"
+                                    >
+                                        Manage Tier
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* Create User Modal */}
             {showCreateUserModal && (
                 <div
@@ -804,6 +947,101 @@ export default function AdminPage() {
                                 Create Task
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Tier Management Modal */}
+            {showTierModal && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6"
+                    onClick={() => setShowTierModal(false)}
+                >
+                    <div
+                        className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E6E6E6] dark:border-[#333333] max-w-md w-full p-8"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-sora font-bold text-black dark:text-white">
+                                Manage Tier
+                            </h2>
+                            <button
+                                onClick={() => setShowTierModal(false)}
+                                className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        {selectedUserForTier && (
+                            <form onSubmit={handleUpdateUserTier} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-plus-jakarta font-medium text-black dark:text-white mb-2">
+                                        User
+                                    </label>
+                                    <div className="px-4 py-3 rounded-xl border border-[#E6E6E6] dark:border-[#333333] bg-[#F9F9F9] dark:bg-[#0A0A0A] text-black dark:text-white font-inter text-sm">
+                                        {selectedUserForTier.email}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-plus-jakarta font-medium text-black dark:text-white mb-2">
+                                        Tier *
+                                    </label>
+                                    <select
+                                        value={selectedTier}
+                                        onChange={(e) => setSelectedTier(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-[#E6E6E6] dark:border-[#333333] bg-white dark:bg-[#0A0A0A] text-black dark:text-white font-inter focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                                    >
+                                        {Object.values(TIERS).map((tier) => (
+                                            <option key={tier} value={tier}>
+                                                {getTierConfig(tier).name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="setupFee"
+                                        checked={setupFeePaid}
+                                        onChange={(e) => setSetupFeePaid(e.target.checked)}
+                                        className="h-4 w-4 rounded border-[#E6E6E6] dark:border-[#333333]"
+                                    />
+                                    <label htmlFor="setupFee" className="text-sm font-inter text-black dark:text-white">
+                                        Mark setup fee as paid
+                                    </label>
+                                </div>
+
+                                {tierMessage && (
+                                    <div className={`rounded-xl p-3 text-sm ${tierMessage.startsWith('✓') ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
+                                        {tierMessage}
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    <button
+                                        type="submit"
+                                        disabled={tierUserLoading}
+                                        className="w-full py-3 rounded-full bg-black dark:bg-white text-white dark:text-black font-plus-jakarta font-semibold hover:scale-[0.98] transition-transform disabled:opacity-60"
+                                    >
+                                        {tierUserLoading ? 'Updating...' : 'Update Tier'}
+                                    </button>
+
+                                    {selectedTier !== 'free' && (
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelUserSubscription}
+                                            disabled={tierUserLoading}
+                                            className="w-full py-3 rounded-full bg-red-600/20 text-red-400 font-plus-jakarta font-semibold hover:bg-red-600/30 transition-colors disabled:opacity-60"
+                                        >
+                                            {tierUserLoading ? 'Cancelling...' : 'Cancel Subscription'}
+                                        </button>
+                                    )}
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

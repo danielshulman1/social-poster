@@ -116,24 +116,24 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-10">
+        <div className="max-w-6xl mx-auto space-y-10 px-4 sm:px-6 lg:px-8">
             {/* Header */}
-            <header className="pt-2 space-y-2">
+            <header className="pt-2 space-y-2 px-4 sm:px-0">
                 <p className="text-xs uppercase tracking-[0.18em] text-white/50">Dashboard</p>
-                <h1 className="text-4xl font-bold text-white">
+                <h1 className="text-2xl sm:text-4xl font-bold text-white break-words">
                     Welcome back{user?.firstName ? `, ${user.firstName.charAt(0).toUpperCase() + user.firstName.slice(1)} ` : user?.email ? `, ${user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1)} ` : ''}
                 </h1>
                 <p className="text-white/50 text-sm">Loading...</p>
             </header>
 
             {user?.isSuperadmin && (
-                <section className="bg-[#0f0f0f] rounded-2xl border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)] p-8 space-y-6">
-                    <div className="flex items-center justify-between">
+                <section className="bg-[#0f0f0f] rounded-2xl border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)] p-4 sm:p-8 space-y-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.2em] text-white/50">Superadmin</p>
-                            <h2 className="text-2xl font-semibold text-white">Organization Activity</h2>
+                            <h2 className="text-xl sm:text-2xl font-semibold text-white">Organization Activity</h2>
                         </div>
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm w-full sm:w-auto">
                             <div className="text-white/70">
                                 Active:{' '}
                                 <span className="text-green-300 font-semibold">
@@ -201,77 +201,77 @@ export default function DashboardPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                 {/* Pending Tasks */}
                 <Link href="/dashboard/tasks?status=pending" className="block">
-                    <div className="bg-[#0f0f0f] rounded-2xl p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
+                    <div className="bg-[#0f0f0f] rounded-2xl p-4 sm:p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400">
-                                <Clock className="h-5 w-5" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-400 flex-shrink-0">
+                                <Clock className="h-4 sm:h-5 w-4 sm:w-5" />
                             </div>
-                            <span className="text-white/60 text-sm">Today</span>
+                            <span className="text-white/60 text-xs sm:text-sm">Today</span>
                         </div>
                         <div>
-                            <p className="text-4xl font-bold text-white leading-none mb-1">{stats.pending}</p>
-                            <p className="text-white/50 text-sm">Pending Tasks</p>
+                            <p className="text-3xl sm:text-4xl font-bold text-white leading-none mb-1">{stats.pending}</p>
+                            <p className="text-white/50 text-xs sm:text-sm">Pending Tasks</p>
                         </div>
                     </div>
                 </Link>
 
                 {/* In Progress */}
                 <Link href="/dashboard/tasks?status=in_progress" className="block">
-                    <div className="bg-[#0f0f0f] rounded-2xl p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
+                    <div className="bg-[#0f0f0f] rounded-2xl p-4 sm:p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-400">
-                                <TrendingUp className="h-5 w-5" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-500/15 flex items-center justify-center text-orange-400 flex-shrink-0">
+                                <TrendingUp className="h-4 sm:h-5 w-4 sm:w-5" />
                             </div>
-                            <span className="text-white/60 text-sm">Active</span>
+                            <span className="text-white/60 text-xs sm:text-sm">Active</span>
                         </div>
                         <div>
-                            <p className="text-4xl font-bold text-white leading-none mb-1">{stats.inProgress}</p>
-                            <p className="text-white/50 text-sm">In Progress</p>
+                            <p className="text-3xl sm:text-4xl font-bold text-white leading-none mb-1">{stats.inProgress}</p>
+                            <p className="text-white/50 text-xs sm:text-sm">In Progress</p>
                         </div>
                     </div>
                 </Link>
 
                 {/* Completed */}
                 <Link href="/dashboard/tasks?status=completed" className="block">
-                    <div className="bg-[#0f0f0f] rounded-2xl p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
+                    <div className="bg-[#0f0f0f] rounded-2xl p-4 sm:p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-green-500/15 flex items-center justify-center text-green-400">
-                                <CheckCircle className="h-5 w-5" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-green-500/15 flex items-center justify-center text-green-400 flex-shrink-0">
+                                <CheckCircle className="h-4 sm:h-5 w-4 sm:w-5" />
                             </div>
-                            <span className="text-white/60 text-sm">This week</span>
+                            <span className="text-white/60 text-xs sm:text-sm">This week</span>
                         </div>
                         <div>
-                            <p className="text-4xl font-bold text-white leading-none mb-1">{stats.completed}</p>
-                            <p className="text-white/50 text-sm">Completed</p>
+                            <p className="text-3xl sm:text-4xl font-bold text-white leading-none mb-1">{stats.completed}</p>
+                            <p className="text-white/50 text-xs sm:text-sm">Completed</p>
                         </div>
                     </div>
                 </Link>
 
                 {/* Urgent */}
                 <Link href="/dashboard/tasks?priority=high" className="block">
-                    <div className="bg-[#0f0f0f] rounded-2xl p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
+                    <div className="bg-[#0f0f0f] rounded-2xl p-4 sm:p-6 border border-white/5 shadow-[0_15px_55px_rgba(0,0,0,0.45)] flex flex-col gap-4 hover:border-white/15 transition-all cursor-pointer">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-red-500/15 flex items-center justify-center text-red-400">
-                                <XCircle className="h-5 w-5" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-500/15 flex items-center justify-center text-red-400 flex-shrink-0">
+                                <XCircle className="h-4 sm:h-5 w-4 sm:w-5" />
                             </div>
-                            <span className="text-white/60 text-sm">High Priority</span>
+                            <span className="text-white/60 text-xs sm:text-sm">High Priority</span>
                         </div>
                         <div>
-                            <p className="text-4xl font-bold text-white leading-none mb-1">{stats.urgent}</p>
-                            <p className="text-white/50 text-sm">Urgent</p>
+                            <p className="text-3xl sm:text-4xl font-bold text-white leading-none mb-1">{stats.urgent}</p>
+                            <p className="text-white/50 text-xs sm:text-sm">Urgent</p>
                         </div>
                     </div>
                 </Link>
             </div>
 
             {/* Recent Tasks */}
-            <section className="bg-[#0f0f0f] rounded-2xl border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)] p-8">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-white">Recent Tasks</h2>
-                    <button className="text-white/70 hover:text-white text-sm inline-flex items-center gap-2">
+            <section className="bg-[#0f0f0f] rounded-2xl border border-white/5 shadow-[0_20px_70px_rgba(0,0,0,0.45)] p-4 sm:p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
+                    <h2 className="text-lg sm:text-xl font-semibold text-white">Recent Tasks</h2>
+                    <button className="text-white/70 hover:text-white text-sm inline-flex items-center gap-2 flex-shrink-0">
                         View all <span aria-hidden="true">-&gt;</span>
                     </button>
                 </div>
@@ -291,13 +291,13 @@ export default function DashboardPage() {
                             return (
                                 <div
                                     key={task.id}
-                                    className="bg-[#0c0c0c] rounded-xl p-4 border border-white/5 hover:border-white/15 transition-colors"
+                                    className="bg-[#0c0c0c] rounded-xl p-3 sm:p-4 border border-white/5 hover:border-white/15 transition-colors"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-1 flex-1">
-                                            <h3 className="text-white font-medium">{task.title}</h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div className="space-y-1 flex-1 min-w-0">
+                                            <h3 className="text-white font-medium truncate text-sm sm:text-base">{task.title}</h3>
                                             {task.description && (
-                                                <p className="text-white/60 text-sm">{task.description}</p>
+                                                <p className="text-white/60 text-xs sm:text-sm line-clamp-2">{task.description}</p>
                                             )}
                                             {user?.isAdmin && (task.user_email || task.first_name) && (
                                                 <p className="text-white/50 text-xs mt-1">
@@ -305,11 +305,11 @@ export default function DashboardPage() {
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className={`px-2.5 py-1 text-xs rounded-full ${priorityBadge.styles}`}>
+                                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap flex-shrink-0">
+                                            <span className={`px-2 sm:px-2.5 py-1 text-xs rounded-full whitespace-nowrap ${priorityBadge.styles}`}>
                                                 {priorityBadge.label}
                                             </span>
-                                            <span className={`px-2.5 py-1 text-xs rounded-full ${task.status === 'completed'
+                                            <span className={`px-2 sm:px-2.5 py-1 text-xs rounded-full whitespace-nowrap ${task.status === 'completed'
                                                 ? 'bg-green-500/15 text-green-300'
                                                 : task.status === 'in_progress'
                                                     ? 'bg-orange-500/15 text-orange-300'
