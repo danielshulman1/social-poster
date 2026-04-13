@@ -59,8 +59,8 @@ Example format:
   "contentPillars": ["Web Development", "Best Practices", "Career Growth", "Tech Industry Trends"]
 }`;
 
-    const message = await openai.messages.create({
-      model: 'claude-opus-4-1-20250805',
+    const message = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
       max_tokens: 1024,
       messages: [
         {
@@ -70,7 +70,7 @@ Example format:
       ],
     });
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const responseText = message.choices[0].message.content || '';
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);

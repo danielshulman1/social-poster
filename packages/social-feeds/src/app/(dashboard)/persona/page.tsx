@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Wand2, ArrowLeft, Check, Loader2, Zap } from 'lucide-react';
+import { Wand2, ArrowLeft, Check, Loader2, Zap, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InterviewAnswer {
@@ -47,10 +47,11 @@ export default function PersonaPage() {
   const [postSamples, setPostSamples] = useState<string[]>(['', '', '']);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
 
-  // Check if user already has a persona
+  // Check if user already has a persona and fetch posts from social accounts
   useEffect(() => {
-    const checkPersona = async () => {
+    const initPage = async () => {
       try {
         const res = await fetch('/api/personas');
         if (res.ok) {
@@ -63,8 +64,27 @@ export default function PersonaPage() {
       } catch (error) {
         console.error('Error checking persona:', error);
       }
+
+      // Auto-fetch posts from connected social accounts
+      try {
+        const postsRes = await fetch('/api/personas/posts');
+        if (postsRes.ok) {
+          const postsData = await postsRes.json();
+          if (postsData.posts && postsData.posts.length > 0) {
+            // Pre-fill the post samples with fetched posts
+            const filledPosts = postsData.posts.slice(0, 3);
+            const newPosts = [...postSamples];
+            filledPosts.forEach((post, index) => {
+              if (index < 3) newPosts[index] = post;
+            });
+            setPostSamples(newPosts);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
     };
-    checkPersona();
+    initPage();
   }, []);
 
   const handleInterviewChange = (index: number, value: string) => {
@@ -77,6 +97,34 @@ export default function PersonaPage() {
     const newPosts = [...postSamples];
     newPosts[index] = value;
     setPostSamples(newPosts);
+  };
+
+  const handleFetchPosts = async () => {
+    setIsFetchingPosts(true);
+    try {
+      const res = await fetch('/api/personas/posts');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.posts && data.posts.length > 0) {
+          const filledPosts = data.posts.slice(0, 3);
+          const newPosts = [...postSamples];
+          filledPosts.forEach((post, index) => {
+            if (index < 3) newPosts[index] = post;
+          });
+          setPostSamples(newPosts);
+          toast.success(`Fetched ${filledPosts.length} post(s) from your connected accounts`);
+        } else {
+          toast.info('No posts found. Try connecting your social accounts first.');
+        }
+      } else {
+        toast.error('Failed to fetch posts');
+      }
+    } catch (error) {
+      toast.error('Error fetching posts from social accounts');
+      console.error(error);
+    } finally {
+      setIsFetchingPosts(false);
+    }
   };
 
   const handleNext = () => {
@@ -204,10 +252,24 @@ export default function PersonaPage() {
         {step === 2 && (
           <Card>
             <CardHeader>
-              <CardTitle>Step 2: Recent Posts (Optional)</CardTitle>
-              <CardDescription>
-                Add up to 3 recent posts to help train the persona. You can skip this if you prefer.
-              </CardDescription>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle>Step 2: Recent Posts (Optional)</CardTitle>
+                  <CardDescription>
+                    Add up to 3 recent posts to help train the persona. You can skip this if you prefer.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchPosts}
+                  disabled={isFetchingPosts}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  {isFetchingPosts ? 'Fetching...' : 'Auto-fetch from Social'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {postSamples.map((post, index) => (
