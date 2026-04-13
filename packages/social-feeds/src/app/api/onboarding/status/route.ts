@@ -4,6 +4,18 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const ensureOnboardingProgressTable = async () => {
+    await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "UserOnboardingProgress" (
+            "userId" TEXT NOT NULL,
+            "completedAt" TIMESTAMP(3),
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "UserOnboardingProgress_pkey" PRIMARY KEY ("userId")
+        )
+    `);
+};
+
 const getCurrentStep = (steps: {
     socialConnected: boolean;
     aiConfigured: boolean;
@@ -22,6 +34,8 @@ export async function GET(req: Request) {
     if (!auth?.userId) return unauthorizedText();
 
     try {
+        await ensureOnboardingProgressTable();
+
         const user = await prisma.user.findUnique({
             where: { id: auth.userId },
             select: {
