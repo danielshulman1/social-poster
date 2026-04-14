@@ -68,22 +68,27 @@ export default function AdminPage() {
     const checkAccess = async () => {
         try {
             const token = localStorage.getItem('auth_token');
+            console.log('[AdminPage] Fetching users with token:', token ? 'present' : 'missing');
             const res = await fetch('/api/admin/users', {
                 headers: { Authorization: `Bearer ${token}` },
             });
 
+            console.log('[AdminPage] API response status:', res.status);
             if (res.ok) {
                 setHasAccess(true);
                 const data = await res.json();
+                console.log('[AdminPage] Users received:', data.users?.length || 0);
                 setUsers(data.users);
                 setOrganization(data.organization);
                 calculateStats(data.users);
                 fetchActivity();
                 fetchOrgTasks();
             } else {
+                console.log('[AdminPage] Access denied');
                 setHasAccess(false);
             }
         } catch (error) {
+            console.error('[AdminPage] Error:', error);
             setHasAccess(false);
         }
     };
