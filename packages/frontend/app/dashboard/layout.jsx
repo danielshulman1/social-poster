@@ -27,6 +27,24 @@ function SubscriptionGate({ children }) {
                 return;
             }
 
+            // Get user info first
+            const meRes = await fetch('/api/auth/me', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!meRes.ok) {
+                router.replace('/login');
+                return;
+            }
+
+            const meData = await meRes.json();
+            // Allow admins to access dashboard even if subscription is pending
+            if (meData.user.isAdmin || meData.user.isSuperadmin) {
+                setIsValid(true);
+                return;
+            }
+
+            // For regular users, check subscription status
             const res = await fetch('/api/auth/tier-check', {
                 headers: { Authorization: `Bearer ${token}` },
             });
