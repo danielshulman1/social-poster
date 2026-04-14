@@ -6,17 +6,17 @@ import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
 import { TIER_CONFIG } from '../utils/tier-config';
 
-const PLANS = ['starter', 'core', 'premium'];
-
 export default function SignUpPage() {
     const router = useRouter();
-    const [step, setStep] = useState('plan'); // 'plan' or 'details'
+    const [step, setStep] = useState('plan');
     const [selectedTier, setSelectedTier] = useState('');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const tiers = ['starter', 'core', 'premium'];
 
     const handlePlanSelect = (tier) => {
         setSelectedTier(tier);
@@ -56,72 +56,62 @@ export default function SignUpPage() {
         setLoading(false);
     };
 
+    // Step 1: Plan Selection
     if (step === 'plan') {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 sm:px-6 py-12">
-                <div className="w-full max-w-6xl">
-                    <div className="text-center space-y-4 mb-12">
-                        <p className="text-xs uppercase tracking-[0.18em] text-white/60">Get Started</p>
-                        <h1 className="text-3xl sm:text-5xl font-bold text-white">Choose Your Plan</h1>
-                        <p className="text-white/70 max-w-2xl mx-auto">
-                            Select the plan that works best for you. You can upgrade or downgrade anytime.
-                        </p>
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-12">
+                <div className="w-full max-w-5xl">
+                    <div className="text-center mb-12">
+                        <p className="text-xs uppercase tracking-widest text-white/60 mb-2">Choose Your Plan</p>
+                        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Select a Tier to Get Started</h1>
+                        <p className="text-white/70 max-w-2xl mx-auto">Pick the plan that fits your needs. You can always upgrade or downgrade later.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                        {PLANS.map((tier) => {
+                    <div className="grid md:grid-cols-3 gap-6 mb-8">
+                        {tiers.map((tier) => {
                             const config = TIER_CONFIG[tier];
+                            if (!config) return null;
+
                             return (
                                 <div
                                     key={tier}
                                     onClick={() => handlePlanSelect(tier)}
-                                    className="rounded-2xl bg-gradient-to-br from-[#1a0033] to-[#0f0f0f] border border-purple-500/30 p-8 flex flex-col cursor-pointer hover:border-purple-500/60 transition-all hover:shadow-[0_20px_60px_rgba(168,85,247,0.15)]"
+                                    className="bg-gradient-to-br from-[#1a0033] to-[#0f0f0f] border border-purple-500/30 rounded-2xl p-8 cursor-pointer hover:border-purple-500/60 hover:shadow-xl transition-all"
                                 >
-                                    <div className="mb-8">
-                                        <h2 className="text-2xl font-bold text-white mb-2 capitalize">{config.name}</h2>
-                                        <p className="text-white/60 text-sm">{config.description}</p>
+                                    <h3 className="text-2xl font-bold text-white mb-2 capitalize">{config.name}</h3>
+                                    <p className="text-white/60 text-sm mb-6">{config.description}</p>
+
+                                    <div className="mb-6">
+                                        <p className="text-4xl font-bold text-white">£{(config.monthlyPrice / 100).toFixed(2)}</p>
+                                        <p className="text-white/50 text-sm">per month + £{(config.setupFee / 100).toFixed(2)} setup</p>
                                     </div>
 
-                                    <div className="mb-8">
-                                        <div className="text-4xl font-bold text-white">£{(config.monthlyPrice / 100).toFixed(2)}</div>
-                                        <p className="text-white/50 text-sm mt-2">/month + £{(config.setupFee / 100).toFixed(2)} setup</p>
-                                    </div>
-
-                                    <ul className="space-y-3 mb-8 flex-grow">
-                                        <li className="flex items-center gap-3">
-                                            <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                            <span className="text-white/80">{config.features.maxPlatforms} platforms</span>
+                                    <ul className="space-y-3 mb-6">
+                                        <li className="flex gap-2 items-center text-white/80 text-sm">
+                                            <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                            {config.features.maxPlatforms} platform{config.features.maxPlatforms > 1 ? 's' : ''}
                                         </li>
-                                        <li className="flex items-center gap-3">
-                                            <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                            <span className="text-white/80">{config.features.postsPerWeek} posts per week</span>
+                                        <li className="flex gap-2 items-center text-white/80 text-sm">
+                                            <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                            {config.features.postsPerWeek} posts per week
                                         </li>
-                                        <li className="flex items-center gap-3">
-                                            <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                            <span className="text-white/80">Voice training</span>
+                                        <li className="flex gap-2 items-center text-white/80 text-sm">
+                                            <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                            Voice training
                                         </li>
-                                        <li className="flex items-center gap-3">
-                                            <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                            <span className="text-white/80">Onboarding session</span>
+                                        <li className="flex gap-2 items-center text-white/80 text-sm">
+                                            <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                            Onboarding
                                         </li>
-                                        {config.features.checkInCallsPerMonth && (
-                                            <li className="flex items-center gap-3">
-                                                <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                                <span className="text-white/80">{config.features.checkInCallsPerMonth} check-in call{config.features.checkInCallsPerMonth !== 1 ? 's' : ''} per month</span>
-                                            </li>
-                                        )}
-                                        {config.features.strategyCalls && (
-                                            <li className="flex items-center gap-3">
-                                                <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
-                                                <span className="text-white/80">Monthly strategy call</span>
+                                        {config.features.checkInCallsPerMonth > 0 && (
+                                            <li className="flex gap-2 items-center text-white/80 text-sm">
+                                                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                                {config.features.checkInCallsPerMonth} check-in call{config.features.checkInCallsPerMonth > 1 ? 's' : ''}/month
                                             </li>
                                         )}
                                     </ul>
 
-                                    <button
-                                        type="button"
-                                        className="w-full py-3 rounded-full bg-gradient-to-b from-white to-[#dcdcdc] text-black font-semibold hover:brightness-105 transition-all flex items-center justify-center gap-2"
-                                    >
+                                    <button type="button" className="w-full bg-white text-black font-semibold py-2 rounded-lg hover:bg-gray-200 transition flex items-center justify-center gap-2">
                                         Choose {config.name}
                                         <ArrowRight className="w-4 h-4" />
                                     </button>
@@ -130,12 +120,9 @@ export default function SignUpPage() {
                         })}
                     </div>
 
-                    <div className="text-center pt-12">
+                    <div className="text-center">
                         <p className="text-white/60 text-sm">
-                            Already have an account?{' '}
-                            <Link href="/login" className="text-white hover:underline font-semibold">
-                                Sign in
-                            </Link>
+                            Already have an account? <Link href="/login" className="text-white hover:underline">Sign in</Link>
                         </p>
                     </div>
                 </div>
@@ -143,111 +130,80 @@ export default function SignUpPage() {
         );
     }
 
+    // Step 2: Account Details
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 sm:px-6 py-12">
-            <div className="w-full max-w-xl relative">
-                <div
-                    aria-hidden="true"
-                    className="absolute inset-0 rounded-[28px] bg-gradient-to-b from-white/8 via-transparent to-transparent blur-3xl"
-                />
-                <div className="relative bg-[#111111] border border-white/5 rounded-[28px] shadow-[0_20px_80px_rgba(0,0,0,0.55)] px-6 sm:px-10 py-8 sm:py-12 space-y-8">
-                    {/* Title */}
-                    <div className="text-center space-y-3">
-                        <p className="text-xs uppercase tracking-[0.18em] text-white/60">Step 2 of 2</p>
-                        <h1 className="text-2xl sm:text-4xl font-bold text-white break-words">Create Account</h1>
-                    </div>
-
-                    {/* Selected Plan Badge */}
-                    <div className="rounded-xl bg-purple-500/15 border border-purple-500/30 p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-white/70 text-sm">Selected Plan</p>
-                            <p className="text-purple-300 font-semibold capitalize">{selectedTier} Plan</p>
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-md">
+                <div className="bg-[#111111] border border-white/5 rounded-2xl p-8 space-y-6">
+                    <div className="text-center">
+                        <p className="text-white/60 text-sm mb-2">Step 2 of 2</p>
+                        <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
+                        <div className="bg-purple-500/15 border border-purple-500/30 rounded-lg p-3 mt-4">
+                            <p className="text-white/70 text-sm">You selected <span className="font-semibold text-purple-300 capitalize">{selectedTier}</span> plan</p>
+                            <button
+                                onClick={() => setStep('plan')}
+                                className="text-purple-400 hover:text-purple-300 text-xs mt-1 underline"
+                            >
+                                Change plan
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setStep('plan');
-                                setError('');
-                            }}
-                            className="text-white/50 hover:text-white text-sm underline"
-                        >
-                            Change
-                        </button>
                     </div>
 
-                    {/* Error Message */}
                     {error && (
-                        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3.5 text-red-300 text-sm">
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Name Field */}
-                        <div className="space-y-2">
-                            <label className="block text-sm text-white/70">
-                                Name (optional)
-                            </label>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm text-white/70 mb-1">Full Name (optional)</label>
                             <input
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                autoComplete="name"
-                                placeholder="shelly"
-                                className="w-full px-4 py-3.5 rounded-xl bg-[#0b0b0b] border border-white/8 text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 transition-all text-[15px] shadow-[0_10px_50px_rgba(0,0,0,0.35)]"
+                                placeholder="John Doe"
+                                className="w-full px-4 py-2 rounded-lg bg-[#0b0b0b] border border-white/10 text-white placeholder-white/30"
                             />
                         </div>
 
-                        {/* Email Field */}
-                        <div className="space-y-2">
-                            <label className="block text-sm text-white/70">
-                                Email
-                            </label>
+                        <div>
+                            <label className="block text-sm text-white/70 mb-1">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                autoComplete="email"
-                                placeholder="Enter your email"
-                                className="w-full px-4 py-3.5 rounded-xl bg-[#0b0b0b] border border-white/8 text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 transition-all text-[15px] shadow-[0_10px_50px_rgba(0,0,0,0.35)]"
+                                placeholder="you@example.com"
+                                className="w-full px-4 py-2 rounded-lg bg-[#0b0b0b] border border-white/10 text-white placeholder-white/30"
                             />
                         </div>
 
-                        {/* Password Field */}
-                        <div className="space-y-2">
-                            <label className="block text-sm text-white/70">
-                                Password
-                            </label>
+                        <div>
+                            <label className="block text-sm text-white/70 mb-1">Password (min 8 characters)</label>
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 minLength={8}
-                                autoComplete="new-password"
-                                placeholder="Create a password"
-                                className="w-full px-4 py-3.5 rounded-xl bg-[#0b0b0b] border border-white/8 text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 transition-all text-[15px] shadow-[0_10px_50px_rgba(0,0,0,0.35)]"
+                                placeholder="••••••••"
+                                className="w-full px-4 py-2 rounded-lg bg-[#0b0b0b] border border-white/10 text-white placeholder-white/30"
                             />
                         </div>
 
-                        {/* Sign Up Button */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3.5 rounded-xl bg-gradient-to-b from-white to-[#dcdcdc] text-black font-semibold shadow-[0_12px_45px_rgba(0,0,0,0.35)] hover:brightness-105 transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                            className="w-full bg-white text-black font-semibold py-2 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
                         >
                             {loading ? 'Creating account...' : 'Create Account'}
                         </button>
                     </form>
 
-                    {/* Sign In Link */}
-                    <div className="text-center pt-2">
+                    <div className="text-center">
                         <p className="text-white/60 text-sm">
-                            Already have an account?{' '}
-                            <Link href="/login" className="text-white hover:underline font-semibold">
-                                Sign in
-                            </Link>
+                            Already have an account? <Link href="/login" className="text-white hover:underline">Sign in</Link>
                         </p>
                     </div>
                 </div>
