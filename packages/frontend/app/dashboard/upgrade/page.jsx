@@ -148,7 +148,7 @@ export default function UpgradePage() {
 
               <div className="mb-8">
                 <div className="text-4xl font-bold text-white">£{(config.monthlyPrice / 100).toFixed(2)}</div>
-                <p className="text-white/50 text-sm mt-2">/month + £{(config.setupFee / 100).toFixed(2)} setup</p>
+                <p className="text-white/50 text-sm mt-2">per month</p>
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">

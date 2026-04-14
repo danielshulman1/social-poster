@@ -83,7 +83,7 @@ export default function SignUpPage() {
 
                                     <div className="mb-6">
                                         <p className="text-4xl font-bold text-white">£{(config.monthlyPrice / 100).toFixed(2)}</p>
-                                        <p className="text-white/50 text-sm">per month + £{(config.setupFee / 100).toFixed(2)} setup</p>
+                                        <p className="text-white/50 text-sm">per month</p>
                                     </div>
 
                                     <ul className="space-y-3 mb-6">

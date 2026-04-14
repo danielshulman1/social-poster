@@ -16,7 +16,6 @@ export const TIER_CONFIG = {
     name: 'Free',
     description: 'Basic tier for getting started',
     monthlyPrice: 0,
-    setupFee: 0,
     features: {
       maxPlatforms: 1,
       postsPerWeek: 1,
@@ -31,7 +30,6 @@ export const TIER_CONFIG = {
     name: 'Starter',
     description: 'Perfect for getting started',
     monthlyPrice: 4700, // £47 in pence
-    setupFee: 4700, // £47 in pence
     features: {
       maxPlatforms: 3,
       platforms: ['facebook', 'instagram', 'linkedin'],
@@ -47,7 +45,6 @@ export const TIER_CONFIG = {
     name: 'Core',
     description: 'For growing businesses',
     monthlyPrice: 9700, // £97 in pence
-    setupFee: 4700, // £47 in pence
     features: {
       maxPlatforms: 3,
       platforms: ['facebook', 'instagram', 'linkedin'],
@@ -64,7 +61,6 @@ export const TIER_CONFIG = {
     name: 'Premium',
     description: 'For serious entrepreneurs',
     monthlyPrice: 19700, // £197 in pence
-    setupFee: 4700, // £47 in pence
     features: {
       maxPlatforms: 5,
       platforms: ['facebook', 'instagram', 'linkedin', 'tiktok', 'twitter'],

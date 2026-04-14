@@ -43,7 +43,6 @@ export default function AdminPage() {
     const [showTierModal, setShowTierModal] = useState(false);
     const [selectedUserForTier, setSelectedUserForTier] = useState(null);
     const [selectedTier, setSelectedTier] = useState('free');
-    const [setupFeePaid, setSetupFeePaid] = useState(false);
     const [tierUserLoading, setTierUserLoading] = useState(false);
     const [tierMessage, setTierMessage] = useState('');
 
@@ -291,7 +290,6 @@ export default function AdminPage() {
         setTierUserLoading(true);
         setTierMessage('');
         setSelectedTier('free');
-        setSetupFeePaid(false);
 
         try {
             const token = localStorage.getItem('auth_token');
@@ -302,7 +300,6 @@ export default function AdminPage() {
             if (res.ok) {
                 const data = await res.json();
                 setSelectedTier(data.tierInfo.current_tier);
-                setSetupFeePaid(data.tierInfo.setup_fee_paid || false);
             }
         } catch (error) {
             console.error('Failed to load tier:', error);
@@ -328,7 +325,6 @@ export default function AdminPage() {
                 body: JSON.stringify({
                     userId: selectedUserForTier.id,
                     newTier: selectedTier,
-                    setupFeePaid,
                 }),
             });
 
@@ -1006,18 +1002,6 @@ export default function AdminPage() {
                                     </select>
                                 </div>
 
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="setupFee"
-                                        checked={setupFeePaid}
-                                        onChange={(e) => setSetupFeePaid(e.target.checked)}
-                                        className="h-4 w-4 rounded border-[#E6E6E6] dark:border-[#333333]"
-                                    />
-                                    <label htmlFor="setupFee" className="text-sm font-inter text-black dark:text-white">
-                                        Mark setup fee as paid
-                                    </label>
-                                </div>
 
                                 {tierMessage && (
                                     <div className={`rounded-xl p-3 text-sm ${tierMessage.startsWith('✓') ? 'bg-green-500/15 text-green-300' : 'bg-red-500/15 text-red-300'}`}>
