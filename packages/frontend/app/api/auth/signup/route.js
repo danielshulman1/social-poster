@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
 import { query, getClient } from '@/utils/db';
 import { hashPassword, generateToken } from '@/utils/auth';
+import { createUserTierPending } from '@/utils/tier-db';
+import { TIERS } from '@/utils/tier-config';
+
+const VALID_TIERS = [TIERS.STARTER, TIERS.CORE, TIERS.PREMIUM];
 
 export async function POST(request) {
     try {
-        const { email, password, firstName, lastName } = await request.json();
+        const { email, password, firstName, lastName, selectedTier } = await request.json();
 
         if (!email || !password) {
             return NextResponse.json(
                 { error: 'Email and password are required' },
+                { status: 400 }
+            );
+        }
+
+        if (!selectedTier || !VALID_TIERS.includes(selectedTier)) {
+            return NextResponse.json(
+                { error: 'Valid plan selection is required' },
                 { status: 400 }
             );
         }
@@ -81,11 +92,18 @@ export async function POST(request) {
                 [orgId, user.id, isFirstUser ? 'admin' : 'member', isFirstUser]
             );
 
+            // Create pending tier record for the selected plan
+            await client.query(
+                `INSERT INTO user_tiers (user_id, current_tier, subscription_status)
+         VALUES ($1, $2, 'pending_payment')`,
+                [user.id, selectedTier]
+            );
+
             // Log activity
             await client.query(
                 `INSERT INTO user_activity (org_id, user_id, activity_type, description)
          VALUES ($1, $2, 'user_created', $3)`,
-                [orgId, user.id, `User ${email} signed up`]
+                [orgId, user.id, `User ${email} signed up with ${selectedTier} plan`]
             );
 
             await client.query('COMMIT');
@@ -103,6 +121,7 @@ export async function POST(request) {
                 },
                 token,
                 isFirstUser,
+                selectedTier,
             });
         } catch (error) {
             await client.query('ROLLBACK');

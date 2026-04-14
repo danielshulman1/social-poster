@@ -55,18 +55,39 @@ export async function getUserTier(userId) {
     );
 
     if (result.rows.length === 0) {
-      // User doesn't have a tier record yet - return free tier
+      // User doesn't have a tier record - return null status
       return {
         user_id: userId,
-        current_tier: TIERS.FREE,
+        current_tier: null,
         setup_fee_paid: false,
-        subscription_status: 'active',
+        subscription_status: 'none',
       };
     }
 
     return result.rows[0];
   } catch (error) {
     console.error('[getUserTier] Error:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Create initial tier record for new user (with pending status for signup)
+ * For use during signup transaction with a client connection
+ */
+export async function createUserTierPending(userId, tier, client) {
+  try {
+    const q = client ? client.query.bind(client) : query;
+    const result = await q(
+      `INSERT INTO user_tiers (user_id, current_tier, subscription_status)
+       VALUES ($1, $2, 'pending_payment')
+       RETURNING *`,
+      [userId, tier]
+    );
+
+    return result.rows[0];
+  } catch (error) {
+    console.error('[createUserTierPending] Error:', error.message);
     throw error;
   }
 }
@@ -191,10 +212,7 @@ export async function isSubscriptionActive(userId) {
   try {
     const tierInfo = await getUserTier(userId);
 
-    if (tierInfo.current_tier === TIERS.FREE) {
-      return true; // Free tier is always active
-    }
-
+    // Only 'active' status means subscription is active
     const isActive = tierInfo.subscription_status === 'active';
     const notExpired = !tierInfo.next_billing_date ||
                        new Date(tierInfo.next_billing_date) > new Date();

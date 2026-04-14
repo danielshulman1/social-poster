@@ -54,6 +54,15 @@ export async function requireTier(request, requiredTier = TIERS.FREE) {
     const tierInfo = await getUserTier(userId);
     const isActive = await isSubscriptionActive(userId);
 
+    // Require active subscription
+    if (!tierInfo || tierInfo.subscription_status !== 'active') {
+      return {
+        error: true,
+        status: 403,
+        message: 'No active subscription',
+      };
+    }
+
     const tierOrder = {
       [TIERS.FREE]: 0,
       [TIERS.STARTER]: 1,
@@ -64,7 +73,7 @@ export async function requireTier(request, requiredTier = TIERS.FREE) {
     const userLevel = tierOrder[tierInfo.current_tier] || 0;
     const requiredLevel = tierOrder[requiredTier] || 0;
 
-    if (!isActive || userLevel < requiredLevel) {
+    if (userLevel < requiredLevel) {
       return {
         error: true,
         status: 403,
