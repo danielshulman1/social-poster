@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
-import { TIER_CONFIG } from '../utils/tier-config';
+import { TIER_CONFIG } from '../../utils/tier-config';
 
 export default function SignUpPage() {
     const router = useRouter();
