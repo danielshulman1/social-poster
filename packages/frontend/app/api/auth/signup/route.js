@@ -4,7 +4,7 @@ import { hashPassword, generateToken } from '@/utils/auth';
 
 export async function POST(request) {
     try {
-        const { email, password, firstName, lastName } = await request.json();
+        const { email, password, firstName, lastName, selectedTier } = await request.json();
 
         if (!email || !password) {
             return NextResponse.json(
@@ -81,11 +81,12 @@ export async function POST(request) {
                 [orgId, user.id, isFirstUser ? 'admin' : 'member', isFirstUser]
             );
 
-            // Create pending tier record (admin must assign tier)
+            // Create pending tier record with selected tier
+            const tierToUse = selectedTier || 'free';
             await client.query(
                 `INSERT INTO user_tiers (user_id, current_tier, subscription_status)
          VALUES ($1, $2, 'pending_payment')`,
-                [user.id, 'free']
+                [user.id, tierToUse]
             );
 
             // Log activity
