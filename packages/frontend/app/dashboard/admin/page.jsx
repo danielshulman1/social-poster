@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Shield, Users, Mail, CheckCircle2, TrendingUp, Plus, X, MoreVertical, Trash2, Key, ListTodo, CreditCard } from 'lucide-react';
-import { TIERS, getTierConfig } from '../utils/tier-config';
+import { TIERS, getTierConfig } from '../../utils/tier-config';
 
 export default function AdminPage() {
     const [hasAccess, setHasAccess] = useState(null);
