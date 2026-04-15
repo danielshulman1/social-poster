@@ -165,19 +165,39 @@ export default function WorkflowsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
-          <p className="text-muted-foreground mt-1">Manage and monitor your automation pipelines.</p>
+    <div className="page-shell space-y-6">
+      <section className="page-hero">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-3">
+            <span className="page-kicker">Workflow Library</span>
+            <div>
+              <h1 className="text-4xl font-semibold tracking-[-0.05em]">Build and run your publishing pipelines.</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Create, rename, duplicate, and activate workflows from one queue. The editor opens when you need to go deeper.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="metric-panel min-w-[160px]">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Total</p>
+              <p className="mt-2 text-3xl font-semibold">{workflows.length}</p>
+            </div>
+            <div className="metric-panel min-w-[160px]">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Active</p>
+              <p className="mt-2 text-3xl font-semibold">{workflows.filter((workflow) => workflow.isActive).length}</p>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <div className="flex justify-end">
         <Button onClick={handleCreateWorkflow} disabled={isCreating}>
           {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
           New Workflow
         </Button>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="surface-panel overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

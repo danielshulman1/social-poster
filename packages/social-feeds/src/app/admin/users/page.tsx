@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Lock, AlertCircle, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, CheckCircle2, Lock, AlertCircle, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { TIER_CONFIG, TIER_ORDER, TIER_OPTIONS } from "@/lib/tiers";
 
 interface User {
     id: string;
@@ -20,7 +22,7 @@ interface User {
     workflowCount: number;
     subscription?: {
         status: string;
-        plan: string;
+        plan: string | null;
     };
     persona?: {
         hasPersona: boolean;
@@ -38,6 +40,8 @@ export default function AdminUsersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [authorizing, setAuthorizing] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [savingTierFor, setSavingTierFor] = useState<string | null>(null);
+    const [selectedTiers, setSelectedTiers] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -58,6 +62,11 @@ export default function AdminUsersPage() {
             if (!res.ok) throw new Error("Failed to fetch users");
             const data = await res.json();
             setUsers(data);
+            setSelectedTiers(
+                Object.fromEntries(
+                    data.map((user: User) => [user.id, user.subscription?.plan || TIER_OPTIONS.STARTER])
+                )
+            );
         } catch {
             toast.error("Error fetching users");
         } finally {
@@ -114,11 +123,65 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleTierSave = async (userId: string) => {
+        const tier = selectedTiers[userId] || TIER_OPTIONS.STARTER;
+        setSavingTierFor(userId);
+
+        try {
+            const res = await fetch("/api/admin/users/tier", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, tier }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.error || "Failed to update tier");
+            }
+
+            toast.success(`Tier updated to ${TIER_CONFIG[tier as keyof typeof TIER_CONFIG]?.name || tier}`);
+            await fetchUsers();
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Failed to update tier");
+        } finally {
+            setSavingTierFor(null);
+        }
+    };
+
     if (isLoading) return <div className="p-8">Loading users...</div>;
 
     return (
-        <div className="container mx-auto py-8">
-            <Card>
+        <div className="page-shell space-y-6">
+            <section className="page-hero">
+                <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                    <div className="space-y-3">
+                        <span className="page-kicker">Admin Console</span>
+                        <div>
+                            <h1 className="text-4xl font-semibold tracking-[-0.05em]">Manage users, tiers, and persona access from one place.</h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                                Tier changes, audit authorization, and destructive actions now sit in a structured operating panel instead of a plain back-office table.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="metric-panel">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Users</p>
+                            <p className="mt-3 text-3xl font-semibold">{users.length}</p>
+                        </div>
+                        <div className="metric-panel">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Active Subs</p>
+                            <p className="mt-3 text-3xl font-semibold">{users.filter((user) => user.subscription?.status === "active").length}</p>
+                        </div>
+                        <div className="metric-panel">
+                            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Admins</p>
+                            <p className="mt-3 text-3xl font-semibold">{users.filter((user) => user.role === "admin").length}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <Card className="overflow-hidden">
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <div>
@@ -135,6 +198,7 @@ export default function AdminUsersPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Role</TableHead>
+                                <TableHead>Tier</TableHead>
                                 <TableHead>Subscription</TableHead>
                                 <TableHead>Persona Audit</TableHead>
                                 <TableHead>Workflows</TableHead>
@@ -153,12 +217,49 @@ export default function AdminUsersPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
+                                        <div className="flex min-w-[220px] items-center gap-2">
+                                            <Select
+                                                value={selectedTiers[user.id] || TIER_OPTIONS.STARTER}
+                                                onValueChange={(value) =>
+                                                    setSelectedTiers((current) => ({
+                                                        ...current,
+                                                        [user.id]: value,
+                                                    }))
+                                                }
+                                            >
+                                                <SelectTrigger className="w-[150px]">
+                                                    <SelectValue placeholder="Select tier" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {TIER_ORDER.map((tierId) => (
+                                                        <SelectItem key={tierId} value={tierId}>
+                                                            {TIER_CONFIG[tierId].name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => handleTierSave(user.id)}
+                                                disabled={savingTierFor === user.id || (selectedTiers[user.id] || TIER_OPTIONS.STARTER) === (user.subscription?.plan || TIER_OPTIONS.STARTER)}
+                                            >
+                                                {savingTierFor === user.id ? (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                ) : (
+                                                    <Save className="w-3 h-3" />
+                                                )}
+                                                Save
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
                                         {user.subscription ? (
                                             <Badge variant={user.subscription.status === "active" ? "default" : "outline"} className={user.subscription.status === "active" ? "bg-green-600 hover:bg-green-700" : ""}>
-                                                {user.subscription.plan || "Free"} ({user.subscription.status})
+                                                {user.subscription.plan || "none"} ({user.subscription.status})
                                             </Badge>
                                         ) : (
-                                            <span className="text-muted-foreground text-sm">Free</span>
+                                            <span className="text-muted-foreground text-sm">No subscription</span>
                                         )}
                                     </TableCell>
                                     <TableCell>

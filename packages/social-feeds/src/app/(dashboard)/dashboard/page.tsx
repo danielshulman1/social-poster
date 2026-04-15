@@ -51,22 +51,29 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="container mx-auto py-8">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-muted-foreground mt-1">Overview of your social automation activity.</p>
+        <div className="page-shell space-y-8">
+            <section className="page-hero">
+                <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-3">
+                        <span className="page-kicker">Overview</span>
+                        <div>
+                            <h1 className="text-4xl font-semibold tracking-[-0.05em]">See the shape of your publishing system at a glance.</h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                                Workflow health, persona status, and quick actions now sit in the same visual layer so the dashboard reads as a control surface, not a pile of cards.
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/editor/new">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> New Workflow
+                        </Button>
+                    </Link>
                 </div>
-                <Link href="/editor/new">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> New Workflow
-                    </Button>
-                </Link>
-            </div>
+            </section>
 
             {/* STATS CARDS */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-                <Card>
+                <Card className="overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Workflows</CardTitle>
                         <Activity className="h-4 w-4 text-muted-foreground" />
@@ -78,7 +85,7 @@ export default function DashboardPage() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -88,7 +95,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground">Currently running</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Draft Workflows</CardTitle>
                         <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -98,7 +105,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground">Not yet activated</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
                         <Calendar className="h-4 w-4 text-blue-600" />
@@ -116,7 +123,7 @@ export default function DashboardPage() {
             {/* AI PERSONA CARD */}
             <div className="mb-8">
                 {persona ? (
-                    <Card className="border-blue-200 bg-blue-50">
+                    <Card className="border-secondary/70 bg-[linear-gradient(135deg,rgba(219,232,227,0.9),rgba(255,250,243,0.95))]">
                         <CardHeader className="flex flex-row items-start justify-between space-y-0">
                             <div>
                                 <CardTitle className="flex items-center gap-2">
@@ -131,13 +138,13 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <p className="text-sm text-gray-600">{persona.brandVoiceSummary}</p>
+                                <p className="text-sm leading-7 text-muted-foreground">{persona.brandVoiceSummary}</p>
                             </div>
                             <div>
                                 <p className="text-xs font-medium text-gray-600 mb-2">Content Pillars:</p>
                                 <div className="flex flex-wrap gap-2">
                                     {persona.contentPillars.map((pillar, i) => (
-                                        <span key={i} className="inline-block px-3 py-1 bg-blue-200 text-blue-900 rounded-full text-xs font-medium">
+                                        <span key={i} className="inline-block rounded-full bg-background/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-foreground">
                                             {pillar}
                                         </span>
                                     ))}
@@ -146,7 +153,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    <Card className="border-amber-200 bg-amber-50">
+                    <Card className="border-primary/25 bg-[linear-gradient(135deg,rgba(238,217,188,0.7),rgba(255,250,243,0.95))]">
                         <CardHeader className="flex flex-row items-start justify-between space-y-0">
                             <div>
                                 <CardTitle className="flex items-center gap-2">

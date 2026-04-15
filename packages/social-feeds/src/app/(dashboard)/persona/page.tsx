@@ -205,22 +205,26 @@ export default function PersonaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="page-shell max-w-5xl space-y-8">
         {/* Header */}
-        <div className="mb-8">
+        <section className="page-hero">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+            className="eyebrow-link mb-6"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Create Your AI Persona</h1>
-          <p className="text-gray-600">
-            Let's analyze your communication style and create a persona that captures your voice
-          </p>
-        </div>
+          <div className="space-y-3">
+            <span className="page-kicker">Persona Builder</span>
+            <div>
+              <h1 className="text-4xl font-semibold tracking-[-0.05em]">Create an AI persona that matches your voice.</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                Answer the interview, add recent post samples, and generate a reusable brand voice profile for your workflows.
+              </p>
+            </div>
+          </div>
+        </section>
 
         {/* Progress Indicator */}
         <div className="mb-8 flex gap-2">
@@ -228,7 +232,7 @@ export default function PersonaPage() {
             <div
               key={s}
               className={`h-2 flex-1 rounded-full transition-colors ${
-                s <= step ? 'bg-blue-600' : 'bg-gray-200'
+                s <= step ? 'bg-primary' : 'bg-muted'
               }`}
             />
           ))}
@@ -236,15 +240,15 @@ export default function PersonaPage() {
 
         {/* Audit Locked */}
         {auditStatus?.locked && step !== 4 && (
-          <Card className="border-red-200 bg-red-50 mb-8">
+          <Card className="mb-8 border-destructive/30 bg-[linear-gradient(180deg,rgba(196,71,59,0.08),rgba(255,250,243,0.95))]">
             <CardHeader>
-              <CardTitle className="text-red-900">Persona Audit Locked</CardTitle>
-              <CardDescription className="text-red-800">
+              <CardTitle>Persona Audit Locked</CardTitle>
+              <CardDescription>
                 Your persona audit has already been used. Contact your administrator to authorize another audit run.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-red-800">
+              <p className="text-sm text-muted-foreground">
                 Once your admin authorizes it, you'll be able to run the audit again.
               </p>
             </CardContent>
@@ -253,10 +257,10 @@ export default function PersonaPage() {
 
         {/* Audit Authorized (waiting for user to run) */}
         {auditStatus?.authorizedAt && !auditStatus?.locked && step !== 4 && (
-          <Card className="border-yellow-200 bg-yellow-50 mb-8">
+          <Card className="mb-8 border-accent/60 bg-[linear-gradient(180deg,rgba(238,217,188,0.5),rgba(255,250,243,0.96))]">
             <CardHeader>
-              <CardTitle className="text-yellow-900">Audit Re-authorized by Admin</CardTitle>
-              <CardDescription className="text-yellow-800">
+              <CardTitle>Audit Re-authorized by Admin</CardTitle>
+              <CardDescription>
                 Your administrator has authorized one more persona audit. Complete the form below to regenerate.
               </CardDescription>
             </CardHeader>
@@ -273,7 +277,7 @@ export default function PersonaPage() {
             <CardContent className="space-y-6">
               {interviewAnswers.map((item, index) => (
                 <div key={index}>
-                  <Label className="font-medium text-gray-900">{item.question}</Label>
+                  <Label>{item.question}</Label>
                   <Textarea
                     value={item.answer}
                     onChange={(e) => handleInterviewChange(index, e.target.value)}
@@ -317,7 +321,7 @@ export default function PersonaPage() {
             <CardContent className="space-y-6">
               {postSamples.map((post, index) => (
                 <div key={index}>
-                  <Label className="font-medium text-gray-900">Post {index + 1}</Label>
+                  <Label>Post {index + 1}</Label>
                   <Textarea
                     value={post}
                     onChange={(e) => handlePostChange(index, e.target.value)}
@@ -356,9 +360,9 @@ export default function PersonaPage() {
         {step === 3 && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
-              <p className="text-lg font-medium text-gray-900">Generating your persona...</p>
-              <p className="text-gray-600 mt-2">This may take a moment</p>
+              <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
+              <p className="text-lg font-medium text-foreground">Generating your persona...</p>
+              <p className="mt-2 text-muted-foreground">This may take a moment</p>
             </CardContent>
           </Card>
         )}
@@ -366,25 +370,25 @@ export default function PersonaPage() {
         {/* Step 4: Results */}
         {step === 4 && persona && (
           <div className="space-y-6">
-            <Card className="border-green-200 bg-green-50">
+            <Card className="border-secondary/80 bg-[linear-gradient(180deg,rgba(219,232,227,0.7),rgba(255,250,243,0.95))]">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Check className="w-5 h-5 text-green-600" />
+                  <Check className="w-5 h-5 text-secondary-foreground" />
                   <CardTitle>Your AI Persona</CardTitle>
                 </div>
                 <CardDescription>Here's your personalized brand voice summary</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label className="font-medium text-gray-900 mb-2 block">Brand Voice Summary</Label>
-                  <p className="text-gray-700 leading-relaxed">{persona.brandVoiceSummary}</p>
+                  <Label className="mb-2 block">Brand Voice Summary</Label>
+                  <p className="leading-7 text-muted-foreground">{persona.brandVoiceSummary}</p>
                 </div>
 
                 <div>
-                  <Label className="font-medium text-gray-900 mb-3 block">Content Pillars</Label>
+                  <Label className="mb-3 block">Content Pillars</Label>
                   <div className="flex flex-wrap gap-2">
                     {persona.contentPillars.map((pillar, index) => (
-                      <Badge key={index} variant="default" className="px-3 py-1">
+                      <Badge key={index} variant="outline" className="px-3 py-1">
                         {pillar}
                       </Badge>
                     ))}
@@ -421,7 +425,6 @@ export default function PersonaPage() {
             </Card>
           </div>
         )}
-      </div>
     </div>
   );
 }

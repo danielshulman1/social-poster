@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { assertUserCanConnectProvider, isTierAccessError } from "@/lib/tier-access";
 
 const normalizeAccessToken = (raw: unknown): string => {
     if (typeof raw !== 'string') return '';
@@ -74,6 +75,8 @@ export async function POST(req: Request) {
             return new NextResponse("Missing fields", { status: 400 });
         }
 
+        await assertUserCanConnectProvider(auth.userId, platform);
+
         // --- STRICT INSTAGRAM TOKEN VALIDATION ---
         // Prevent users from manually pasting their IG Business Account ID instead of a Page Access Token
         if (platform === 'instagram') {
@@ -112,6 +115,9 @@ export async function POST(req: Request) {
 
         return NextResponse.json(connection);
     } catch (error: any) {
+        if (isTierAccessError(error)) {
+            return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+        }
         console.error("Error in POST /api/connections:", error);
         return new NextResponse(error.message || "Internal Server Error", { status: 500 });
     }

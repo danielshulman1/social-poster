@@ -20,6 +20,7 @@ import {
     type WorkflowExecutionResult,
     type WorkflowExecutionStatus,
 } from "@/lib/workflowExecutionLog";
+import { assertUserCanPublishPlatform } from "@/lib/tier-access";
 
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -1012,6 +1013,7 @@ export async function executeWorkflow(
                 }
 
                 case 'facebook-publisher': {
+                    await assertUserCanPublishPlatform(userId, 'facebook');
                     const accountId = node.data?.accountId;
                     if (!accountId) throw new Error('No Facebook page selected. Configure the node first.');
 
@@ -1088,6 +1090,7 @@ export async function executeWorkflow(
                 }
 
                 case 'linkedin-publisher': {
+                    await assertUserCanPublishPlatform(userId, 'linkedin');
                     const liTextContent = lastTextOutput || lastOutput || node.data?.content || '';
                     const liImageUrl = node.data?.imageUrl || lastImageUrl || '';
 
@@ -1266,6 +1269,7 @@ export async function executeWorkflow(
                 }
 
                 case 'instagram-publisher': {
+                    await assertUserCanPublishPlatform(userId, 'instagram');
                     const igAccountId = node.data?.accountId;
                     if (!igAccountId) throw new Error('No Instagram account selected. Configure the node first.');
 
@@ -1347,6 +1351,7 @@ export async function executeWorkflow(
                 }
 
                 case 'threads-publisher': {
+                    await assertUserCanPublishPlatform(userId, 'threads');
                     const accountId = node.data?.accountId;
                     if (!accountId) throw new Error('No Threads account selected. Configure the node first.');
 

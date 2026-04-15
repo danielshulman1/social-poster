@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -63,11 +64,12 @@ export default function LoginPage() {
     };
 
     return (
-        <Card>
+        <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
             <CardHeader>
-                <CardTitle className="text-2xl">Login</CardTitle>
+                <div className="page-kicker w-fit">Welcome Back</div>
+                <CardTitle className="text-4xl">Sign in</CardTitle>
                 <CardDescription>
-                    Enter your email below to login to your account
+                    Enter your email and password to get back into your workflows, channels, and publishing queue.
                 </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
@@ -104,7 +106,8 @@ export default function LoginPage() {
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2">
                     <Button className="w-full" type="submit" disabled={isLoading}>
-                        {isLoading ? "Logging in..." : "Login"}
+                        {isLoading ? "Logging in..." : "Continue to app"}
+                        {!isLoading && <ArrowRight className="h-4 w-4" />}
                     </Button>
                     <div className="text-sm text-center text-muted-foreground">
                         Don&apos;t have an account?{" "}

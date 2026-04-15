@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma db push --accept-data-loss || true) && cross-env NEXTAUTH_SECRET=\"fc8c4943-718a-4d24-a734-8c887e5b2234\" next build",
+    "build": "prisma generate && cross-env NEXTAUTH_SECRET=\"fc8c4943-718a-4d24-a734-8c887e5b2234\" next build",
     "start": "next start",
     "lint": "eslint",
     "worker": "ts-node src/worker.ts",

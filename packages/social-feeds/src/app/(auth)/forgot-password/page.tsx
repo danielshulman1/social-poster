@@ -47,9 +47,10 @@ export default function ForgotPasswordPage() {
 
     if (submitted) {
         return (
-            <Card>
+            <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Check your email</CardTitle>
+                    <div className="page-kicker w-fit">Email Sent</div>
+                    <CardTitle className="text-4xl">Check your email</CardTitle>
                     <CardDescription>
                         If an account exists for {email}, you will receive a password reset link
                         shortly.
@@ -70,9 +71,10 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <Card>
+        <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
             <CardHeader>
-                <CardTitle className="text-2xl">Forgot password</CardTitle>
+                <div className="page-kicker w-fit">Password Recovery</div>
+                <CardTitle className="text-4xl">Reset your password</CardTitle>
                 <CardDescription>
                     Enter your email and we'll send you a reset link
                 </CardDescription>

@@ -10,10 +10,10 @@ export default function DashboardLayout({
 }) {
     return (
         <DataSyncProvider>
-            <div className="flex h-screen overflow-hidden bg-background">
+            <div className="min-h-screen bg-transparent lg:flex">
                 <AppSidebar />
                 <main className="flex-1 overflow-auto">
-                    <div className="min-h-full bg-[linear-gradient(180deg,rgba(37,99,235,0.08),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.92))] dark:bg-[linear-gradient(180deg,rgba(96,165,250,0.08),transparent_24%),linear-gradient(135deg,rgba(15,23,42,0.7),rgba(15,23,42,0.92))]">
+                    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(229,140,98,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(45,127,122,0.12),transparent_22%)]">
                         {children}
                     </div>
                 </main>

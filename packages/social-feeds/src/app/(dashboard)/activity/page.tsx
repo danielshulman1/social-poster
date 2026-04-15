@@ -107,13 +107,18 @@ export default async function ActivityPage() {
     });
 
     return (
-        <div className="container mx-auto py-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Activity Log</h1>
-                    <p className="text-muted-foreground mt-1">Audit trail of workflow runs, node execution, and failure reasons.</p>
+        <div className="page-shell space-y-6">
+            <section className="page-hero">
+                <div className="flex flex-col gap-3">
+                    <span className="page-kicker">Execution History</span>
+                    <div>
+                        <h1 className="text-4xl font-semibold tracking-[-0.05em]">Track every workflow run with real failure detail.</h1>
+                        <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+                            Runs, node events, and failure reasons are grouped into an audit trail that is easier to scan under pressure.
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </section>
 
             {items.length === 0 ? (
                 <Card className="h-[320px] flex flex-col">
@@ -132,7 +137,7 @@ export default async function ActivityPage() {
             ) : (
                 <div className="space-y-4">
                     {items.map(({ execution, log, failureReasons, recentEvents }) => (
-                        <Card key={execution.id}>
+                        <Card key={execution.id} className="overflow-hidden">
                             <CardHeader className="space-y-3">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div className="space-y-2">
@@ -181,7 +186,7 @@ export default async function ActivityPage() {
                                             {recentEvents.map((event) => (
                                                 <div
                                                     key={`${execution.id}-${event.at}-${event.type}-${event.nodeId || "run"}`}
-                                                    className="rounded-lg border px-3 py-2"
+                                                    className="rounded-2xl border border-border/70 bg-background/55 px-4 py-3"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="space-y-1">

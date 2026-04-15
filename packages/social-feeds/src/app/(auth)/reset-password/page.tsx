@@ -28,9 +28,10 @@ function ResetPasswordForm() {
 
     if (!token) {
         return (
-            <Card>
+            <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
                 <CardHeader>
-                    <CardTitle className="text-2xl">Invalid link</CardTitle>
+                    <div className="page-kicker w-fit">Reset Error</div>
+                    <CardTitle className="text-4xl">Invalid link</CardTitle>
                     <CardDescription>
                         This password reset link is invalid or has expired.
                     </CardDescription>
@@ -87,9 +88,10 @@ function ResetPasswordForm() {
     };
 
     return (
-        <Card>
+        <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
             <CardHeader>
-                <CardTitle className="text-2xl">Reset password</CardTitle>
+                <div className="page-kicker w-fit">Password Recovery</div>
+                <CardTitle className="text-4xl">Choose a new password</CardTitle>
                 <CardDescription>Enter your new password below</CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
@@ -137,7 +139,7 @@ export default function ResetPasswordPage() {
     return (
         <Suspense
             fallback={
-                <Card>
+                <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
                     <CardContent className="p-6">Loading...</CardContent>
                 </Card>
             }

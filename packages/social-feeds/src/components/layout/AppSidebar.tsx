@@ -34,30 +34,30 @@ export function AppSidebar() {
     const { data: session } = useSession();
 
     return (
-        <div className="flex h-screen w-72 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-            <div className="border-b border-sidebar-border p-5">
-                <div className="rounded-3xl bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(244,63,94,0.14))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <aside className="w-full border-b border-sidebar-border bg-sidebar text-sidebar-foreground lg:h-screen lg:w-80 lg:border-r lg:border-b-0">
+            <div className="border-b border-sidebar-border p-4 lg:p-5">
+                <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(229,140,98,0.18),rgba(255,255,255,0.03))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                     <div className="mb-4 flex items-center justify-between">
-                        <div className="rounded-2xl bg-white/10 p-2 text-white">
+                        <div className="rounded-2xl border border-white/10 bg-white/10 p-2 text-white">
                             <Sparkles size={18} />
                         </div>
                         <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/72">
-                            Live Stack
+                            Control Room
                         </span>
                     </div>
                     <h1 className="text-xl font-semibold tracking-tight text-white">Social Poster</h1>
-                    <p className="mt-1 text-sm text-white/72">
-                        Publish, connect, and operate every channel from one control surface.
+                    <p className="mt-1 max-w-xs text-sm leading-6 text-white/72">
+                        Plan, connect, and run every publishing workflow from one editorial command deck.
                     </p>
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-6 overflow-y-auto p-4">
-                <div className="space-y-1">
+            <nav className="flex-1 overflow-x-auto p-4 lg:overflow-y-auto">
+                <div className="space-y-4">
                     <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
                         Command Deck
                     </p>
-                    <div className="space-y-1.5">
+                    <div className="flex gap-2 lg:flex-col lg:gap-1.5">
                 {menuItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
@@ -67,20 +67,20 @@ export function AppSidebar() {
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
+                                "group flex min-w-fit items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all duration-200 cursor-pointer lg:min-w-0",
                                 isActive
-                                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-blue-950/20"
+                                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_14px_30px_rgba(0,0,0,0.2)]"
                                     : "text-white/72 hover:bg-sidebar-accent hover:text-white"
                             )}
                         >
                             <span className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
+                                "flex h-10 w-10 items-center justify-center rounded-2xl border transition-colors",
                                 isActive ? "border-white/20 bg-white/12" : "border-white/8 bg-white/4 group-hover:border-white/12 group-hover:bg-white/6"
                             )}>
                                 <Icon size={18} />
                             </span>
-                            <span className="flex-1">{item.label}</span>
-                            {isActive && <ArrowUpRight size={16} className="opacity-90" />}
+                            <span className="flex-1 whitespace-nowrap">{item.label}</span>
+                            {isActive && <ArrowUpRight size={16} className="hidden opacity-90 lg:block" />}
                         </Link>
                     );
                 })}
@@ -92,33 +92,35 @@ export function AppSidebar() {
                         <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
                             Admin
                         </p>
-                        <Link
-                            href="/admin/users"
-                            className={cn(
-                                "group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all duration-200 cursor-pointer",
-                                pathname === "/admin/users"
-                                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-blue-950/20"
-                                    : "text-white/72 hover:bg-sidebar-accent hover:text-white"
-                            )}
-                        >
-                            <span className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
-                                pathname === "/admin/users" ? "border-white/20 bg-white/12" : "border-white/8 bg-white/4 group-hover:border-white/12 group-hover:bg-white/6"
-                            )}>
-                                <Shield size={18} />
-                            </span>
-                            <span className="flex-1">Admin Users</span>
-                            {pathname === "/admin/users" && <ArrowUpRight size={16} className="opacity-90" />}
-                        </Link>
+                        <div className="flex gap-2 lg:flex-col lg:gap-1.5">
+                            <Link
+                                href="/admin/users"
+                                className={cn(
+                                    "group flex min-w-fit items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all duration-200 cursor-pointer lg:min-w-0",
+                                    pathname === "/admin/users"
+                                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_14px_30px_rgba(0,0,0,0.2)]"
+                                        : "text-white/72 hover:bg-sidebar-accent hover:text-white"
+                                )}
+                            >
+                                <span className={cn(
+                                    "flex h-10 w-10 items-center justify-center rounded-2xl border transition-colors",
+                                    pathname === "/admin/users" ? "border-white/20 bg-white/12" : "border-white/8 bg-white/4 group-hover:border-white/12 group-hover:bg-white/6"
+                                )}>
+                                    <Shield size={18} />
+                                </span>
+                                <span className="flex-1 whitespace-nowrap">Admin Users</span>
+                                {pathname === "/admin/users" && <ArrowUpRight size={16} className="hidden opacity-90 lg:block" />}
+                            </Link>
+                        </div>
                     </div>
                 )}
             </nav>
 
             <div className="space-y-4 border-t border-sidebar-border p-4">
                 {session?.user && (
-                    <div className="rounded-2xl border border-white/8 bg-white/4 p-3">
+                    <div className="rounded-[1.6rem] border border-white/8 bg-white/4 p-3">
                         <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
                             {session.user.name?.[0] || session.user.email?.[0] || 'U'}
                         </div>
                         <div className="overflow-hidden">
@@ -137,6 +139,6 @@ export function AppSidebar() {
                     Sign Out
                 </Button>
             </div>
-        </div>
+        </aside>
     );
 }

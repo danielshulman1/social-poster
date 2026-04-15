@@ -91,13 +91,18 @@ export default function RSSGeneratorPage() {
   };
 
   return (
-    <div className="p-8 space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">RSS Generator</h2>
-        <p className="text-muted-foreground mt-1">
-          Create RSS 2.0 feed XML from your content and download it as `feed.xml`.
-        </p>
-      </div>
+    <div className="page-shell space-y-6">
+      <section className="page-hero">
+        <div className="space-y-3">
+          <span className="page-kicker">Feed Builder</span>
+          <div>
+            <h2 className="text-4xl font-semibold tracking-[-0.05em]">Generate clean RSS feed XML without leaving the app.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-muted-foreground">
+              Add channel metadata, assemble items, and export a feed file that is ready to publish.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <Card>
         <CardHeader>
@@ -133,7 +138,7 @@ export default function RSSGeneratorPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, index) => (
-            <div key={index} className="rounded-md border p-4 space-y-3">
+            <div key={index} className="rounded-[1.4rem] border border-border/70 bg-background/55 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Item {index + 1}</p>
                 <Button
