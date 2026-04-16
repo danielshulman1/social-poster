@@ -6,6 +6,8 @@ import { ensureIntegrationCredentialsTable } from '@/utils/ensure-integration-cr
 import { ensureOAuthClientCredentialsTable } from '@/utils/ensure-oauth-client-credentials';
 import { decryptValue } from '@/lib/automation/encryption';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Get all available integrations with connection status
  */

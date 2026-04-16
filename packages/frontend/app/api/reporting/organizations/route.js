@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/utils/db';
 import { requireAdmin } from '@/utils/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         const user = await requireAdmin(request);

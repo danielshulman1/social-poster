@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/utils/db';
 import { ensureSuperadminColumn } from '@/utils/ensure-superadmin-column';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         await ensureSuperadminColumn();

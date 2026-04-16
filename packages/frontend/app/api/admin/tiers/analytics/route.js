@@ -6,6 +6,8 @@
 import { requireAdmin } from '@/utils/auth';
 import { ensureUserTiersTable, getTierAnalytics } from '@/utils/tier-db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     // Ensure table exists

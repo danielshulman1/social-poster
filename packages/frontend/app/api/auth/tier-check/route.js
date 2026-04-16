@@ -3,9 +3,11 @@
  * GET /api/auth/tier-check
  */
 
-import { requireAuth } from '../../../utils/auth';
-import { getUserTierInfo } from '../../../utils/tier-check';
-import { ensureUserTiersTable } from '../../../utils/tier-db';
+import { requireAuth } from '@/utils/auth';
+import { getUserTierInfo } from '@/utils/tier-check';
+import { ensureUserTiersTable } from '@/utils/tier-db';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {

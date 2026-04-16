@@ -23,7 +23,13 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata = {
     title: 'Operon',
     description: 'AI-powered email operations and automation',
-    viewport: 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes',
+};
+
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
 };
 
 export default function RootLayout({ children }) {
