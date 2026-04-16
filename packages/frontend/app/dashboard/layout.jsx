@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardSidebar from '../components/DashboardSidebar';
+import Footer from '../components/Footer';
 import dynamic from 'next/dynamic';
 import { Menu, Loader2 } from 'lucide-react';
 
@@ -86,7 +87,7 @@ export default function DashboardLayout({ children }) {
 
     return (
         <SubscriptionGate>
-            <div className="min-h-screen bg-[#050c1b] text-white">
+            <div className="min-h-screen bg-[#050c1b] text-white flex flex-col">
                 <DashboardSidebar
                     isOpen={isSidebarOpen}
                     onClose={() => setIsSidebarOpen(false)}
@@ -99,7 +100,7 @@ export default function DashboardLayout({ children }) {
                         aria-label="Close navigation"
                     />
                 )}
-                <div className="lg:ml-64">
+                <div className="lg:ml-64 flex-1 flex flex-col">
                     <div className="lg:hidden px-6 pt-6">
                         <button
                             type="button"
@@ -111,11 +112,12 @@ export default function DashboardLayout({ children }) {
                             Menu
                         </button>
                     </div>
-                    <main className="min-h-screen px-6 lg:px-10 py-8">
+                    <main className="flex-1 px-6 lg:px-10 py-8">
                         {children}
                     </main>
                     <HelpCenterButton />
                 </div>
+                <Footer />
             </div>
         </SubscriptionGate>
     );
