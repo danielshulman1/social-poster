@@ -1,5 +1,6 @@
 import { Sora, Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
+import Footer from './components/Footer';
 
 const sora = Sora({
     subsets: ['latin'],
@@ -28,8 +29,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <html lang="en" className={`${sora.variable} ${inter.variable} ${plusJakarta.variable}`}>
-            <body className="font-inter antialiased">
-                {children}
+            <body className="font-inter antialiased flex flex-col min-h-screen">
+                <main className="flex-1">
+                    {children}
+                </main>
+                <Footer />
             </body>
         </html>
     );
