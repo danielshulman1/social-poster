@@ -29,13 +29,13 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <html lang="en" className={`${sora.variable} ${inter.variable} ${plusJakarta.variable}`}>
-            <body className="font-inter antialiased min-h-screen flex flex-col">
-                <div className="flex flex-col flex-1">
-                    <main className="flex-1">
+            <body className="font-inter antialiased">
+                <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+                    <main style={{ flex: 1 }}>
                         {children}
                     </main>
+                    <Footer />
                 </div>
-                <Footer />
             </body>
         </html>
     );

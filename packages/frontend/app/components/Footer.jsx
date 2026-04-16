@@ -4,24 +4,40 @@ import Link from 'next/link';
 
 export default function Footer() {
     return (
-        <footer className="w-full bg-[#0a0f1a] border-t border-white/10 py-6 px-4 sm:px-6 lg:px-8 mt-auto">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-white/60 text-xs sm:text-sm order-2 sm:order-1">
-                        <p>&copy; 2026 Operon. All rights reserved.</p>
+        <footer style={{
+            width: '100%',
+            backgroundColor: '#0a0f1a',
+            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '24px 16px',
+            flexShrink: 0
+        }}>
+            <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px'
+                }}>
+                    <div style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '14px' }}>
+                        <p style={{ margin: 0 }}>&copy; 2026 Operon. All rights reserved.</p>
                     </div>
 
-                    <div className="flex gap-4 sm:gap-6 order-1 sm:order-2">
+                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                         <Link
                             href="/privacy"
-                            className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors"
+                            style={{ color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.target.style.color = 'rgb(255, 255, 255)'}
+                            onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.6)'}
                         >
                             Privacy Policy
                         </Link>
-                        <div className="text-white/20">|</div>
+                        <div style={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</div>
                         <Link
                             href="/terms"
-                            className="text-white/60 hover:text-white text-xs sm:text-sm transition-colors"
+                            style={{ color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontSize: '14px' }}
+                            onMouseEnter={(e) => e.target.style.color = 'rgb(255, 255, 255)'}
+                            onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.6)'}
                         >
                             Terms and Conditions
                         </Link>

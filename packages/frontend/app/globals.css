@@ -29,19 +29,8 @@ body {
   color: #f5f7ff;
   background: linear-gradient(145deg, #050c1b 0%, #06122e 40%, #050c1b 100%);
   font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  display: flex;
-  flex-direction: column;
-}
-
-body > div:first-child {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-body footer {
-  margin-top: auto;
-  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
 @media (prefers-color-scheme: dark) {
