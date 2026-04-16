@@ -3,11 +3,11 @@
  * POST /api/admin/users/tier/cancel
  */
 
-import { requireAdmin } from '../../../../../utils/auth';
+import { requireAdmin } from '@/utils/auth';
 import {
   ensureUserTiersTable,
   cancelUserSubscription,
-} from '../../../../../utils/tier-db';
+} from '@/utils/tier-db';
 
 export async function POST(request) {
   try {

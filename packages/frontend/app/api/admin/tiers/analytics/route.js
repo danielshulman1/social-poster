@@ -3,8 +3,8 @@
  * GET /api/admin/tiers/analytics
  */
 
-import { requireAdmin } from '../../../../utils/auth';
-import { ensureUserTiersTable, getTierAnalytics } from '../../../../utils/tier-db';
+import { requireAdmin } from '@/utils/auth';
+import { ensureUserTiersTable, getTierAnalytics } from '@/utils/tier-db';
 
 export async function GET(request) {
   try {

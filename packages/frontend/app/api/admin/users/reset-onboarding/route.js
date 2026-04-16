@@ -11,10 +11,10 @@
  * - Sends email notification
  */
 
-import { requireAdmin } from '../../../utils/auth';
-import { ensureAdminLogsTable, logAdminAction } from '../../../utils/admin-logs';
-import { query } from '../../../utils/db';
-import { sendOnboardingResetEmail } from '../../../lib/email';
+import { requireAdmin } from '@/utils/auth';
+import { ensureAdminLogsTable, logAdminAction } from '@/utils/admin-logs';
+import { query } from '@/utils/db';
+import { sendOnboardingResetEmail } from '@/lib/email';
 
 export async function POST(request) {
   try {

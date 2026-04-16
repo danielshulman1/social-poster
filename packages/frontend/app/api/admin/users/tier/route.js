@@ -4,9 +4,9 @@
  * POST /api/admin/users/tier - Update user tier
  */
 
-import { requireAdmin } from '../../../utils/auth';
-import { ensureUserTiersTable, updateUserTier, getUserTier } from '../../../utils/tier-db';
-import { TIERS } from '../../../utils/tier-config';
+import { requireAdmin } from '@/utils/auth';
+import { ensureUserTiersTable, updateUserTier, getUserTier } from '@/utils/tier-db';
+import { TIERS } from '@/utils/tier-config';
 
 export async function GET(request) {
   try {
