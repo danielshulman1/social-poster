@@ -83,7 +83,7 @@ export default function DashboardSidebar({ isOpen = false, onClose = () => { } }
 
     return (
         <div
-            className={`w-64 h-screen bg-[#050c1b] text-white border-r border-white/10 flex flex-col fixed left-0 top-0 shadow-[12px_0_40px_rgba(5,12,27,0.9)] z-50 transform transition-transform duration-200 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+            className={`app-sidebar-shell w-64 bg-[#050c1b] text-white border-r border-white/10 flex flex-col fixed left-0 top-0 overflow-y-auto shadow-[12px_0_40px_rgba(5,12,27,0.9)] z-50 transform transition-transform duration-200 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         >
             {/* Logo */}
             <div className="p-6 border-b border-white/10 flex items-center justify-between">

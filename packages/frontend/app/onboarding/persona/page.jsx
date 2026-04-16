@@ -102,7 +102,7 @@ export default function PersonaOnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+      <div className="app-page-shell bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-black dark:text-white" />
           <p className="text-gray-600 dark:text-gray-400">Loading onboarding...</p>
@@ -113,7 +113,7 @@ export default function PersonaOnboardingPage() {
 
   if (error && error.includes('Setup fee')) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+      <div className="app-page-shell bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
         <div className="w-full max-w-2xl text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-accent mb-6">
             <Sparkles className="h-10 w-10 text-white" />
@@ -137,7 +137,7 @@ export default function PersonaOnboardingPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+      <div className="app-page-shell bg-white dark:bg-[#0A0A0A] flex items-center justify-center p-6">
         <div className="w-full max-w-2xl text-center">
           <h1 className="text-2xl font-sora font-bold text-black dark:text-white mb-4">
             Something Went Wrong
@@ -155,7 +155,7 @@ export default function PersonaOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] p-6">
+    <div className="app-page-shell bg-white dark:bg-[#0A0A0A] p-6">
       <div className="max-w-4xl mx-auto py-12">
         {/* Header - only show before step 5 */}
         {currentStep !== 5 && (

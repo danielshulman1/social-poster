@@ -52,7 +52,7 @@ export default function HomePage() {
     }, [router]);
 
     return (
-        <div className="min-h-screen bg-[#050c1b] flex items-center justify-center px-4 sm:px-6">
+        <div className="app-page-shell bg-[#050c1b] flex items-center justify-center px-4 sm:px-6">
             <div className="text-center space-y-4 text-white max-w-sm">
                 <div>
                     <p className="font-inter tracking-[0.2em] uppercase text-xs sm:text-sm">Checking session...</p>

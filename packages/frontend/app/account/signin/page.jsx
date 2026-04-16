@@ -44,7 +44,7 @@ export default function SignInPage() {
     };
 
     return (
-        <div className="relative min-h-screen bg-[#050c1b] overflow-hidden p-6 flex items-center justify-center">
+        <div className="app-page-shell relative bg-[#050c1b] overflow-hidden p-6 flex items-center justify-center">
             <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute -top-20 -left-10 w-72 h-72 bg-blue-600/20 blur-[120px]" />
                 <div className="absolute bottom-0 right-0 w-80 h-80 bg-cyan-500/10 blur-[140px]" />

@@ -9,7 +9,7 @@ export default function GlobalError({ error, reset }) {
 
     return (
         <html>
-            <body className="min-h-screen bg-[#050c1b] text-white flex items-center justify-center px-6">
+            <body className="app-page-shell bg-[#050c1b] text-white flex items-center justify-center px-6">
                 <div className="max-w-md text-center space-y-4">
                     <h1 className="text-3xl font-bold">Operon ran into an issue</h1>
                     <p className="text-white/70">

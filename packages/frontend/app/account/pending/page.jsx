@@ -51,7 +51,7 @@ export default function PendingPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+            <div className="app-page-shell bg-[#050505] flex items-center justify-center">
                 <div className="text-white/50">Loading...</div>
             </div>
         );
@@ -60,7 +60,7 @@ export default function PendingPage() {
     const tierConfig = tier ? getTierConfig(tier.current_tier) : null;
 
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 sm:px-6 py-12">
+        <div className="app-page-shell bg-[#050505] flex items-center justify-center px-4 sm:px-6 py-12">
             <div className="w-full max-w-xl relative">
                 <div
                     aria-hidden="true"

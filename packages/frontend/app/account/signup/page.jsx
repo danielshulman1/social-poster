@@ -59,7 +59,7 @@ export default function SignUpPage() {
     // Step 1: Plan Selection
     if (step === 'plan') {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-12">
+            <div className="app-page-shell bg-[#050505] flex items-center justify-center px-4 py-12">
                 <div className="w-full max-w-5xl">
                     <div className="text-center mb-12">
                         <p className="text-xs uppercase tracking-widest text-white/60 mb-2">Choose Your Plan</p>
@@ -132,7 +132,7 @@ export default function SignUpPage() {
 
     // Step 2: Account Details
     return (
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-12">
+        <div className="app-page-shell bg-[#050505] flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
                 <div className="bg-[#111111] border border-white/5 rounded-2xl p-8 space-y-6">
                     <div className="text-center">

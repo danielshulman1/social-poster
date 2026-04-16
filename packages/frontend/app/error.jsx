@@ -8,7 +8,7 @@ export default function Error({ error, reset }) {
     }, [error]);
 
     return (
-        <div className="min-h-screen bg-[#050c1b] text-white flex flex-col items-center justify-center px-6 text-center">
+        <div className="app-page-shell bg-[#050c1b] text-white flex flex-col items-center justify-center px-6 text-center">
             <div className="max-w-md space-y-4">
                 <h1 className="text-3xl font-bold">Something went wrong</h1>
                 <p className="text-white/70">

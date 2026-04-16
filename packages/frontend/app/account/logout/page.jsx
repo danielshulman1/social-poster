@@ -19,7 +19,7 @@ export default function LogoutPage() {
     }, [router]);
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+        <div className="app-page-shell bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
             <p className="text-black dark:text-white font-inter">Signing out...</p>
         </div>
     );

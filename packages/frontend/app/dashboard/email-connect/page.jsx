@@ -99,7 +99,7 @@ export default function EmailConnectPage() {
     const currentProvider = providers[provider];
 
     return (
-        <div className="min-h-screen bg-black p-6">
+        <div className="app-page-shell bg-black p-6">
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">

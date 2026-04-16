@@ -68,7 +68,7 @@ function SubscriptionGate({ children }) {
 
     if (isValid === null) {
         return (
-            <div className="min-h-screen bg-[#050c1b] flex items-center justify-center">
+            <div className="app-page-shell bg-[#050c1b] flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-white/50" />
             </div>
         );
@@ -86,7 +86,7 @@ export default function DashboardLayout({ children }) {
 
     return (
         <SubscriptionGate>
-            <div className="flex w-full bg-[#050c1b] text-white">
+            <div className="app-page-shell flex w-full bg-[#050c1b] text-white">
                 <DashboardSidebar
                     isOpen={isSidebarOpen}
                     onClose={() => setIsSidebarOpen(false)}
@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }) {
                         aria-label="Close navigation"
                     />
                 )}
-                <div className="lg:ml-64 flex-1 flex flex-col w-full">
+                <div className="lg:ml-64 flex min-h-full flex-1 flex-col w-full">
                     <div className="lg:hidden px-6 pt-6">
                         <button
                             type="button"
