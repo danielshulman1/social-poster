@@ -1,22 +1,33 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { query } from '../../../../../utils/db';
-import { getUserFromToken } from '../../../../../utils/auth';
+import { query } from '@/utils/db';
+import { getUserFromToken } from '@/utils/auth';
 import { cookies } from 'next/headers';
 
-const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/email/oauth/google/callback`
-);
+export const dynamic = 'force-dynamic';
+
+function getAppOrigin(request) {
+    const configured = process.env.NEXT_PUBLIC_APP_URL;
+    if (configured && !configured.includes('[something]')) {
+        return configured;
+    }
+
+    return request.nextUrl.origin;
+}
 
 export async function GET(request) {
     try {
+        const appOrigin = getAppOrigin(request);
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            `${appOrigin}/api/email/oauth/google/callback`
+        );
         const { searchParams } = new URL(request.url);
         const code = searchParams.get('code');
 
         if (!code) {
-            return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/email-connect?error=no_code`);
+            return NextResponse.redirect(new URL('/dashboard/email-connect?error=no_code', appOrigin));
         }
 
         // Get tokens from Google
@@ -33,12 +44,12 @@ export async function GET(request) {
         const token = cookieStore.get('auth_token')?.value || request.headers.get('authorization')?.substring(7);
 
         if (!token) {
-            return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login`);
+            return NextResponse.redirect(new URL('/login', appOrigin));
         }
 
         const user = await getUserFromToken(token);
         if (!user) {
-            return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login`);
+            return NextResponse.redirect(new URL('/login', appOrigin));
         }
 
         // Store OAuth connection
@@ -73,9 +84,9 @@ export async function GET(request) {
             [user.org_id, user.id, `Connected Gmail account: ${emailAddress}`]
         );
 
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/email-stream?success=connected`);
+        return NextResponse.redirect(new URL('/dashboard/email-stream?success=connected', appOrigin));
     } catch (error) {
         console.error('OAuth callback error:', error);
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/email-connect?error=oauth_failed`);
+        return NextResponse.redirect(new URL('/dashboard/email-connect?error=oauth_failed', getAppOrigin(request)));
     }
 }

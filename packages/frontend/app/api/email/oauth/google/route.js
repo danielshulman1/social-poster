@@ -2,15 +2,27 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { requireAuth } from '@/utils/auth';
 
-const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/email/oauth/google/callback`
-);
+export const dynamic = 'force-dynamic';
+
+function getAppOrigin(request) {
+    const configured = process.env.NEXT_PUBLIC_APP_URL;
+    if (configured && !configured.includes('[something]')) {
+        return configured;
+    }
+
+    return request.nextUrl.origin;
+}
 
 export async function GET(request) {
     try {
         await requireAuth(request);
+
+        const appOrigin = getAppOrigin(request);
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            `${appOrigin}/api/email/oauth/google/callback`
+        );
 
         const scopes = [
             'https://www.googleapis.com/auth/gmail.readonly',
