@@ -9,7 +9,7 @@ import { TIER_CONFIG, TIER_ORDER } from "@/lib/tiers";
 
 export default function PricingPage() {
     return (
-        <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+        <div className="app-page-shell px-4 py-6 sm:px-6 lg:px-8">
             <header className="mx-auto flex w-full max-w-7xl items-center justify-between rounded-full border border-border/80 bg-card/85 px-4 py-3 shadow-[0_18px_40px_rgba(25,34,51,0.06)] backdrop-blur">
                 <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-background/70">

@@ -30,6 +30,85 @@ const normalizeSpreadsheetId = (value: unknown) => {
     return match?.[1] || trimmed;
 };
 
+const columnToIndex = (column: string) => {
+    const normalized = column.trim().toUpperCase();
+    let sum = 0;
+    for (let i = 0; i < normalized.length; i++) {
+        sum *= 26;
+        sum += normalized.charCodeAt(i) - 64;
+    }
+    return Math.max(sum - 1, 0);
+};
+
+const indexToColumn = (index: number) => {
+    let current = Math.max(index, 0);
+    let result = "";
+    while (current >= 0) {
+        result = String.fromCharCode((current % 26) + 65) + result;
+        current = Math.floor(current / 26) - 1;
+    }
+    return result;
+};
+
+const getGoogleSheetsStatusColumn = (contentCol: string) =>
+    indexToColumn(columnToIndex(contentCol) + 1);
+
+const getGoogleSheetsImageColumn = (contentCol: string, configuredImageCol?: string) =>
+    (configuredImageCol?.trim()
+        ? configuredImageCol.trim().toUpperCase()
+        : indexToColumn(columnToIndex(contentCol) + 2));
+
+const buildGoogleSheetsRangeColumns = (contentCol: string, statusCol: string, imageCol: string) => {
+    const indexes = [contentCol, statusCol, imageCol].map(columnToIndex);
+    return {
+        startCol: indexToColumn(Math.min(...indexes)),
+        endCol: indexToColumn(Math.max(...indexes)),
+    };
+};
+
+const getGoogleSheetsRowValue = (row: string[], startCol: string, targetCol: string) => {
+    const offset = columnToIndex(targetCol) - columnToIndex(startCol);
+    if (offset < 0) return "";
+    return (row[offset] || "").trim();
+};
+
+const parseStartRowFromRange = (rangeOpt: string | undefined) => {
+    if (!rangeOpt) return 1;
+    const parts = rangeOpt.split("!");
+    const rangeStr = parts[parts.length - 1];
+    const firstCell = rangeStr.split(":")[0];
+    const rowMatch = firstCell.match(/\d+/);
+    return rowMatch?.[0] ? parseInt(rowMatch[0], 10) : 1;
+};
+
+const normalizeGoogleSheetCell = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, "_");
+
+const isGoogleSheetsHeaderRow = (row: string[] | undefined, rowIndex: number) => {
+    if (!row || rowIndex !== 0) return false;
+
+    const firstCell = normalizeGoogleSheetCell(row[0] || "");
+    const secondCell = normalizeGoogleSheetCell(row[1] || "");
+
+    const contentHeaders = new Set([
+        "content",
+        "title",
+        "post",
+        "post_text",
+        "post_content",
+        "message",
+    ]);
+    const statusHeaders = new Set([
+        "",
+        "status",
+        "state",
+        "done",
+        "processed",
+    ]);
+
+    return contentHeaders.has(firstCell) && statusHeaders.has(secondCell);
+};
+
 async function parseJsonResponse<T = any>(response: Response): Promise<T | null> {
     const text = await response.text().catch(() => "");
     if (!text) return null;
@@ -164,7 +243,7 @@ export async function POST(req: Request) {
         const { nodeType, masterPrompt, taskPrompt, provider } = body;
 
         if (nodeType === 'ai-generation') {
-            const { contentSource, rssUrl, sheetTab, sheetColumn } = body;
+            const { contentSource, rssUrl, sheetTab, sheetColumn, imageColumn } = body;
             const sheetId = normalizeSpreadsheetId(body.sheetId);
 
             // 1. Determine Input Content
@@ -200,7 +279,11 @@ export async function POST(req: Request) {
                 const readToken = await getGoogleAccessToken(auth.userId);
                 if ((readToken || userWithKey?.googleApiKey) && sheetId) {
                     try {
-                        const range = `${sheetTab || 'Sheet1'}!${sheetColumn || 'A'}1:${sheetColumn || 'A'}1000`;
+                        const contentColumn = (sheetColumn || "A").toUpperCase();
+                        const statusColumn = getGoogleSheetsStatusColumn(contentColumn);
+                        const imageSheetColumn = getGoogleSheetsImageColumn(contentColumn, typeof imageColumn === "string" ? imageColumn : undefined);
+                        const { startCol, endCol } = buildGoogleSheetsRangeColumns(contentColumn, statusColumn, imageSheetColumn);
+                        const range = `${sheetTab || 'Sheet1'}!${startCol}1:${endCol}1000`;
                         let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
                         const readHeaders: Record<string, string> = {};
                         if (readToken) {
@@ -212,10 +295,14 @@ export async function POST(req: Request) {
                         if (sheetsRes.ok) {
                             const sheetData = await sheetsRes.json();
                             const rows: string[][] = sheetData.values || [];
+                            const startRow = parseStartRowFromRange(sheetData.range);
                             let usedRowIndex = -1;
                             for (let i = 0; i < rows.length; i++) {
-                                const titleCell = (rows[i]?.[0] || '').trim();
-                                const doneCell = (rows[i]?.[1] || '').trim().toLowerCase();
+                                if (isGoogleSheetsHeaderRow(rows[i], i)) {
+                                    continue;
+                                }
+                                const titleCell = getGoogleSheetsRowValue(rows[i] || [], startCol, contentColumn);
+                                const doneCell = getGoogleSheetsRowValue(rows[i] || [], startCol, statusColumn).toLowerCase();
                                 if (titleCell && doneCell !== 'done') {
                                     inputContent = titleCell;
                                     usedRowIndex = i;
@@ -226,9 +313,8 @@ export async function POST(req: Request) {
                             if (usedRowIndex === -1) {
                                 inputContent = 'All rows in the sheet have been processed (marked as done).';
                             } else {
-                                const statusCol = String.fromCharCode(((sheetColumn || 'A').toUpperCase().charCodeAt(0) + 1 > 90) ? 90 : (sheetColumn || 'A').toUpperCase().charCodeAt(0) + 1);
-                                const actualRow = usedRowIndex + 1;
-                                const markRange = `${sheetTab || 'Sheet1'}!${statusCol}${actualRow}`;
+                                const actualRow = startRow + usedRowIndex;
+                                const markRange = `${sheetTab || 'Sheet1'}!${statusColumn}${actualRow}`;
                                 let writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(markRange)}?valueInputOption=USER_ENTERED`;
                                 const writeHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
                                 if (readToken) {

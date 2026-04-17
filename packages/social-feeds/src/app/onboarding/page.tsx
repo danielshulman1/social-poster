@@ -7,8 +7,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Bot,
     CheckCircle2,
@@ -126,6 +128,9 @@ export default function OnboardingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingKey, setIsSavingKey] = useState(false);
     const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+    const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+    const [generatePrompt, setGeneratePrompt] = useState("");
+    const [isGeneratingWorkflow, setIsGeneratingWorkflow] = useState(false);
     const [openaiKey, setOpenaiKey] = useState("");
 
     const loadStatus = async () => {
@@ -193,9 +198,69 @@ export default function OnboardingPage() {
         }
     };
 
+    const handleCreateWorkflowFromPrompt = async () => {
+        const trimmedPrompt = generatePrompt.trim();
+        if (!trimmedPrompt) return;
+
+        setIsGeneratingWorkflow(true);
+        try {
+            const generateRes = await fetch("/api/workflows/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: trimmedPrompt }),
+            });
+
+            const generated = await generateRes.json().catch(() => null);
+            if (!generateRes.ok || !generated) {
+                throw new Error(generated?.error || "Failed to generate workflow");
+            }
+
+            const createRes = await fetch("/api/workflows", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: generated.name || "My First Workflow",
+                    definition: generated.definition,
+                }),
+            });
+
+            const workflow = await createRes.json().catch(() => null);
+            if (!createRes.ok || !workflow) {
+                throw new Error(workflow?.error || "Failed to create workflow");
+            }
+
+            if (typeof window !== "undefined") {
+                window.sessionStorage.setItem(
+                    `workflow-draft:${workflow.id}`,
+                    JSON.stringify({
+                        name: generated.name || "My First Workflow",
+                        definition: generated.definition,
+                    })
+                );
+            }
+
+            toast.success("Your first workflow is ready");
+            if (Array.isArray(generated.warnings) && generated.warnings.length > 0) {
+                toast.message("Review generated setup", {
+                    description: generated.warnings.slice(0, 2).join(" "),
+                    duration: 10000,
+                });
+            }
+
+            setIsGenerateDialogOpen(false);
+            setGeneratePrompt("");
+            await loadStatus();
+            router.push(`/editor/${workflow.id}`);
+        } catch {
+            toast.error("Could not create your first workflow");
+        } finally {
+            setIsGeneratingWorkflow(false);
+        }
+    };
+
     if (isLoading || !status) {
         return (
-            <div className="flex min-h-screen items-center justify-center">
+            <div className="app-page-shell flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
@@ -214,7 +279,7 @@ export default function OnboardingPage() {
         !status.steps.workflow.complete;
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_35%),linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-4 py-10">
+        <div className="app-page-shell bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_35%),linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-4 py-10">
             <div className="mx-auto max-w-5xl space-y-8">
                 <section className="rounded-[2rem] border border-border/70 bg-card/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -486,7 +551,7 @@ export default function OnboardingPage() {
                                 )}
                             </div>
                             <CardDescription>
-                                Start with a blank workflow so the editor, publishing nodes, and connected accounts are ready to use.
+                                Start from a blank workflow or describe the flow in text and let the app build the first pass for you.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -512,10 +577,51 @@ export default function OnboardingPage() {
                                     </Button>
                                 </Link>
                             ) : (
-                                <Button className="w-full" onClick={handleCreateWorkflow} disabled={!canCreateWorkflow || isCreatingWorkflow}>
-                                    {isCreatingWorkflow && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Create my first workflow
-                                </Button>
+                                <div className="flex flex-col gap-3">
+                                    <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button className="w-full" variant="outline" disabled={!canCreateWorkflow || isCreatingWorkflow || isGeneratingWorkflow}>
+                                                {isGeneratingWorkflow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                                Describe and create
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Generate Your First Workflow</DialogTitle>
+                                                <DialogDescription>
+                                                    Describe what you want the workflow to do. The app will create it and open it in the editor.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <Textarea
+                                                value={generatePrompt}
+                                                onChange={(event) => setGeneratePrompt(event.target.value)}
+                                                placeholder="Example: Every Monday at 9am read my Google Sheet, write a LinkedIn post, use the image from the same row, and hold it for approval."
+                                                className="min-h-[160px]"
+                                            />
+                                            <DialogFooter>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setIsGenerateDialogOpen(false);
+                                                        setGeneratePrompt("");
+                                                    }}
+                                                    disabled={isGeneratingWorkflow}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button onClick={handleCreateWorkflowFromPrompt} disabled={!generatePrompt.trim() || isGeneratingWorkflow}>
+                                                    {isGeneratingWorkflow ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                                    Generate
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    <Button className="w-full" onClick={handleCreateWorkflow} disabled={!canCreateWorkflow || isCreatingWorkflow || isGeneratingWorkflow}>
+                                        {isCreatingWorkflow && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Create my first workflow
+                                    </Button>
+                                </div>
                             )}
                         </CardContent>
                     </Card>

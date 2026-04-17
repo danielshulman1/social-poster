@@ -133,11 +133,193 @@ function parseStartRowFromRange(rangeOpt: string | undefined): number {
     const parts = rangeOpt.split('!');
     const rangeStr = parts[parts.length - 1]; // "A1:B10"
     const firstCell = rangeStr.split(':')[0]; // "A1"
-    const rowMatch = firstCell.match(/\\d+/);
+    const rowMatch = firstCell.match(/\d+/);
     if (rowMatch && rowMatch[0]) {
         return parseInt(rowMatch[0], 10);
     }
     return 1;
+}
+
+function columnToIndex(column: string): number {
+    const normalized = column.trim().toUpperCase();
+    let sum = 0;
+    for (let i = 0; i < normalized.length; i++) {
+        sum *= 26;
+        sum += normalized.charCodeAt(i) - 64;
+    }
+    return Math.max(sum - 1, 0);
+}
+
+function indexToColumn(index: number): string {
+    let current = Math.max(index, 0);
+    let result = "";
+    while (current >= 0) {
+        result = String.fromCharCode((current % 26) + 65) + result;
+        current = Math.floor(current / 26) - 1;
+    }
+    return result;
+}
+
+const getGoogleSheetsStatusColumn = (contentCol: string) =>
+    indexToColumn(columnToIndex(contentCol) + 1);
+
+const getGoogleSheetsImageColumn = (contentCol: string, configuredImageCol?: string) =>
+    (configuredImageCol?.trim()
+        ? configuredImageCol.trim().toUpperCase()
+        : indexToColumn(columnToIndex(contentCol) + 2));
+
+type GoogleSheetsPendingRow = {
+    content: string;
+    imageUrl: string;
+    actualRow: number;
+    statusCol: string;
+};
+
+function buildGoogleSheetsRangeColumns(contentCol: string, statusCol: string, imageCol: string) {
+    const indexes = [contentCol, statusCol, imageCol].map(columnToIndex);
+    const startIndex = Math.min(...indexes);
+    const endIndex = Math.max(...indexes);
+    return {
+        startCol: indexToColumn(startIndex),
+        endCol: indexToColumn(endIndex),
+    };
+}
+
+function getGoogleSheetsRowValue(row: string[], startCol: string, targetCol: string) {
+    const offset = columnToIndex(targetCol) - columnToIndex(startCol);
+    if (offset < 0) return "";
+    return (row[offset] || "").trim();
+}
+
+const normalizeGoogleSheetCell = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, "_");
+
+function isGoogleSheetsHeaderRow(row: string[] | undefined, rowIndex: number): boolean {
+    if (!row || rowIndex !== 0) return false;
+
+    const firstCell = normalizeGoogleSheetCell(row[0] || "");
+    const secondCell = normalizeGoogleSheetCell(row[1] || "");
+
+    const contentHeaders = new Set([
+        "content",
+        "title",
+        "post",
+        "post_text",
+        "post_content",
+        "message",
+    ]);
+    const statusHeaders = new Set([
+        "",
+        "status",
+        "state",
+        "done",
+        "processed",
+    ]);
+
+    return contentHeaders.has(firstCell) && statusHeaders.has(secondCell);
+}
+
+async function readNextGoogleSheetsRow(params: {
+    userId: string;
+    sheetId: string;
+    sheetName: string;
+    contentCol: string;
+    imageCol: string;
+    apiKey?: string | null;
+    readToken?: string | null;
+}) {
+    const { userId, sheetId, sheetName, contentCol, imageCol, apiKey, readToken } = params;
+    const statusCol = getGoogleSheetsStatusColumn(contentCol);
+    const { startCol, endCol } = buildGoogleSheetsRangeColumns(contentCol, statusCol, imageCol);
+    const range = `${sheetName}!${startCol}1:${endCol}1000`;
+    let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
+    const readHeaders: Record<string, string> = {};
+
+    if (readToken) {
+        readHeaders.Authorization = `Bearer ${readToken}`;
+    } else if (apiKey) {
+        fetchUrl += `?key=${apiKey}`;
+    }
+
+    const sheetsRes = await fetch(fetchUrl, { headers: readHeaders });
+    if (!sheetsRes.ok) {
+        const errData = await sheetsRes.json().catch(() => ({}));
+        throw new Error(`Failed to fetch sheet: ${errData.error?.message || sheetsRes.statusText}`);
+    }
+
+    const sheetData = await sheetsRes.json();
+    const rows: string[][] = sheetData.values || [];
+    const startRow = parseStartRowFromRange(sheetData.range);
+
+    let pendingRow: GoogleSheetsPendingRow | null = null;
+
+    for (let i = 0; i < rows.length; i++) {
+        if (isGoogleSheetsHeaderRow(rows[i], i)) {
+            continue;
+        }
+
+        const content = getGoogleSheetsRowValue(rows[i] || [], startCol, contentCol);
+        const status = getGoogleSheetsRowValue(rows[i] || [], startCol, statusCol).toLowerCase();
+        if (content && status !== "done") {
+            pendingRow = {
+                content,
+                imageUrl: getGoogleSheetsRowValue(rows[i] || [], startCol, imageCol),
+                actualRow: startRow + i,
+                statusCol,
+            };
+            break;
+        }
+    }
+
+    if (!pendingRow) {
+        return null;
+    }
+
+    const timestampCol = indexToColumn(columnToIndex(statusCol) + 1);
+    const markRange = `${sheetName}!${statusCol}${pendingRow.actualRow}:${timestampCol}${pendingRow.actualRow}`;
+    let writeToken = await getGoogleWriteAccessToken(userId);
+    let writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(markRange)}?valueInputOption=USER_ENTERED`;
+    const writeHeaders: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (writeToken) {
+        writeHeaders.Authorization = `Bearer ${writeToken}`;
+    } else if (apiKey) {
+        writeUrl += `&key=${apiKey}`;
+    }
+
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    try {
+        let markRes = await fetch(writeUrl, {
+            method: "PUT",
+            headers: writeHeaders,
+            body: JSON.stringify({ values: [["done", timestamp]] }),
+        });
+
+        if (!markRes.ok && writeToken && (markRes.status === 401 || markRes.status === 403)) {
+            writeToken = await getGoogleWriteAccessToken(userId, true);
+            if (writeToken) {
+                markRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(markRange)}?valueInputOption=USER_ENTERED`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${writeToken}`,
+                    },
+                    body: JSON.stringify({ values: [["done", timestamp]] }),
+                });
+            }
+        }
+
+        if (!markRes.ok) {
+            const markText = await markRes.text();
+            throw new Error(`Failed to mark row ${pendingRow.actualRow} as done: ${markText || markRes.statusText}`);
+        }
+    } catch (markErr) {
+        throw new Error(`Failed to mark row as done: ${markErr}`);
+    }
+
+    return pendingRow;
 }
 
 const normalizeEnv = (value?: string) =>
@@ -152,6 +334,79 @@ const attachExecutionId = (error: unknown, executionId: string) => {
     const wrapped = (error instanceof Error ? error : new Error(getErrorMessage(error))) as ErrorWithExecutionId;
     wrapped.executionId = executionId;
     return wrapped;
+};
+
+const shouldPublishWithoutApproval = (node: { data?: Record<string, unknown> }) =>
+    node.data?.publishWithoutApproval !== false;
+
+type ApprovalPreviewInput = {
+    platform: string;
+    platformLabel: string;
+    content?: string;
+    imageUrl?: string;
+    title?: string;
+    destination?: string;
+};
+
+const buildApprovalPreview = ({
+    platform,
+    platformLabel,
+    content,
+    imageUrl,
+    title,
+    destination,
+}: ApprovalPreviewInput) => {
+    const normalizedContent = typeof content === "string" ? content.trim() : "";
+    const normalizedImageUrl = typeof imageUrl === "string" ? imageUrl.trim() : "";
+    const normalizedTitle = typeof title === "string" ? title.trim() : "";
+    const normalizedDestination = typeof destination === "string" ? destination.trim() : "";
+
+    return {
+        output: `Approval required before publishing to ${platformLabel}. Review the draft in Activity.`,
+        details: {
+            approvalRequired: true,
+            platform,
+            platformLabel,
+            previewContent: normalizedContent || undefined,
+            previewImageUrl: normalizedImageUrl || undefined,
+            previewTitle: normalizedTitle || undefined,
+            destination: normalizedDestination || undefined,
+        } satisfies Record<string, unknown>,
+    };
+};
+
+type WorkflowImageOrigin = "" | "google-sheet" | "image-generated" | "trigger-image";
+
+const isImageLikeOutput = (value: string) =>
+    value.startsWith("http") || value.startsWith("data:");
+
+const resolvePublisherImageUrl = (params: {
+    node: { data?: Record<string, unknown> };
+    lastImageUrl: string;
+    lastImageOrigin: WorkflowImageOrigin;
+    lastOutput: string;
+}) => {
+    const { node, lastImageUrl, lastImageOrigin, lastOutput } = params;
+    const configuredImageUrl =
+        typeof node.data?.imageUrl === "string" ? node.data.imageUrl.trim() : "";
+    const imageSource =
+        typeof node.data?.imageSource === "string" ? node.data.imageSource : "";
+    const outputImageUrl = isImageLikeOutput(lastOutput) ? lastOutput : "";
+
+    switch (imageSource) {
+        case "google-sheet":
+            return lastImageOrigin === "google-sheet" ? lastImageUrl : "";
+        case "image-generated":
+            return lastImageOrigin === "image-generated" ? lastImageUrl : "";
+        case "trigger-image":
+            return lastImageOrigin === "trigger-image" ? lastImageUrl : "";
+        case "custom-url":
+            return configuredImageUrl;
+        case "none":
+            return configuredImageUrl || "";
+        default:
+            return configuredImageUrl || lastImageUrl || outputImageUrl || "";
+    }
 };
 
 async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
@@ -429,6 +684,7 @@ export async function executeWorkflow(
     let lastOutput = '';
     let lastTextOutput = '';  // Tracks the most recent TEXT content
     let lastImageUrl = '';    // Tracks the most recent IMAGE URL
+    let lastImageOrigin: WorkflowImageOrigin = "";
 
     for (const node of executionOrder) {
         const nodeType = node.type || 'unknown';
@@ -459,10 +715,15 @@ export async function executeWorkflow(
 
         try {
             let output = '';
+            let resultDetails: Record<string, unknown> | undefined;
+            let imageUrlFromNode: string | null = null;
 
             switch (node.type) {
                 case 'manual-trigger':
                     output = node.data?.testContent || 'Manual trigger fired.';
+                    if (typeof node.data?.testImageUrl === "string") {
+                        imageUrlFromNode = node.data.testImageUrl.trim();
+                    }
                     break;
 
                 case 'schedule-trigger':
@@ -560,68 +821,28 @@ export async function executeWorkflow(
                     }
 
                     const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
-                    const statusColCharCode = contentCol.charCodeAt(0) + 1;
-                    const statusCol = String.fromCharCode(statusColCharCode > 90 ? 90 : statusColCharCode);
+                    const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
+                    const nextRow = await readNextGoogleSheetsRow({
+                        userId,
+                        sheetId: spreadsheetId,
+                        sheetName,
+                        contentCol,
+                        imageCol,
+                        apiKey: userWithKey?.googleApiKey,
+                        readToken,
+                    });
 
-                    const range = `${sheetName}!${contentCol}1:${statusCol}1000`;
-                    let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-                    const readHeaders: Record<string, string> = {};
-                    if (readToken) {
-                        readHeaders.Authorization = `Bearer ${readToken}`;
-                    } else {
-                        fetchUrl += `?key=${userWithKey?.googleApiKey}`;
-                    }
-                    const sheetsRes = await fetch(fetchUrl, { headers: readHeaders });
-
-                    if (!sheetsRes.ok) {
-                        const errData = await sheetsRes.json().catch(() => ({}));
-                        throw new Error(`Failed to fetch sheet: ${errData.error?.message || sheetsRes.statusText}`);
-                    }
-
-                    const sheetData = await sheetsRes.json();
-                    const rows: string[][] = sheetData.values || [];
-                    const startRow = parseStartRowFromRange(sheetData.range);
-
-                    let usedRowIndex = -1;
-                    for (let i = 0; i < rows.length; i++) {
-                        const cellA = (rows[i]?.[0] || '').trim();
-                        const cellB = (rows[i]?.[1] || '').trim().toLowerCase();
-                        if (cellA && cellB !== 'done') {
-                            output = cellA;
-                            usedRowIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (usedRowIndex === -1) {
+                    if (!nextRow) {
                         output = 'All rows in the sheet have been processed (marked as done).';
                     } else {
-                        const actualRow = startRow + usedRowIndex;
-                        const timestampCol = String.fromCharCode(statusCol.charCodeAt(0) + 1 > 90 ? 90 : statusCol.charCodeAt(0) + 1);
-                        const markRange = `${sheetName}!${statusCol}${actualRow}:${timestampCol}${actualRow}`;
-                        const writeToken = await getGoogleWriteAccessToken(userId);
-                        const writeHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-                        let writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${markRange}?valueInputOption=USER_ENTERED`;
-                        if (writeToken) {
-                            writeHeaders['Authorization'] = `Bearer ${writeToken}`;
-                        } else {
-                            writeUrl += `&key=${userWithKey?.googleApiKey}`;
-                        }
-                        const now = new Date();
-                        const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                        try {
-                            const markRes = await fetch(writeUrl, {
-                                method: 'PUT',
-                                headers: writeHeaders,
-                                body: JSON.stringify({ values: [['done', timestamp]] }),
-                            });
-                            const markText = await markRes.text();
-                            if (!markRes.ok) {
-                                throw new Error(`Failed to mark row ${actualRow} as done: ${markText || markRes.statusText}`);
-                            }
-                        } catch (markErr) {
-                            throw new Error(`Failed to mark row as done: ${markErr}`);
-                        }
+                        output = nextRow.content;
+                        imageUrlFromNode = nextRow.imageUrl;
+                        resultDetails = {
+                            sourceRowNumber: nextRow.actualRow,
+                            sourceImageUrl: nextRow.imageUrl || undefined,
+                            sourceImageColumn: imageCol,
+                            sourceContentColumn: contentCol,
+                        };
                     }
                     break;
                 }
@@ -657,80 +878,35 @@ export async function executeWorkflow(
                         const sheetId = normalizeSpreadsheetId((node.data?.sheetId as string) || '');
                         const tab = (node.data?.sheetTab as string) || 'Sheet1';
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
-                        const statusColCharCode = contentCol.charCodeAt(0) + 1;
-                        const statusCol = String.fromCharCode(statusColCharCode > 90 ? 90 : statusColCharCode);
+                        const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
 
                         const userWithKey = await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } });
                         const readToken = await getGoogleWriteAccessToken(userId);
 
                         if ((readToken || userWithKey?.googleApiKey) && sheetId) {
                             try {
-                                const range = `${tab}!${contentCol}1:${statusCol}1000`;
-                                let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
-                                const readHeaders: Record<string, string> = {};
-                                if (readToken) {
-                                    readHeaders.Authorization = `Bearer ${readToken}`;
-                                } else {
-                                    fetchUrl += `?key=${userWithKey?.googleApiKey}`;
-                                }
-                                const sheetsRes = await fetch(fetchUrl, { headers: readHeaders });
-                                if (sheetsRes.ok) {
-                                    const sheetData = await sheetsRes.json();
-                                    const rows: string[][] = sheetData.values || [];
-                                    const startRow = parseStartRowFromRange(sheetData.range);
+                                const nextRow = await readNextGoogleSheetsRow({
+                                    userId,
+                                    sheetId,
+                                    sheetName: tab,
+                                    contentCol,
+                                    imageCol,
+                                    apiKey: userWithKey?.googleApiKey,
+                                    readToken,
+                                });
 
-                                    let usedRowIndex = -1;
-                                    for (let i = 0; i < rows.length; i++) {
-                                        const cellA = (rows[i]?.[0] || '').trim();
-                                        const cellB = (rows[i]?.[1] || '').trim().toLowerCase();
-                                        if (cellA && cellB !== 'done') {
-                                            inputContent = cellA;
-                                            usedRowIndex = i;
-                                            break;
-                                        }
-                                    }
-
-                                    if (usedRowIndex === -1) {
-                                        inputContent = 'All rows in the sheet have been processed (marked as done).';
-                                    } else {
-                                        const actualRow = startRow + usedRowIndex;
-                                        const timestampCol = String.fromCharCode(statusCol.charCodeAt(0) + 1 > 90 ? 90 : statusCol.charCodeAt(0) + 1);
-                                        const markRange = `${tab}!${statusCol}${actualRow}:${timestampCol}${actualRow}`;
-                                        let writeToken = await getGoogleWriteAccessToken(userId);
-                                        const writeHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-                                        let writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(markRange)}?valueInputOption=USER_ENTERED`;
-                                        if (writeToken) {
-                                            writeHeaders['Authorization'] = `Bearer ${writeToken}`;
-                                        } else {
-                                            writeUrl += `&key=${userWithKey?.googleApiKey}`;
-                                        }
-                                        const now = new Date();
-                                        const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                                        try {
-                                            let markRes = await fetch(writeUrl, {
-                                                method: 'PUT',
-                                                headers: writeHeaders,
-                                                body: JSON.stringify({ values: [['done', timestamp]] }),
-                                            });
-                                            if (!markRes.ok && writeToken && (markRes.status === 401 || markRes.status === 403)) {
-                                                writeToken = await getGoogleWriteAccessToken(userId, true);
-                                                if (writeToken) {
-                                                    markRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(markRange)}?valueInputOption=USER_ENTERED`, {
-                                                        method: 'PUT',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Authorization': `Bearer ${writeToken}`,
-                                                        },
-                                                        body: JSON.stringify({ values: [['done', timestamp]] }),
-                                                    });
-                                                }
-                                            }
-                                        } catch (markErr) {
-                                            console.error('[AI-GEN] Failed to mark row as done', markErr);
-                                        }
-                                    }
+                                if (!nextRow) {
+                                    inputContent = 'All rows in the sheet have been processed (marked as done).';
+                                    imageUrlFromNode = '';
                                 } else {
-                                    inputContent = `Error fetching Sheet: ${sheetsRes.statusText}`;
+                                    inputContent = nextRow.content;
+                                    imageUrlFromNode = nextRow.imageUrl;
+                                    resultDetails = {
+                                        ...resultDetails,
+                                        sourceRowNumber: nextRow.actualRow,
+                                        sourceImageUrl: nextRow.imageUrl || undefined,
+                                        sourceImageColumn: imageCol,
+                                    };
                                 }
                             } catch (e) {
                                 inputContent = `Error fetching Sheet: ${e}`;
@@ -837,71 +1013,35 @@ export async function executeWorkflow(
                         const sheetId = normalizeSpreadsheetId((node.data?.sheetId as string) || '');
                         const tab = (node.data?.sheetTab as string) || 'Sheet1';
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
-                        const statusColCharCode = contentCol.charCodeAt(0) + 1;
-                        const statusCol = String.fromCharCode(statusColCharCode > 90 ? 90 : statusColCharCode);
+                        const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
 
                         const userWithKey = await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } });
                         const readToken = await getGoogleWriteAccessToken(userId);
 
                         if ((readToken || userWithKey?.googleApiKey) && sheetId) {
                             try {
-                                const range = `${tab}!${contentCol}1:${statusCol}1000`;
-                                let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
-                                const readHeaders: Record<string, string> = {};
-                                if (readToken) {
-                                    readHeaders.Authorization = `Bearer ${readToken}`;
-                                } else {
-                                    fetchUrl += `?key=${userWithKey?.googleApiKey}`;
-                                }
-                                const sheetsRes = await fetch(fetchUrl, { headers: readHeaders });
-                                if (sheetsRes.ok) {
-                                    const sheetData = await sheetsRes.json();
-                                    const rows: string[][] = sheetData.values || [];
-                                    const startRow = parseStartRowFromRange(sheetData.range);
+                                const nextRow = await readNextGoogleSheetsRow({
+                                    userId,
+                                    sheetId,
+                                    sheetName: tab,
+                                    contentCol,
+                                    imageCol,
+                                    apiKey: userWithKey?.googleApiKey,
+                                    readToken,
+                                });
 
-                                    let usedRowIndex = -1;
-                                    for (let i = 0; i < rows.length; i++) {
-                                        const cellA = (rows[i]?.[0] || '').trim();
-                                        const cellB = (rows[i]?.[1] || '').trim().toLowerCase();
-                                        if (cellA && cellB !== 'done') {
-                                            sourceText = cellA;
-                                            usedRowIndex = i;
-                                            break;
-                                        }
-                                    }
-
-                                    if (usedRowIndex === -1) {
-                                        sourceText = 'All rows in the sheet have been processed (marked as done).';
-                                    } else {
-                                        const actualRow = startRow + usedRowIndex;
-                                        const timestampCol = String.fromCharCode(statusCol.charCodeAt(0) + 1 > 90 ? 90 : statusCol.charCodeAt(0) + 1);
-                                        const markRange = `${tab}!${statusCol}${actualRow}:${timestampCol}${actualRow}`;
-                                        const writeToken = await getGoogleWriteAccessToken(userId);
-                                        const writeHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-                                        let writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${markRange}?valueInputOption=USER_ENTERED`;
-                                        if (writeToken) {
-                                            writeHeaders['Authorization'] = `Bearer ${writeToken}`;
-                                        } else {
-                                            writeUrl += `&key=${userWithKey?.googleApiKey}`;
-                                        }
-                                        const now = new Date();
-                                        const timestamp = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                                        try {
-                                            const markRes = await fetch(writeUrl, {
-                                                method: 'PUT',
-                                                headers: writeHeaders,
-                                                body: JSON.stringify({ values: [['done', timestamp]] }),
-                                            });
-                                            if (!markRes.ok) {
-                                                const markText = await markRes.text();
-                                                throw new Error(`Failed to mark row as done: ${markText || markRes.statusText}`);
-                                            }
-                                        } catch (markErr) {
-                                            throw new Error(`Failed to mark row as done: ${markErr}`);
-                                        }
-                                    }
+                                if (!nextRow) {
+                                    sourceText = 'All rows in the sheet have been processed (marked as done).';
+                                    imageUrlFromNode = '';
                                 } else {
-                                    sourceText = `Error fetching Sheet: ${sheetsRes.statusText}`;
+                                    sourceText = nextRow.content;
+                                    imageUrlFromNode = nextRow.imageUrl;
+                                    resultDetails = {
+                                        ...resultDetails,
+                                        sourceRowNumber: nextRow.actualRow,
+                                        sourceImageUrl: nextRow.imageUrl || undefined,
+                                        sourceImageColumn: imageCol,
+                                    };
                                 }
                             } catch (e) {
                                 sourceText = `Error fetching Sheet: ${e}`;
@@ -1028,7 +1168,20 @@ export async function executeWorkflow(
                     if (!pageToken) throw new Error('No access token found for this Facebook page.');
 
                     const contentToPost = lastTextOutput || lastOutput || node.data?.content || '';
-                    const imageUrl = node.data?.imageUrl || lastImageUrl || '';
+                    const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'facebook',
+                            platformLabel: 'Facebook',
+                            content: contentToPost,
+                            imageUrl,
+                            destination: connection.name,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
 
                     if (imageUrl) {
                         const fbRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
@@ -1092,9 +1245,21 @@ export async function executeWorkflow(
                 case 'linkedin-publisher': {
                     await assertUserCanPublishPlatform(userId, 'linkedin');
                     const liTextContent = lastTextOutput || lastOutput || node.data?.content || '';
-                    const liImageUrl = node.data?.imageUrl || lastImageUrl || '';
+                    const liImageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
                     if (!liTextContent && !liImageUrl) throw new Error('No content to post. Connect an AI node before this publisher.');
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'linkedin',
+                            platformLabel: 'LinkedIn',
+                            content: liTextContent,
+                            imageUrl: liImageUrl,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
 
                     const liAccountId = node.data?.accountId;
                     const allLiConnections = connections
@@ -1305,9 +1470,26 @@ export async function executeWorkflow(
                     }
 
                     const igContent = lastTextOutput || lastOutput || node.data?.content || '';
-                    const imageUrl = node.data?.imageUrl || (lastImageUrl || (lastOutput && lastOutput.startsWith('http') ? lastOutput : ''));
+                    const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
-                    if (imageUrl) {
+                    if (!imageUrl) {
+                        throw new Error('Instagram requires an image or video. Add an image URL in the node config, or use an Image Generation node before this publisher.');
+                    }
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'instagram',
+                            platformLabel: 'Instagram',
+                            content: igContent,
+                            imageUrl,
+                            destination: igConnection.name,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
+
+                    {
                         const containerRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1344,8 +1526,6 @@ export async function executeWorkflow(
                                 status: 'success',
                             },
                         });
-                    } else {
-                        throw new Error('Instagram requires an image or video. Add an image URL in the node config, or use an Image Generation node before this publisher.');
                     }
                     break;
                 }
@@ -1367,6 +1547,18 @@ export async function executeWorkflow(
 
                     const text = (lastTextOutput || lastOutput || node.data?.content || '').slice(0, 500);
                     if (!text) throw new Error('No content to post to Threads.');
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'threads',
+                            platformLabel: 'Threads',
+                            content: text,
+                            destination: connection.name,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
 
                     const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
                         method: 'POST',
@@ -1424,6 +1616,19 @@ export async function executeWorkflow(
                     const content = lastTextOutput || lastOutput || node.data?.content || '';
                     if (!content) throw new Error('No content to publish.');
 
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'wordpress',
+                            platformLabel: 'WordPress',
+                            title,
+                            content,
+                            destination: siteUrl,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
+
                     const endpoint = `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2/posts`;
                     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
                     if (creds.accessToken) headers.Authorization = `Bearer ${creds.accessToken}`;
@@ -1476,6 +1681,21 @@ export async function executeWorkflow(
                     if (!content) throw new Error('No content to publish.');
 
                     const platform = node.type.startsWith('wix') ? 'wix' : 'squarespace';
+                    const platformLabel = platform === 'wix' ? 'Wix' : 'Squarespace';
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform,
+                            platformLabel,
+                            title,
+                            content,
+                            destination: endpoint,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
+
                     const res = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
@@ -1525,7 +1745,7 @@ export async function executeWorkflow(
                     }
 
                     const content = lastTextOutput || lastOutput || node.data?.content || '';
-                    const imageUrl = lastImageUrl || node.data?.imageUrl || '';
+                    const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
                     const colToIndex = (col: string) => {
                         let sum = 0;
@@ -1732,9 +1952,13 @@ export async function executeWorkflow(
 
             lastOutput = output;
 
-            if (node.type === 'image-generation') {
+            if (imageUrlFromNode !== null) {
+                lastImageUrl = imageUrlFromNode;
+                lastImageOrigin = imageUrlFromNode ? (node.type === 'manual-trigger' ? 'trigger-image' : 'google-sheet') : "";
+            } else if (node.type === 'image-generation') {
                 if (output && (output.startsWith('http') || output.startsWith('data:'))) {
                     lastImageUrl = output;
+                    lastImageOrigin = 'image-generated';
                 }
             } else if (node.type?.includes('publisher') || node.type === 'http-request') {
                 // Do nothing — terminal/publisher nodes don't update lastTextOutput
@@ -1749,6 +1973,7 @@ export async function executeWorkflow(
                 nodeLabel,
                 status: 'completed',
                 output,
+                details: resultDetails,
                 startedAt: nodeStartedAt.toISOString(),
                 completedAt: nodeCompletedAt.toISOString(),
             };
@@ -1768,8 +1993,11 @@ export async function executeWorkflow(
                 nodeId: node.id,
                 nodeType,
                 nodeLabel,
-                details: output
-                    ? { outputPreview: truncateForLog(output) }
+                details: output || resultDetails
+                    ? {
+                        ...(output ? { outputPreview: truncateForLog(output) } : {}),
+                        ...(resultDetails ? { approvalRequired: resultDetails.approvalRequired } : {}),
+                    }
                     : undefined,
             });
             await persistExecutionLog();

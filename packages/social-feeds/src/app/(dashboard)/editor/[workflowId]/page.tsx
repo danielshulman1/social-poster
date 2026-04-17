@@ -11,14 +11,36 @@ import { useParams } from "next/navigation";
 export default function EditorPage() {
     const params = useParams();
     const workflowId = params.workflowId as string;
+    const sessionStorageKey = workflowId ? `workflow-draft:${workflowId}` : "";
 
     const [workflowName, setWorkflowName] = useState("Loading...");
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const { setNodes, setEdges, nodes, edges } = useWorkflowStore();
 
     useEffect(() => {
         if (!workflowId) return;
+
+        if (typeof window !== 'undefined' && sessionStorageKey) {
+            const cachedDraft = window.sessionStorage.getItem(sessionStorageKey);
+            if (cachedDraft) {
+                try {
+                    const parsed = JSON.parse(cachedDraft);
+                    if (typeof parsed?.name === 'string' && parsed.name.trim()) {
+                        setWorkflowName(parsed.name);
+                    }
+                    if (parsed?.definition?.nodes) {
+                        setNodes(parsed.definition.nodes);
+                    }
+                    if (parsed?.definition?.edges) {
+                        setEdges(parsed.definition.edges);
+                    }
+                } catch (error) {
+                    console.error('Failed to read generated workflow draft from session storage', error);
+                }
+            }
+        }
 
         fetch(`/api/workflows/${workflowId}`)
             .then(res => {
@@ -32,12 +54,15 @@ export default function EditorPage() {
                     if (def.nodes) setNodes(def.nodes);
                     if (def.edges) setEdges(def.edges);
                 }
+                if (typeof window !== 'undefined' && sessionStorageKey) {
+                    window.sessionStorage.removeItem(sessionStorageKey);
+                }
             })
             .catch(err => {
                 console.error(err);
                 toast.error("Failed to load workflow");
             });
-    }, [workflowId, setNodes, setEdges]);
+    }, [workflowId, sessionStorageKey, setNodes, setEdges]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -120,8 +145,58 @@ export default function EditorPage() {
         }
     };
 
+    const handleGenerateFromPrompt = async (prompt: string) => {
+        setIsGenerating(true);
+        try {
+            const res = await fetch('/api/workflows/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            });
+
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data) {
+                throw new Error(data?.error || 'Failed to generate workflow');
+            }
+
+            const definition = data.definition || { nodes: [], edges: [] };
+            const nextName = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : workflowName;
+
+            const saveRes = await fetch(`/api/workflows/${workflowId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nextName, definition }),
+            });
+
+            if (!saveRes.ok) {
+                const saveData = await saveRes.json().catch(() => null);
+                throw new Error(saveData?.error || 'Failed to save generated workflow');
+            }
+
+            setWorkflowName(nextName);
+            setNodes(definition.nodes || []);
+            setEdges(definition.edges || []);
+
+            toast.success('Workflow generated');
+
+            if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+                toast.message('Review generated setup', {
+                    description: data.warnings.slice(0, 2).join(' '),
+                    duration: 10000,
+                });
+            }
+            return true;
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error?.message || 'Failed to generate workflow');
+            return false;
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     return (
-        <div className="flex h-screen flex-col">
+        <div className="flex h-[var(--app-shell-min-height)] min-h-[var(--app-shell-min-height)] flex-col">
             <EditorHeader
                 workflowName={workflowName}
                 workflowId={workflowId}
@@ -130,7 +205,9 @@ export default function EditorPage() {
                 onRun={handleRun}
                 isSaving={isSaving}
                 isRunning={isRunning}
+                isGenerating={isGenerating}
                 isDirty={false}
+                onGenerateFromPrompt={handleGenerateFromPrompt}
             />
             <div className="flex-1 overflow-hidden">
                 <Canvas />

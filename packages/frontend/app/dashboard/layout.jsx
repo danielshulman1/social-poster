@@ -99,7 +99,7 @@ export default function DashboardLayout({ children }) {
                         aria-label="Close navigation"
                     />
                 )}
-                <div className="lg:ml-64 flex min-h-full flex-1 flex-col w-full">
+                <div className="flex min-h-full flex-1 flex-col w-full">
                     <div className="lg:hidden px-6 pt-6">
                         <button
                             type="button"

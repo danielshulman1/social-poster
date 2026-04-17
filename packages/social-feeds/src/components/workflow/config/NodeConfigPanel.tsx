@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2 } from 'lucide-react';
+import { Download, Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 export const NodeConfigPanel = () => {
@@ -399,6 +400,27 @@ export const NodeConfigPanel = () => {
             case 'google-sheets-source':
                 return (
                     <div className="space-y-4">
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-sm">Google Sheets Template</Label>
+                                    <p className="text-[10px] leading-5 text-muted-foreground">
+                                        Download a starter CSV with the default content, status, and image columns, then import it into Google Sheets.
+                                    </p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        window.open('/api/google/sheets/template', '_blank', 'noopener,noreferrer');
+                                    }}
+                                >
+                                    <Download className="mr-2 h-3.5 w-3.5" />
+                                    Template
+                                </Button>
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
                             <Label>Spreadsheet ID / URL</Label>
                             <Input
@@ -466,13 +488,28 @@ export const NodeConfigPanel = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Content Column</Label>
-                                <Input placeholder="A" />
+                                <Input
+                                    placeholder={useWorkflowStore.getState().googleSheetsConfig.columns.content || "A"}
+                                    value={(selectedNode?.data.sheetColumn as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n => n.id === selectedNode?.id ? { ...n, data: { ...n.data, sheetColumn: e.target.value } } : n));
+                                    }}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Image Column</Label>
-                                <Input placeholder="C" />
+                                <Input
+                                    placeholder={useWorkflowStore.getState().googleSheetsConfig.columns.image || "C"}
+                                    value={(selectedNode?.data.imageColumn as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n => n.id === selectedNode?.id ? { ...n, data: { ...n.data, imageColumn: e.target.value } } : n));
+                                    }}
+                                />
                             </div>
                         </div>
+                        <p className="text-[10px] text-muted-foreground">
+                            Use one row per post. Put the image URL in the same row as the post text so the workflow carries both together.
+                        </p>
                     </div>
                 );
 
@@ -891,6 +928,27 @@ export const NodeConfigPanel = () => {
                 if (selectedNode.type === 'google-sheets-publisher') {
                     return (
                         <div className="space-y-4">
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-sm">Google Sheets Template</Label>
+                                        <p className="text-[10px] leading-5 text-muted-foreground">
+                                            Download a starter CSV with the default content, status, and image columns before wiring this publisher node.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            window.open('/api/google/sheets/template', '_blank', 'noopener,noreferrer');
+                                        }}
+                                    >
+                                        <Download className="mr-2 h-3.5 w-3.5" />
+                                        Template
+                                    </Button>
+                                </div>
+                            </div>
+
                             <div className="space-y-2 border-l-2 border-muted pl-2 mt-2">
                                 <Button
                                     variant="secondary"
@@ -1048,7 +1106,7 @@ export const NodeConfigPanel = () => {
                         <div className="grid gap-2">
                             <Label>Image URL (Optional)</Label>
                             <Input
-                                placeholder="https://example.com/image.jpg (or leave empty to use generated image)"
+                                placeholder="https://example.com/image.jpg"
                                 value={(selectedNode?.data.imageUrl as string) || ''}
                                 onChange={(e) => {
                                     setNodes(nodes.map(n =>
@@ -1059,7 +1117,7 @@ export const NodeConfigPanel = () => {
                                 }}
                             />
                             <p className="text-[10px] text-muted-foreground">
-                                If you have an Image Generation node before this, leave this empty to use its output automatically.
+                                Use this for a fixed image URL. If you want the image from the same Google Sheets row, choose that below instead.
                             </p>
                         </div>
 
@@ -1093,10 +1151,14 @@ export const NodeConfigPanel = () => {
                                 <SelectTrigger><SelectValue placeholder="Select image source" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">None (Text Only)</SelectItem>
+                                    <SelectItem value="google-sheet">Google Sheet Row Image</SelectItem>
                                     <SelectItem value="trigger-image">Trigger Image URL</SelectItem>
                                     <SelectItem value="image-generated">AI Generated Image</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <p className="text-[10px] text-muted-foreground">
+                                Choose <strong>Google Sheet Row Image</strong> to publish the image URL from the same row as the selected post.
+                            </p>
                         </div>
 
                         <div className="grid gap-2">
@@ -1114,6 +1176,29 @@ export const NodeConfigPanel = () => {
                             />
                             <p className="text-[10px] text-muted-foreground">Leave empty to post immediately.</p>
                         </div>
+
+                        {selectedNode.type !== 'google-sheets-publisher' && (
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-sm">Publish Without Approval</Label>
+                                        <p className="text-[10px] leading-5 text-muted-foreground">
+                                            Turn this on to publish immediately. Turn it off to hold the generated post in Activity so the user can review the output before anything is sent.
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={(selectedNode?.data.publishWithoutApproval as boolean | undefined) !== false}
+                                        onCheckedChange={(checked) => {
+                                            setNodes(nodes.map(n =>
+                                                n.id === selectedNode?.id
+                                                    ? { ...n, data: { ...n.data, publishWithoutApproval: checked } }
+                                                    : n
+                                            ));
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
 

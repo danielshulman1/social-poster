@@ -6,6 +6,7 @@ import { IBM_Plex_Mono, Manrope, Space_Grotesk } from "next/font/google";
 import NextAuthSessionProvider from "@/components/providers/SessionProvider";
 import DataSyncProvider from "@/components/providers/DataSyncProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { AppFooter } from "@/components/layout/AppFooter";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -38,7 +39,12 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NextAuthSessionProvider>
             <DataSyncProvider>
-              {children}
+              <div className="app-root-shell">
+                <main className="app-main-shell">
+                  {children}
+                </main>
+                <AppFooter />
+              </div>
               <Toaster />
             </DataSyncProvider>
           </NextAuthSessionProvider>

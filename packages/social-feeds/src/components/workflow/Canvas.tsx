@@ -174,6 +174,7 @@ const CanvasContent = () => {
         'wordpress-publisher': DestinationNode,
         'wix-publisher': DestinationNode,
         'squarespace-publisher': DestinationNode,
+        'google-sheets-publisher': DestinationNode,
     }), []);
 
     const edgeTypes = useMemo(() => ({

@@ -28,6 +28,7 @@ import {
     Trash2,
     Save,
     ArrowRight,
+    Download,
     ShieldCheck,
     Settings2,
     Link2
@@ -826,6 +827,26 @@ function ConnectionsPageContent() {
                             <CardDescription>Connect a spreadsheet to use as a data source.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground">Starter Sheet Template</p>
+                                        <p className="text-xs leading-5 text-muted-foreground">
+                                            Download a ready-made CSV with the default content, status, and image columns, then import it into Google Sheets.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            window.open('/api/google/sheets/template', '_blank', 'noopener,noreferrer');
+                                        }}
+                                    >
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download Template
+                                    </Button>
+                                </div>
+                            </div>
+
                             <div className="rounded-md border p-3 flex items-center justify-between gap-3">
                                 <div className="text-sm text-muted-foreground">
                                     Connect Google OAuth to enable marking rows as <strong>done</strong> after use.
@@ -925,7 +946,7 @@ function ConnectionsPageContent() {
                         </CardContent>
                         <CardFooter className="justify-between border-t p-6">
                             <div className="text-sm text-muted-foreground">
-                                <span className="font-medium text-foreground">Rule:</span> Only rows with <strong>Empty</strong> status are processed.
+                                <span className="font-medium text-foreground">Rule:</span> Leave the status column empty for posts you want processed. Rows marked <strong>done</strong> are skipped.
                             </div>
                             <Button onClick={() => alert("Successfully connected to Google Sheet!")}>Test Read Access</Button>
                         </CardFooter>

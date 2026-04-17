@@ -76,6 +76,15 @@ export async function assertUserCanPublishPlatform(
     );
   }
 
+  const workflowIds = await prisma.workflow.findMany({
+    where: { userId },
+    select: { id: true },
+  });
+
+  if (workflowIds.length === 0) {
+    return subscription;
+  }
+
   const weeklyPublishedCount = await prisma.publishResult.count({
     where: {
       platform,
@@ -84,8 +93,8 @@ export async function assertUserCanPublishPlatform(
         gte: getStartOfWeekUtc(),
         lt: getEndOfWeekUtc(),
       },
-      workflow: {
-        userId,
+      workflowId: {
+        in: workflowIds.map((workflow) => workflow.id),
       },
     },
   });
@@ -165,4 +174,3 @@ export async function assertWorkflowDefinitionAllowed(
 export function isTierAccessError(error: unknown): error is TierAccessError {
   return error instanceof TierAccessError;
 }
-

@@ -36,6 +36,40 @@ const getStatusBadgeClassName = (status: string) => {
     return "bg-amber-500 text-black hover:bg-amber-500";
 };
 
+type ApprovalPreviewItem = {
+    nodeId: string;
+    nodeLabel?: string;
+    platform: string;
+    platformLabel: string;
+    previewTitle?: string;
+    previewContent?: string;
+    previewImageUrl?: string;
+    destination?: string;
+};
+
+const getApprovalPreviewItems = (results: Record<string, {
+    nodeId: string;
+    nodeLabel?: string;
+    details?: Record<string, unknown>;
+}>) =>
+    Object.values(results).flatMap((result) => {
+        const details = result.details;
+        if (!details || details.approvalRequired !== true) {
+            return [];
+        }
+
+        return [{
+            nodeId: result.nodeId,
+            nodeLabel: result.nodeLabel,
+            platform: typeof details.platform === "string" ? details.platform : "post",
+            platformLabel: typeof details.platformLabel === "string" ? details.platformLabel : "Post",
+            previewTitle: typeof details.previewTitle === "string" ? details.previewTitle : undefined,
+            previewContent: typeof details.previewContent === "string" ? details.previewContent : undefined,
+            previewImageUrl: typeof details.previewImageUrl === "string" ? details.previewImageUrl : undefined,
+            destination: typeof details.destination === "string" ? details.destination : undefined,
+        }] satisfies ApprovalPreviewItem[];
+    });
+
 export default async function ActivityPage() {
     const session = await getServerSession(authOptions);
     const userId = typeof (session?.user as { id?: string } | undefined)?.id === "string"
@@ -103,6 +137,7 @@ export default async function ActivityPage() {
             log,
             failureReasons,
             recentEvents: log.events.slice(-5).reverse(),
+            approvalItems: getApprovalPreviewItems(log.results),
         };
     });
 
@@ -136,7 +171,7 @@ export default async function ActivityPage() {
                 </Card>
             ) : (
                 <div className="space-y-4">
-                    {items.map(({ execution, log, failureReasons, recentEvents }) => (
+                    {items.map(({ execution, log, failureReasons, recentEvents, approvalItems }) => (
                         <Card key={execution.id} className="overflow-hidden">
                             <CardHeader className="space-y-3">
                                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -175,6 +210,55 @@ export default async function ActivityPage() {
                                             </div>
                                         </AlertDescription>
                                     </Alert>
+                                )}
+
+                                {approvalItems.length > 0 && (
+                                    <Alert>
+                                        <Info className="h-4 w-4" />
+                                        <AlertTitle>Awaiting approval</AlertTitle>
+                                        <AlertDescription>
+                                            This run generated post output but did not publish because `Publish Without Approval` is off on one or more publisher nodes.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                {approvalItems.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h2 className="text-sm font-medium">Post previews</h2>
+                                        {approvalItems.map((item) => (
+                                            <div
+                                                key={`${execution.id}-${item.nodeId}-${item.platform}`}
+                                                className="rounded-2xl border border-border/70 bg-background/55 px-4 py-4"
+                                            >
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Badge variant="outline">{item.platformLabel}</Badge>
+                                                    {item.nodeLabel && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Node: {item.nodeLabel}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {item.destination && (
+                                                    <p className="mt-2 text-xs text-muted-foreground">
+                                                        Destination: {item.destination}
+                                                    </p>
+                                                )}
+                                                {item.previewTitle && (
+                                                    <p className="mt-3 text-sm font-medium">{item.previewTitle}</p>
+                                                )}
+                                                {item.previewContent && (
+                                                    <div className="mt-3 rounded-xl bg-muted/35 px-3 py-3 text-sm whitespace-pre-wrap">
+                                                        {item.previewContent}
+                                                    </div>
+                                                )}
+                                                {item.previewImageUrl && (
+                                                    <p className="mt-3 text-xs text-muted-foreground break-all">
+                                                        Image: {item.previewImageUrl}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
 
                                 <div className="space-y-2">

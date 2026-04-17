@@ -6,9 +6,9 @@ export default function AuthLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="relative min-h-screen overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+        <div className="app-page-shell relative overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
             <div className="absolute inset-0 soft-grid opacity-30" />
-            <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-stretch gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="relative mx-auto grid min-h-full max-w-7xl items-stretch gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                 <section className="hidden overflow-hidden rounded-[2.5rem] border border-border/70 bg-[linear-gradient(155deg,rgba(25,34,51,0.96),rgba(33,47,70,0.9))] p-8 text-white shadow-[0_28px_90px_rgba(25,34,51,0.25)] lg:flex lg:flex-col lg:justify-between">
                     <div className="space-y-6">
                         <span className="inline-flex w-fit rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Activity, AlertTriangle, CheckCircle2, Calendar, Loader2, Wand2 } from 'lucide-react';
+import { Plus, Activity, AlertTriangle, CheckCircle2, Calendar, Loader2, Wand2, LifeBuoy } from 'lucide-react';
 import Link from 'next/link';
 
 interface DashboardStats {
@@ -63,11 +63,18 @@ export default function DashboardPage() {
                             </p>
                         </div>
                     </div>
-                    <Link href="/editor/new">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" /> New Workflow
-                        </Button>
-                    </Link>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/help">
+                            <Button variant="outline">
+                                <LifeBuoy className="mr-2 h-4 w-4" /> User Guide
+                            </Button>
+                        </Link>
+                        <Link href="/editor/new">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" /> New Workflow
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </section>
 

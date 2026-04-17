@@ -1,7 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, Loader2, Play, Pencil, Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, Loader2, Play, Pencil, Check, X, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 
@@ -14,12 +16,27 @@ interface EditorHeaderProps {
     isRunning: boolean;
     isDirty?: boolean;
     workflowId?: string;
+    onGenerateFromPrompt: (prompt: string) => Promise<boolean>;
+    isGenerating?: boolean;
 }
 
-export function EditorHeader({ workflowName, onSave, onNameChange, onRun, isSaving, isRunning, isDirty, workflowId }: EditorHeaderProps) {
+export function EditorHeader({
+    workflowName,
+    onSave,
+    onNameChange,
+    onRun,
+    isSaving,
+    isRunning,
+    isDirty,
+    workflowId,
+    onGenerateFromPrompt,
+    isGenerating,
+}: EditorHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(workflowName);
     const [isRenameSaving, setIsRenameSaving] = useState(false);
+    const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+    const [generatePrompt, setGeneratePrompt] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -69,6 +86,16 @@ export function EditorHeader({ workflowName, onSave, onNameChange, onRun, isSavi
     const handleCancel = () => {
         setEditValue(workflowName);
         setIsEditing(false);
+    };
+
+    const handleGenerate = async () => {
+        const trimmed = generatePrompt.trim();
+        if (!trimmed) return;
+        const succeeded = await onGenerateFromPrompt(trimmed);
+        if (succeeded) {
+            setIsGenerateDialogOpen(false);
+            setGeneratePrompt("");
+        }
     };
 
     return (
@@ -131,6 +158,44 @@ export function EditorHeader({ workflowName, onSave, onNameChange, onRun, isSavi
                 {isDirty && <span className="text-xs text-muted-foreground italic">- Unsaved changes</span>}
             </div>
             <div className="flex items-center gap-2">
+                <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={isSaving || isRunning || isGenerating}>
+                            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            Build From Prompt
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Generate Workflow</DialogTitle>
+                            <DialogDescription>
+                                Describe what you want the workflow to do. The editor will build a starting workflow you can still tweak afterward.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <Textarea
+                            value={generatePrompt}
+                            onChange={(event) => setGeneratePrompt(event.target.value)}
+                            placeholder="Example: Every Monday at 9am pull topics from my Google Sheet, write a LinkedIn post in my brand voice, use the image from the same sheet row, and hold it for approval."
+                            className="min-h-[160px]"
+                        />
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setIsGenerateDialogOpen(false);
+                                    setGeneratePrompt("");
+                                }}
+                                disabled={Boolean(isGenerating)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleGenerate} disabled={!generatePrompt.trim() || Boolean(isGenerating)}>
+                                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                Generate
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
                 <Button size="sm" variant="default" onClick={onRun} disabled={isRunning || isSaving} className="bg-green-600 hover:bg-green-700">
                     {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
                     {isRunning ? 'Running...' : 'Run'}

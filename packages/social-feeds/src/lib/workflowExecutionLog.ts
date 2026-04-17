@@ -18,6 +18,7 @@ export type WorkflowExecutionResult = {
     nodeLabel?: string;
     output?: string;
     error?: string;
+    details?: Record<string, unknown>;
     startedAt?: string;
     completedAt?: string;
 };

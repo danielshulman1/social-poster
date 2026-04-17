@@ -5,9 +5,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, MoreHorizontal, Edit, Trash2, Loader2, Pencil, Check, X, Copy } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, MoreHorizontal, Edit, Trash2, Loader2, Pencil, Check, X, Copy, Sparkles } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +33,9 @@ export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -74,6 +79,65 @@ export default function WorkflowsPage() {
     } catch {
       toast.error("Could not create workflow. Check your plan.");
       setIsCreating(false);
+    }
+  };
+
+  const handleCreateFromPrompt = async () => {
+    const trimmedPrompt = generatePrompt.trim();
+    if (!trimmedPrompt) return;
+
+    setIsGenerating(true);
+    try {
+      const generateRes = await fetch('/api/workflows/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: trimmedPrompt }),
+      });
+
+      const generated = await generateRes.json().catch(() => null);
+      if (!generateRes.ok || !generated) {
+        throw new Error(generated?.error || 'Failed to generate workflow');
+      }
+
+      const createRes = await fetch('/api/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: generated.name || 'Generated Workflow',
+          definition: generated.definition,
+        }),
+      });
+
+      const workflow = await createRes.json().catch(() => null);
+      if (!createRes.ok || !workflow) {
+        throw new Error(workflow?.error || 'Failed to create generated workflow');
+      }
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          `workflow-draft:${workflow.id}`,
+          JSON.stringify({
+            name: generated.name || 'Generated Workflow',
+            definition: generated.definition,
+          })
+        );
+      }
+
+      toast.success('Workflow generated');
+      if (Array.isArray(generated.warnings) && generated.warnings.length > 0) {
+        toast.message('Review generated setup', {
+          description: generated.warnings.slice(0, 2).join(' '),
+          duration: 10000,
+        });
+      }
+
+      setIsGenerateDialogOpen(false);
+      setGeneratePrompt('');
+      router.push(`/editor/${workflow.id}`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Could not generate workflow. Check your plan.');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -190,8 +254,47 @@ export default function WorkflowsPage() {
         </div>
       </section>
 
-      <div className="flex justify-end">
-        <Button onClick={handleCreateWorkflow} disabled={isCreating}>
+      <div className="flex justify-end gap-3">
+        <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" disabled={isCreating || isGenerating}>
+              {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Build With Text
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Generate Workflow</DialogTitle>
+              <DialogDescription>
+                Describe what you want the workflow to do. The app will create it and open it in the editor.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={generatePrompt}
+              onChange={(event) => setGeneratePrompt(event.target.value)}
+              placeholder="Example: Every Monday at 9am read my Google Sheet, write a LinkedIn post, use the image from the same row, and hold it for approval."
+              className="min-h-[160px]"
+            />
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsGenerateDialogOpen(false);
+                  setGeneratePrompt('');
+                }}
+                disabled={isGenerating}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreateFromPrompt} disabled={!generatePrompt.trim() || isGenerating}>
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Generate
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Button onClick={handleCreateWorkflow} disabled={isCreating || isGenerating}>
           {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
           New Workflow
         </Button>

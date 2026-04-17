@@ -1,9 +1,32 @@
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 import { NextResponse, NextRequest } from 'next/server';
 import { getApiAuthContext, unauthorizedText } from '@/lib/apiAuth';
+import {
+  buildReferenceDocumentMetadata,
+  clampReferenceDocumentsForPrompt,
+  sanitizeReferenceDocuments,
+} from '@/lib/persona-reference-documents';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+
+interface InterviewAnswerInput {
+  question: string;
+  answer: string;
+}
+
+interface GeneratedPersonaData {
+  brandVoiceSummary: string;
+  contentPillars: string[];
+  referenceDocuments?: ReturnType<typeof buildReferenceDocumentMetadata>;
+}
+
+type RouteError = Error & {
+  code?: string;
+  status?: number;
+  type?: string;
+};
 
 export async function POST(req: NextRequest) {
   const auth = await getApiAuthContext(req);
@@ -23,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { interviewAnswers, postSamples } = body;
+    const { interviewAnswers, postSamples, referenceDocuments } = body;
 
     if (!interviewAnswers || !Array.isArray(interviewAnswers) || interviewAnswers.length === 0) {
       return NextResponse.json(
@@ -49,17 +72,55 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey });
 
     // Build the prompt for persona generation
-    const interviewText = interviewAnswers
-      .map((answer: { question: string; answer: string }, i: number) => `Q${i + 1}: ${answer.question}\nA: ${answer.answer}`)
+    const normalizedInterviewAnswers = interviewAnswers
+      .filter(
+        (answer: unknown): answer is InterviewAnswerInput =>
+          !!answer &&
+          typeof answer === 'object' &&
+          'question' in answer &&
+          'answer' in answer &&
+          typeof answer.question === 'string' &&
+          typeof answer.answer === 'string'
+      );
+
+    const normalizedPosts = Array.isArray(postSamples)
+      ? postSamples.filter((post): post is string => typeof post === 'string' && post.trim().length > 0)
+      : [];
+
+    const interviewText = normalizedInterviewAnswers
+      .map((answer, i) => `Q${i + 1}: ${answer.question}\nA: ${answer.answer}`)
       .join('\n\n');
 
-    const postsText = postSamples && Array.isArray(postSamples) && postSamples.length > 0
-      ? `\n\nRecent posts:\n${postSamples.map((post: any) => `- ${post}`).join('\n')}`
+    const postsText = normalizedPosts.length > 0
+      ? `\n\nRecent posts:\n${normalizedPosts.map((post) => `- ${post}`).join('\n')}`
       : '';
 
-    const prompt = `Based on the following interview answers and recent posts, analyze this person's brand voice, communication style, and content themes. Generate a structured persona.
+    const normalizedReferenceDocuments = sanitizeReferenceDocuments(referenceDocuments);
+    const promptReferenceDocuments = clampReferenceDocumentsForPrompt(normalizedReferenceDocuments);
+    const referenceText = promptReferenceDocuments.length > 0
+      ? `\n\nReference documents:\n${promptReferenceDocuments
+          .map((document, index) => {
+            const kindLabel = document.kind === 'brand-guidelines'
+              ? 'Brand guidelines'
+              : document.kind === 'master-prompt'
+                ? 'Master prompt'
+                : 'Reference material';
 
-${interviewText}${postsText}
+            return `[Document ${index + 1}] ${document.name} (${kindLabel})\n${document.content}`;
+          })
+          .join('\n\n')}`
+      : '';
+
+    const prompt = `Based on the following interview answers, recent posts, and optional reference documents, analyze this person's brand voice, communication style, and content themes. Generate a structured persona.
+
+Use the materials in this order of priority:
+1. Brand guidelines and master prompts for explicit voice, messaging, and positioning rules.
+2. Interview answers for intent, goals, and audience.
+3. Recent posts for real-world phrasing and tone examples.
+
+If the recent posts conflict with the brand guidelines or master prompts, prefer the uploaded reference documents.
+
+${interviewText}${postsText}${referenceText}
 
 Create a JSON response with:
 - brandVoiceSummary: A 2-3 sentence summary of their communication style and brand personality
@@ -85,12 +146,12 @@ Example format:
     const responseText = message.choices[0].message.content || '';
 
     // Extract and parse JSON from response
-    let personaData: any = null;
+    let personaData: Partial<GeneratedPersonaData> | null = null;
 
     try {
       // Try to parse the entire response first
       personaData = JSON.parse(responseText);
-    } catch (e) {
+    } catch {
       // If that fails, try to extract JSON from the response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -107,7 +168,7 @@ Example format:
             const cleaned = jsonStr.substring(0, i + 1);
             personaData = JSON.parse(cleaned);
             break;
-          } catch (e) {
+          } catch {
             // Continue trying
           }
         }
@@ -119,53 +180,67 @@ Example format:
     }
 
     // Validate the response
-    if (!personaData.brandVoiceSummary || !Array.isArray(personaData.contentPillars)) {
+    if (
+      !personaData ||
+      typeof personaData.brandVoiceSummary !== 'string' ||
+      !Array.isArray(personaData.contentPillars) ||
+      !personaData.contentPillars.every((pillar): pillar is string => typeof pillar === 'string')
+    ) {
       throw new Error('Invalid persona data structure - missing brandVoiceSummary or contentPillars');
     }
+
+    const finalPersonaData: GeneratedPersonaData = {
+      brandVoiceSummary: personaData.brandVoiceSummary.trim(),
+      contentPillars: personaData.contentPillars.map((pillar) => pillar.trim()).filter(Boolean),
+      referenceDocuments: buildReferenceDocumentMetadata(normalizedReferenceDocuments),
+    };
 
     // Mark audit as used and clear authorization (it's been consumed)
     await prisma.userPersona.upsert({
       where: { userId: auth.userId },
       update: {
-        personaData,
+        personaData: finalPersonaData,
         auditUsed: true,
         auditAuthorizedAt: null, // Clear the authorization after using
       },
       create: {
         userId: auth.userId,
-        personaData,
+        personaData: finalPersonaData,
         auditUsed: true,
       },
     });
 
-    return NextResponse.json(personaData);
-  } catch (error: any) {
+    return NextResponse.json(finalPersonaData);
+  } catch (error: unknown) {
+    const routeError: RouteError =
+      error instanceof Error ? (error as RouteError) : new Error('Failed to generate persona');
+
     console.error('Error generating persona:', {
-      message: error.message,
-      code: error.code,
-      status: error.status,
-      type: error.type,
-      fullError: error,
+      message: routeError.message,
+      code: routeError.code,
+      status: routeError.status,
+      type: routeError.type,
+      fullError: routeError,
     });
 
     // Provide helpful error messages
     let errorMessage = 'Failed to generate persona';
 
-    if (error.message?.includes('API')) {
+    if (routeError.message?.includes('API')) {
       errorMessage = 'OpenAI API error - check your API key configuration';
-    } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+    } else if (routeError.message?.includes('401') || routeError.message?.includes('Unauthorized')) {
       errorMessage = 'Invalid OpenAI API key - please check your configuration';
-    } else if (error.message?.includes('429')) {
+    } else if (routeError.message?.includes('429')) {
       errorMessage = 'OpenAI rate limit exceeded - please try again in a moment';
-    } else if (error.message?.includes('JSON')) {
+    } else if (routeError.message?.includes('JSON')) {
       errorMessage = 'Invalid response format from AI - please try again';
-    } else if (error.message) {
-      errorMessage = error.message;
+    } else if (routeError.message) {
+      errorMessage = routeError.message;
     }
 
     return NextResponse.json(
       { error: errorMessage },
-      { status: error.status || 500 }
+      { status: routeError.status || 500 }
     );
   }
 }
