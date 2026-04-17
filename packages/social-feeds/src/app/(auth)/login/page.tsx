@@ -64,14 +64,71 @@ export default function LoginPage() {
     };
 
     return (
-        <Card className="mx-auto w-full max-w-xl overflow-hidden border-border/80 bg-card/94">
-            <CardHeader>
-                <div className="page-kicker w-fit">Welcome Back</div>
-                <CardTitle className="text-4xl">Sign in</CardTitle>
-                <CardDescription>
-                    Enter your email and password to get back into your workflows, channels, and publishing queue.
-                </CardDescription>
-            </CardHeader>
+        <div className="w-full max-w-5xl space-y-6">
+            {/* Security & Compliance Features */}
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Enterprise Security</p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-card/50 p-3">
+                            <div className="text-lg">🔐</div>
+                            <div>
+                                <p className="text-xs font-semibold">Bcrypt Encryption</p>
+                                <p className="text-xs text-muted-foreground">12-round password hashing</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-card/50 p-3">
+                            <div className="text-lg">🔑</div>
+                            <div>
+                                <p className="text-xs font-semibold">JWT Tokens</p>
+                                <p className="text-xs text-muted-foreground">7-day secure access tokens</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-card/50 p-3">
+                            <div className="text-lg">📋</div>
+                            <div>
+                                <p className="text-xs font-semibold">Audit Logging</p>
+                                <p className="text-xs text-muted-foreground">Full activity tracking</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-card/50 p-3">
+                            <div className="text-lg">⚡</div>
+                            <div>
+                                <p className="text-xs font-semibold">Rate Limiting</p>
+                                <p className="text-xs text-muted-foreground">DDoS & brute force protection</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Compliance Badges */}
+                <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Compliance</p>
+                    <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                            <span>✓</span> GDPR
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                            <span>✓</span> CCPA
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                            <span>✓</span> SOC 2
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+                            <span>🔒</span> Encrypted
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <Card className="mx-auto w-full overflow-hidden border-border/80 bg-card/94">
+                <CardHeader>
+                    <div className="page-kicker w-fit">Welcome Back</div>
+                    <CardTitle className="text-4xl">Sign in</CardTitle>
+                    <CardDescription>
+                        Enter your email and password to get back into your workflows, channels, and publishing queue.
+                    </CardDescription>
+                </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="grid gap-4">
                     <div className="grid gap-2">
@@ -117,6 +174,7 @@ export default function LoginPage() {
                     </div>
                 </CardFooter>
             </form>
-        </Card>
+            </Card>
+        </div>
     );
 }
