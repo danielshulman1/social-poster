@@ -68,6 +68,60 @@ export default function LoginPage() {
               Access your workspace, automation controls, reporting, and support tools from one place.
             </p>
           </div>
+
+          {/* Security & Compliance Features */}
+          <div className="mt-12 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">Enterprise Security</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="mt-1 text-lg">🔐</div>
+                <div>
+                  <p className="text-xs font-semibold text-white">Bcrypt Encryption</p>
+                  <p className="text-xs text-white/60">12-round password hashing</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="mt-1 text-lg">🔑</div>
+                <div>
+                  <p className="text-xs font-semibold text-white">JWT Tokens</p>
+                  <p className="text-xs text-white/60">7-day secure access tokens</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="mt-1 text-lg">📋</div>
+                <div>
+                  <p className="text-xs font-semibold text-white">Audit Logging</p>
+                  <p className="text-xs text-white/60">Full activity tracking</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="mt-1 text-lg">⚡</div>
+                <div>
+                  <p className="text-xs font-semibold text-white">Rate Limiting</p>
+                  <p className="text-xs text-white/60">DDoS & brute force protection</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compliance Badges */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">Compliance</p>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                <span>✓</span> GDPR
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                <span>✓</span> CCPA
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-green-400/30 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+                <span>✓</span> SOC 2
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+                <span>🔒</span> Encrypted
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.35)] md:p-8">

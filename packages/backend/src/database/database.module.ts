@@ -11,21 +11,30 @@ import { WorkflowRunEntity } from '../entities/workflow-run.entity';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres',
-        url: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/autm',
-        entities: [
-          OrganizationEntity,
-          UserEntity,
-          MailboxEntity,
-          EmailThreadEntity,
-          EmailMessageEntity,
-          DetectedTaskEntity,
-          WorkflowRunEntity,
-        ],
-        synchronize: false, // use migrations
-        logging: false,
-      }),
+      useFactory: () => {
+        const isProduction = process.env.NODE_ENV === 'production';
+        return {
+          type: 'postgres',
+          url: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/autm',
+          entities: [
+            OrganizationEntity,
+            UserEntity,
+            MailboxEntity,
+            EmailThreadEntity,
+            EmailMessageEntity,
+            DetectedTaskEntity,
+            WorkflowRunEntity,
+          ],
+          synchronize: false, // use migrations
+          logging: false,
+          ssl: isProduction
+            ? { rejectUnauthorized: true }
+            : { rejectUnauthorized: false }, // Allow self-signed certs in dev
+          extra: {
+            ssl: !isProduction,
+          },
+        };
+      },
     }),
   ],
 })
