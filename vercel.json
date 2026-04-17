@@ -1,9 +1,9 @@
 {
-    "buildCommand": "pnpm --filter social-feeds build",
-    "outputDirectory": "packages/social-feeds/.next",
+    "buildCommand": "pnpm --filter frontend build",
+    "outputDirectory": "packages/frontend/.next",
     "installCommand": "pnpm install",
     "framework": "nextjs",
-    "devCommand": "cd packages/social-feeds && pnpm dev",
+    "devCommand": "cd packages/frontend && pnpm dev",
     "crons": [
         {
             "path": "/api/cron/process-schedules",
