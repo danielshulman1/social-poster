@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getApiAuthContext, unauthorizedJson } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import {
+    parseConnectionCredentials,
+    serializeConnectionCredentials,
+    type ConnectionCredentials,
+} from "@/lib/connection-credentials";
 
-type GoogleCreds = {
+type GoogleCreds = ConnectionCredentials & {
     accessToken?: string | null;
     refreshToken?: string | null;
     expiresAt?: number | null;
-    [key: string]: unknown;
 };
 
 function normalizeSpreadsheetId(input: string) {
@@ -14,14 +18,6 @@ function normalizeSpreadsheetId(input: string) {
     const match = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (match?.[1]) return match[1];
     return trimmed;
-}
-
-function parseCredentials(raw: string): GoogleCreds {
-    try {
-        return JSON.parse(raw || "{}");
-    } catch {
-        return {};
-    }
 }
 
 function isLikelyGoogleApiKey(token: string): boolean {
@@ -80,7 +76,7 @@ async function refreshGoogleAccessToken(connectionId: string, creds: GoogleCreds
     };
     await prisma.externalConnection.update({
         where: { id: connectionId },
-        data: { credentials: JSON.stringify(nextCreds) },
+        data: { credentials: serializeConnectionCredentials(nextCreds) },
     });
 
     return typeof nextCreds.accessToken === "string" ? nextCreds.accessToken : null;
@@ -111,7 +107,7 @@ export async function GET(req: Request) {
 
         const candidates = connections
             .map((connection) => {
-                const creds = parseCredentials(connection.credentials);
+                const creds = parseConnectionCredentials(connection.credentials) as GoogleCreds;
                 const token = normalizeAccessToken(creds);
                 const refreshToken = typeof creds.refreshToken === "string" ? creds.refreshToken.trim() : "";
                 const usable = !!token || !!refreshToken;

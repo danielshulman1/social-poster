@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse, NextRequest } from 'next/server';
 import { getApiAuthContext, unauthorizedText } from '@/lib/apiAuth';
 import { prisma } from '@/lib/prisma';
+import { parseConnectionCredentials } from '@/lib/connection-credentials';
 
 /**
  * Fetch recent posts from user's connected social accounts
@@ -75,8 +76,7 @@ export async function GET(req: NextRequest) {
 
 async function fetchFacebookPosts(credentials: string): Promise<string[]> {
   try {
-    // Parse credentials
-    const creds = JSON.parse(credentials);
+    const creds = parseConnectionCredentials(credentials);
     const accessToken = creds.access_token || creds.accessToken;
 
     if (!accessToken) return [];
@@ -98,8 +98,7 @@ async function fetchFacebookPosts(credentials: string): Promise<string[]> {
 
 async function fetchInstagramPosts(credentials: string): Promise<string[]> {
   try {
-    // Parse credentials
-    const creds = JSON.parse(credentials);
+    const creds = parseConnectionCredentials(credentials);
     const accessToken = creds.access_token || creds.accessToken;
 
     if (!accessToken) return [];
@@ -121,8 +120,7 @@ async function fetchInstagramPosts(credentials: string): Promise<string[]> {
 
 async function fetchLinkedInPosts(credentials: string): Promise<string[]> {
   try {
-    // Parse credentials
-    const creds = JSON.parse(credentials);
+    const creds = parseConnectionCredentials(credentials);
     const accessToken = creds.access_token || creds.accessToken;
 
     if (!accessToken) return [];
@@ -150,8 +148,7 @@ async function fetchLinkedInPosts(credentials: string): Promise<string[]> {
 
 async function fetchTwitterPosts(credentials: string): Promise<string[]> {
   try {
-    // Parse credentials
-    const creds = JSON.parse(credentials);
+    const creds = parseConnectionCredentials(credentials);
     const accessToken = creds.access_token || creds.accessToken;
 
     if (!accessToken) return [];

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Trash2, Loader2, Eye, EyeOff, Key, CheckCircle2, Radio, Bot, ArrowUpRight, UserRound } from 'lucide-react';
+import { MfaSettingsCard } from '@/components/settings/MfaSettingsCard';
 import { useWorkflowStore } from '@/lib/store';
 import { toast } from 'sonner';
 
@@ -421,6 +422,8 @@ export default function SettingsPage() {
                         </Button>
                     </CardContent>
                 </Card>
+
+                <MfaSettingsCard />
 
                 {/* API KEYS */}
                 <Card className="overflow-hidden border-border/70 bg-card/90 shadow-sm">

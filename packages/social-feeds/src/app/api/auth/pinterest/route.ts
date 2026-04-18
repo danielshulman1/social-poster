@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import { createOAuthState } from "@/lib/oauth-state";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +17,10 @@ export async function GET(req: Request) {
     }
 
     // Read user's Pinterest credentials from DB
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { pinterestClientId: true, pinterestClientSecret: true },
-    });
+    }));
 
     if (!user?.pinterestClientId || !user?.pinterestClientSecret) {
         return NextResponse.json(

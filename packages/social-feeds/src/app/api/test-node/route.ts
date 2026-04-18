@@ -1,6 +1,10 @@
 ﻿import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiAuthContext, unauthorizedJson } from "@/lib/apiAuth";
+import {
+    parseConnectionCredentials,
+    serializeConnectionCredentials,
+} from "@/lib/connection-credentials";
 import { publishBlogToEasyAi, type PublishBlogPayload } from "@/lib/publishBlog";
 import {
     applyHttpTemplate,
@@ -12,6 +16,7 @@ import {
     resolvePublishBlogRequestUrl,
     validateHttpRequestTarget,
 } from "@/lib/httpRequest";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -183,14 +188,14 @@ async function getGoogleAccessToken(userId: string, forceRefresh = false): Promi
 
         let connection = connections[0];
         for (const c of connections) {
-            const parsed = JSON.parse(c.credentials || '{}');
+            const parsed = parseConnectionCredentials(c.credentials);
             if (parsed.refreshToken) {
                 connection = c;
                 break;
             }
         }
 
-        const creds = JSON.parse(connection.credentials || '{}');
+        const creds = parseConnectionCredentials(connection.credentials);
         const now = Date.now();
         const expiresAt = typeof creds.expiresAt === 'number' ? creds.expiresAt : 0;
 
@@ -222,7 +227,7 @@ async function getGoogleAccessToken(userId: string, forceRefresh = false): Promi
                 };
                 await prisma.externalConnection.update({
                     where: { id: connection.id },
-                    data: { credentials: JSON.stringify(nextCreds) },
+                    data: { credentials: serializeConnectionCredentials(nextCreds) },
                 });
                 return nextCreds.accessToken;
             }
@@ -275,7 +280,7 @@ export async function POST(req: Request) {
                 }
             } else if (contentSource === 'google-sheets') {
                 // Prefer OAuth token; fallback to API key if provided
-                const userWithKey = await prisma.user.findUnique({ where: { id: auth.userId }, select: { googleApiKey: true } });
+                const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: auth.userId }, select: { googleApiKey: true } }));
                 const readToken = await getGoogleAccessToken(auth.userId);
                 if ((readToken || userWithKey?.googleApiKey) && sheetId) {
                     try {
@@ -362,10 +367,10 @@ export async function POST(req: Request) {
             const enhancedPersona = persona + humanInstructions;
 
             // Get the user's API key from the database
-            const user = await prisma.user.findUnique({
+            const user = decryptUserSecretFields(await prisma.user.findUnique({
                 where: { id: auth.userId },
                 select: { openaiApiKey: true, openrouterApiKey: true },
-            });
+            }));
 
             if (provider === 'openrouter') {
                 if (!user?.openrouterApiKey) {
@@ -481,7 +486,7 @@ export async function POST(req: Request) {
             }
 
             const blogPrompt = getString(body.blogPrompt, 'Write a blog post.');
-            const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { openaiApiKey: true } });
+            const user = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: auth.userId }, select: { openaiApiKey: true } }));
 
             if (!user?.openaiApiKey) {
                 return NextResponse.json({ success: false, error: 'No OpenAI API key.' }, { status: 400 });
@@ -654,10 +659,10 @@ export async function POST(req: Request) {
             console.log('[Test Node] Image Generation Request:', { provider, prompt, promptLength: prompt.length });
 
             if (provider === 'dalle-3') {
-                const user = await prisma.user.findUnique({
+                const user = decryptUserSecretFields(await prisma.user.findUnique({
                     where: { id: auth.userId },
                     select: { openaiApiKey: true, openrouterApiKey: true },
-                });
+                }));
                 // @ts-ignore
                 if (!user?.openaiApiKey) {
                     return NextResponse.json({ success: false, error: 'No OpenAI API key configured.' }, { status: 400 });
@@ -687,10 +692,10 @@ export async function POST(req: Request) {
                 return NextResponse.json({ success: true, result: imageUrl });
 
             } else if (provider === 'nano-banana' || provider === 'gemini') {
-                const user = await prisma.user.findUnique({
+                const user = decryptUserSecretFields(await prisma.user.findUnique({
                     where: { id: auth.userId },
                     select: { googleApiKey: true } // This field exists now
-                });
+                }));
 
                 // @ts-ignore
                 if (!user?.googleApiKey) {

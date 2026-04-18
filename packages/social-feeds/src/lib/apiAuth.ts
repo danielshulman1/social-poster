@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isMfaBootstrapApiPath } from "@/lib/mfa";
 
 export type ApiAuthContext = {
     userId: string;
@@ -43,8 +44,20 @@ async function findUserBySession(session: any) {
 export async function getApiAuthContext(req?: Request): Promise<ApiAuthContext | null> {
     const session = await getServerSession(authOptions);
     const sessionUser = await findUserBySession(session);
+    const pathname = req ? new URL(req.url).pathname : null;
+    const canBypassMfa = isMfaBootstrapApiPath(pathname);
 
     if (sessionUser) {
+        if (!canBypassMfa) {
+            if (session?.user?.mfaEnrollmentRequired) {
+                return null;
+            }
+
+            if (session?.user?.mfaRequired && !session?.user?.mfaVerified) {
+                return null;
+            }
+        }
+
         return {
             userId: sessionUser.id,
             email: sessionUser.email,

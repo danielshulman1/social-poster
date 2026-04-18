@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import { verifyOAuthState } from "@/lib/oauth-state";
+import { serializeConnectionCredentials } from "@/lib/connection-credentials";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -28,10 +30,10 @@ export async function GET(req: Request) {
     const userId = verifiedState.userId;
 
     // Read user's Pinterest credentials
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
         select: { pinterestClientId: true, pinterestClientSecret: true },
-    });
+    }));
 
     if (!user?.pinterestClientId || !user?.pinterestClientSecret) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_pinterest_config`);
@@ -89,7 +91,7 @@ export async function GET(req: Request) {
                 userId,
                 provider: 'pinterest',
                 name: displayName,
-                credentials: JSON.stringify({
+                credentials: serializeConnectionCredentials({
                     accessToken: tokenData.access_token,
                     expiresIn: tokenData.expires_in,
                     username: profileData.username,

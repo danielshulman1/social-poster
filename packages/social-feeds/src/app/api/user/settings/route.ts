@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getApiAuthContext, unauthorizedJson } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { parseConnectionCredentials } from "@/lib/connection-credentials";
+import {
+    decryptUserSecretFields,
+    encryptUserSecretUpdate,
+    getSecretPreview,
+} from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +15,10 @@ export async function GET(req: Request) {
     const auth = await getApiAuthContext(req);
     if (!auth?.userId) return unauthorizedJson();
 
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: auth.userId },
         select: { name: true, email: true, openaiApiKey: true, googleApiKey: true, linkedinClientId: true, linkedinClientSecret: true, facebookAppId: true, facebookAppSecret: true },
-    });
+    }));
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -20,13 +26,9 @@ export async function GET(req: Request) {
         name: user.name,
         email: user.email,
         hasOpenaiKey: !!user.openaiApiKey,
-        openaiKeyPreview: user.openaiApiKey
-            ? `sk-...${user.openaiApiKey.slice(-4)}`
-            : null,
+        openaiKeyPreview: getSecretPreview(user.openaiApiKey, "sk-..."),
         hasGoogleApiKey: !!user.googleApiKey,
-        googleApiKeyPreview: user.googleApiKey
-            ? `...${user.googleApiKey.slice(-4)}`
-            : null,
+        googleApiKeyPreview: getSecretPreview(user.googleApiKey),
         hasLinkedinCredentials: !!(user.linkedinClientId && user.linkedinClientSecret),
         linkedinClientId: user.linkedinClientId || '',
         hasFacebookAppCredentials: !!(user.facebookAppId && user.facebookAppSecret),
@@ -40,7 +42,7 @@ export async function PUT(req: Request) {
     if (!auth?.userId) return unauthorizedJson();
 
     const body = await req.json();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (body.name !== undefined) updateData.name = body.name;
     if (body.openaiApiKey !== undefined) updateData.openaiApiKey = body.openaiApiKey;
@@ -50,10 +52,10 @@ export async function PUT(req: Request) {
     if (body.facebookAppId !== undefined) updateData.facebookAppId = body.facebookAppId;
     if (body.facebookAppSecret !== undefined) updateData.facebookAppSecret = body.facebookAppSecret;
 
-    const user = await prisma.user.update({
+    const user = decryptUserSecretFields(await prisma.user.update({
         where: { id: auth.userId },
-        data: updateData,
-    });
+        data: encryptUserSecretUpdate(updateData),
+    }));
 
     return NextResponse.json({
         success: true,
@@ -76,22 +78,27 @@ export async function POST(req: Request) {
 
         const results = [];
         for (const conn of connections) {
-            let creds: any = {};
-            try { creds = JSON.parse(conn.credentials); } catch { }
+            const creds = parseConnectionCredentials(conn.credentials);
 
-            const result: any = {
+            const accessToken = typeof creds.accessToken === "string" ? creds.accessToken : "";
+            const connectedAt = typeof creds.connectedAt === "string" ? creds.connectedAt : "unknown";
+            const expiresIn = typeof creds.expiresIn === "number" || typeof creds.expiresIn === "string"
+                ? creds.expiresIn
+                : "unknown";
+
+            const result: Record<string, unknown> = {
                 connectionId: conn.id,
                 name: conn.name,
                 createdAt: conn.createdAt,
-                connectedAt: creds.connectedAt || 'unknown',
-                expiresIn: creds.expiresIn || 'unknown',
-                hasAccessToken: Boolean(creds.accessToken),
+                connectedAt,
+                expiresIn,
+                hasAccessToken: Boolean(accessToken),
             };
 
-            if (creds.accessToken) {
+            if (accessToken) {
                 try {
                     const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
-                        headers: { 'Authorization': `Bearer ${creds.accessToken}` },
+                        headers: { 'Authorization': `Bearer ${accessToken}` },
                     });
                     result.userinfoTest = {
                         status: profileRes.status,
@@ -103,7 +110,7 @@ export async function POST(req: Request) {
 
                 try {
                     const meRes = await fetch('https://api.linkedin.com/v2/me', {
-                        headers: { 'Authorization': `Bearer ${creds.accessToken}` },
+                        headers: { 'Authorization': `Bearer ${accessToken}` },
                     });
                     result.meTest = {
                         status: meRes.status,

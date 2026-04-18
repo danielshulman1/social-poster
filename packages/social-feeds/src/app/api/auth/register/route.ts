@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeTier } from "@/lib/tiers";
 import bcrypt from "bcryptjs";
+import {
+    buildRateLimitHeaders,
+    consumeRateLimit,
+    getRequestClientIp,
+} from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
     try {
@@ -16,6 +21,18 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 { message: "Missing email or password" },
                 { status: 400 }
+            );
+        }
+
+        const rateLimit = await consumeRateLimit({
+            key: `auth:register:${getRequestClientIp(req)}:${normalizedEmail || "unknown"}`,
+            limit: 5,
+            windowMs: 10 * 60 * 1000,
+        });
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { message: "Too many signup attempts. Try again shortly." },
+                { status: 429, headers: buildRateLimitHeaders(rateLimit) }
             );
         }
 

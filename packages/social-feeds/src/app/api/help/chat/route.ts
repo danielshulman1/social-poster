@@ -6,6 +6,12 @@ import OpenAI from "openai";
 import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 import {
+  buildRateLimitHeaders,
+  consumeRateLimit,
+  getRequestClientIp,
+} from "@/lib/rate-limit";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
+import {
   buildUserGuidePlainText,
   findRelevantGuideFaqs,
   findRelevantGuideSections,
@@ -93,13 +99,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Question is required" }, { status: 400 });
     }
 
+    const rateLimit = await consumeRateLimit({
+      key: `help-chat:${auth.userId}:${getRequestClientIp(req)}`,
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many help-chat requests. Try again shortly." },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit) }
+      );
+    }
+
     const relevantSections = findRelevantGuideSections(question, 3);
     const relevantFaqs = findRelevantGuideFaqs(question, 3);
 
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
       where: { id: auth.userId },
       select: { openaiApiKey: true },
-    });
+    }));
 
     const apiKey = user?.openaiApiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {

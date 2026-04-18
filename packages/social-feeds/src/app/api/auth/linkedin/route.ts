@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import { createOAuthState } from "@/lib/oauth-state";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,10 @@ export async function GET(req: Request) {
     }
 
     // Read user's LinkedIn credentials from DB
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { linkedinClientId: true, linkedinClientSecret: true },
-    });
+    }));
 
     if (!user?.linkedinClientId || !user?.linkedinClientSecret) {
         return NextResponse.json({ error: "LinkedIn credentials not configured. Go to Settings → API Keys to add your LinkedIn Client ID and Secret." }, { status: 400 });

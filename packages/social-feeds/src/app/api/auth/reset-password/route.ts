@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import {
+    buildRateLimitHeaders,
+    consumeRateLimit,
+    getRequestClientIp,
+} from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
     try {
@@ -18,6 +23,18 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 { message: "Password must be at least 8 characters" },
                 { status: 400 }
+            );
+        }
+
+        const rateLimit = await consumeRateLimit({
+            key: `auth:reset-password:${getRequestClientIp(req)}`,
+            limit: 10,
+            windowMs: 15 * 60 * 1000,
+        });
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { message: "Too many password reset attempts. Try again later." },
+                { status: 429, headers: buildRateLimitHeaders(rateLimit) }
             );
         }
 

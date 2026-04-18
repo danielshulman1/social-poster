@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import { verifyOAuthState } from "@/lib/oauth-state";
+import { serializeConnectionCredentials } from "@/lib/connection-credentials";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -28,10 +30,10 @@ export async function GET(req: Request) {
     const userId = verifiedState.userId;
 
     // Read user's YouTube credentials
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
         select: { youtubeClientId: true, youtubeClientSecret: true },
-    });
+    }));
 
     if (!user?.youtubeClientId || !user?.youtubeClientSecret) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_youtube_config`);
@@ -87,7 +89,7 @@ export async function GET(req: Request) {
                 userId,
                 provider: 'youtube',
                 name: displayName,
-                credentials: JSON.stringify({
+                credentials: serializeConnectionCredentials({
                     accessToken: tokenData.access_token,
                     refreshToken: tokenData.refresh_token || null,
                     expiresIn: tokenData.expires_in,

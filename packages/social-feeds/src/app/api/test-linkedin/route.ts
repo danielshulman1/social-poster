@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getApiAuthContext, unauthorizedJson } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { parseConnectionCredentials } from "@/lib/connection-credentials";
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +16,7 @@ export async function GET(req: Request) {
     const results = [];
 
     for (const conn of connections) {
-        let creds: any = {};
-        try { creds = JSON.parse(conn.credentials); } catch { }
+        const creds = parseConnectionCredentials(conn.credentials);
 
         const result: any = {
             connectionId: conn.id,

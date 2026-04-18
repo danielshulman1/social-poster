@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import crypto from "crypto";
 import { createOAuthState } from "@/lib/oauth-state";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +18,10 @@ export async function GET(req: Request) {
     }
 
     // Read user's Twitter credentials from DB
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { twitterClientId: true, twitterClientSecret: true },
-    });
+    }));
 
     if (!user?.twitterClientId || !user?.twitterClientSecret) {
         return NextResponse.json(

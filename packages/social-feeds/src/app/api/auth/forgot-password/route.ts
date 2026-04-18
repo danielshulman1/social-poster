@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPasswordResetEmail } from "@/lib/email";
 import crypto from "crypto";
+import {
+    buildRateLimitHeaders,
+    consumeRateLimit,
+    getRequestClientIp,
+} from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
     try {
@@ -12,6 +17,17 @@ export async function POST(req: Request) {
         }
 
         const normalizedEmail = email.trim().toLowerCase();
+        const rateLimit = await consumeRateLimit({
+            key: `auth:forgot-password:${getRequestClientIp(req)}:${normalizedEmail}`,
+            limit: 5,
+            windowMs: 15 * 60 * 1000,
+        });
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { message: "Too many reset requests. Try again later." },
+                { status: 429, headers: buildRateLimitHeaders(rateLimit) }
+            );
+        }
 
         // Always return success even if user not found - prevents email enumeration
         const user = await prisma.user.findFirst({

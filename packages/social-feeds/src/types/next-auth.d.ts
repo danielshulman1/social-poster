@@ -9,6 +9,10 @@ declare module "next-auth" {
             email?: string | null
             image?: string | null
             role?: string
+            mfaRequired?: boolean
+            mfaVerified?: boolean
+            mfaEnabled?: boolean
+            mfaEnrollmentRequired?: boolean
             subscription?: unknown
         }
     }
@@ -16,6 +20,10 @@ declare module "next-auth" {
     interface User {
         id: string
         role: string
+        mfaEnabled?: boolean
+        mfaRequired?: boolean
+        mfaVerified?: boolean
+        mfaEnrollmentRequired?: boolean
     }
 }
 
@@ -23,5 +31,9 @@ declare module "next-auth/jwt" {
     interface JWT {
         id?: string
         role?: string
+        mfaEnabled?: boolean
+        mfaRequired?: boolean
+        mfaVerified?: boolean
+        mfaEnrollmentRequired?: boolean
     }
 }

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 import { verifyOAuthState } from "@/lib/oauth-state";
+import { serializeConnectionCredentials } from "@/lib/connection-credentials";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +40,10 @@ export async function GET(req: Request) {
     }
     const userId = verifiedState.userId;
 
-    const prismaUser = await prisma.user.findUnique({
+    const prismaUser = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
         select: { threadsClientId: true, threadsClientSecret: true }
-    });
+    }));
 
     const userClientId = normalizeEnv(prismaUser?.threadsClientId);
     const userClientSecret = normalizeEnv(prismaUser?.threadsClientSecret);
@@ -107,7 +109,7 @@ export async function GET(req: Request) {
                 userId,
                 provider: 'threads',
                 name: displayName,
-                credentials: JSON.stringify({
+                credentials: serializeConnectionCredentials({
                     accessToken: accessToken,
                     userId: userInfo.id,
                     username: userInfo.username,

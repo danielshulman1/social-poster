@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
+import { getMandatoryMfaRequirement } from "@/lib/mfa";
 
 export const authOptions: NextAuthOptions = {
     // Adapter is not needed for credentials provider and can cause issues if not configured correctly for hybrid
@@ -38,6 +39,7 @@ export const authOptions: NextAuthOptions = {
                             name: true,
                             role: true,
                             password: true,
+                            mfaEnabled: true,
                         },
                     });
 
@@ -54,11 +56,19 @@ export const authOptions: NextAuthOptions = {
                         return null;
                     }
 
+                    const mfaPolicy = await getMandatoryMfaRequirement(user.id, user.role);
+                    const mfaEnabled = Boolean(user.mfaEnabled);
+                    const mfaEnrollmentRequired = mfaPolicy.required && !mfaEnabled;
+
                     return {
                         id: user.id,
                         email: user.email,
                         name: user.name,
                         role: user.role,
+                        mfaEnabled,
+                        mfaRequired: mfaEnabled,
+                        mfaVerified: !mfaEnabled,
+                        mfaEnrollmentRequired,
                     };
                 } catch (error) {
                     console.error("Authorize error:", error);
@@ -72,13 +82,32 @@ export const authOptions: NextAuthOptions = {
             if (session?.user) {
                 session.user.id = typeof token.id === "string" ? token.id : "";
                 session.user.role = typeof token.role === "string" ? token.role : undefined;
+                session.user.mfaEnabled = token.mfaEnabled === true;
+                session.user.mfaRequired = token.mfaRequired === true;
+                session.user.mfaVerified = token.mfaVerified === true;
+                session.user.mfaEnrollmentRequired = token.mfaEnrollmentRequired === true;
             }
             return session;
         },
-        jwt: ({ token, user }) => {
+        jwt: ({ token, user, trigger, session }) => {
             if (user) {
                 token.id = user.id;
                 token.role = user.role;
+                token.mfaEnabled = user.mfaEnabled === true;
+                token.mfaRequired = user.mfaRequired === true;
+                token.mfaVerified = user.mfaVerified === true;
+                token.mfaEnrollmentRequired = user.mfaEnrollmentRequired === true;
+            }
+
+            if (trigger === "update") {
+                if (session?.mfaVerified === true) {
+                    token.mfaVerified = true;
+                }
+                if (session?.mfaEnrollmentRequired === false) {
+                    token.mfaEnrollmentRequired = false;
+                    token.mfaEnabled = true;
+                    token.mfaRequired = true;
+                }
             }
             return token;
         },

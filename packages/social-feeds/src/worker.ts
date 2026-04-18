@@ -1,11 +1,12 @@
 import { Worker } from 'bullmq';
 import dotenv from 'dotenv';
 import path from 'path';
+import { getRedisConnectionOptions } from './lib/redis';
 
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const connection = {
+const connection = getRedisConnectionOptions() || {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
 };
@@ -15,6 +16,7 @@ console.log('Starting worker with connection:', connection);
 import { prisma } from './lib/prisma';
 import { sendWorkflowFailureEmail } from './lib/email';
 import { postToSocialMedia } from './lib/social';
+import { parseConnectionCredentials } from './lib/connection-credentials';
 
 const worker = new Worker('workflow-execution', async (job) => {
     console.log(`Processing job ${job.id} of type ${job.name}`);
@@ -35,16 +37,16 @@ const worker = new Worker('workflow-execution', async (job) => {
 
             if (!connection) throw new Error(`Connection not found for account ID: ${accountId}`);
 
-            const creds = JSON.parse(connection.credentials);
+            const creds = parseConnectionCredentials(connection.credentials);
             const content = input?.content || nodeData.testContent || "Test Post from Social Feeds";
             const imageUrl = input?.imageUrl || nodeData.testImageUrl; // Or from previous step output
 
             const result: any = await postToSocialMedia({
                 platform: connection.provider,
-                accessToken: creds.accessToken,
+                accessToken: typeof creds.accessToken === "string" ? creds.accessToken : "",
                 content: content,
                 imageUrl: imageUrl,
-                pageId: connection.provider === 'facebook' ? creds.username : undefined // We stored page ID as username
+                pageId: connection.provider === 'facebook' && typeof creds.username === "string" ? creds.username : undefined // We stored page ID as username
             });
 
             console.log("Post successful:", result);

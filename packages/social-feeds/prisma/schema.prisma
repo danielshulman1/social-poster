@@ -34,6 +34,11 @@ model User {
   pinterestClientSecret String?  // Per-user Pinterest app Client Secret
   threadsClientId      String?  // Per-user Threads app Client ID
   threadsClientSecret  String?  // Per-user Threads app Client Secret
+  mfaEnabled           Boolean  @default(false)
+  mfaSecret            String?
+  mfaPendingSecret     String?
+  mfaBackupCodes       String?
+  mfaPendingBackupCodes String?
   resetToken           String?  @unique  // Password reset token
   resetTokenExpiry     DateTime?  // Password reset token expiration
   createdAt     DateTime  @default(now())

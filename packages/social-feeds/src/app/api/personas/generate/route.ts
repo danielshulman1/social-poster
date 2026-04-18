@@ -9,6 +9,12 @@ import {
   sanitizeReferenceDocuments,
 } from '@/lib/persona-reference-documents';
 import { prisma } from '@/lib/prisma';
+import {
+  buildRateLimitHeaders,
+  consumeRateLimit,
+  getRequestClientIp,
+} from '@/lib/rate-limit';
+import { decryptUserSecretFields } from '@/lib/user-secrets';
 import OpenAI from 'openai';
 
 interface InterviewAnswerInput {
@@ -48,6 +54,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { interviewAnswers, postSamples, referenceDocuments } = body;
 
+    const rateLimit = await consumeRateLimit({
+      key: `persona-generate:${auth.userId}:${getRequestClientIp(req)}`,
+      limit: 6,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many persona generation requests. Try again shortly.' },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit) }
+      );
+    }
+
     if (!interviewAnswers || !Array.isArray(interviewAnswers) || interviewAnswers.length === 0) {
       return NextResponse.json(
         { error: 'interviewAnswers array is required' },
@@ -56,10 +74,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Get user's API key or fall back to server one
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
       where: { id: auth.userId },
       select: { openaiApiKey: true },
-    });
+    }));
 
     const apiKey = user?.openaiApiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {

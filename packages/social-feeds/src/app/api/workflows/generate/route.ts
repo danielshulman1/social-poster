@@ -7,6 +7,12 @@ import OpenAI from "openai";
 import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 import {
+  buildRateLimitHeaders,
+  consumeRateLimit,
+  getRequestClientIp,
+} from "@/lib/rate-limit";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
+import {
   buildWorkflowDefinitionFromBlueprint,
   parseWorkflowGenerationBlueprint,
 } from "@/lib/workflow-generation";
@@ -74,6 +80,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
+    const rateLimit = await consumeRateLimit({
+      key: `workflow-generate:${auth.userId}:${getRequestClientIp(req)}`,
+      limit: 12,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many workflow generation requests. Try again shortly." },
+        { status: 429, headers: buildRateLimitHeaders(rateLimit) }
+      );
+    }
+
     const [user, connections, persona] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.userId },
@@ -88,7 +106,8 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    const apiKey = user?.openaiApiKey || process.env.OPENAI_API_KEY;
+    const decryptedUser = decryptUserSecretFields(user);
+    const apiKey = decryptedUser?.openaiApiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "OpenAI API key not configured. Add one in Settings first." },

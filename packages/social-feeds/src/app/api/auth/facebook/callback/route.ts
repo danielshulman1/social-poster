@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 import { verifyOAuthState } from "@/lib/oauth-state";
+import { serializeConnectionCredentials } from "@/lib/connection-credentials";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +40,10 @@ export async function GET(req: Request) {
     }
     const userId = verifiedState.userId;
 
-    const prismaUser = await prisma.user.findUnique({
+    const prismaUser = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
         select: { facebookAppId: true, facebookAppSecret: true }
-    });
+    }));
 
     const userAppId = normalizeEnv(prismaUser?.facebookAppId);
     const userAppSecret = normalizeEnv(prismaUser?.facebookAppSecret);
@@ -120,7 +122,7 @@ export async function GET(req: Request) {
                         userId,
                         provider: 'facebook',
                         name: page.name,
-                        credentials: JSON.stringify({
+                        credentials: serializeConnectionCredentials({
                             accessToken: page.access_token,
                             pageId: page.id,
                             connectedAt: new Date().toISOString()
@@ -182,7 +184,7 @@ export async function GET(req: Request) {
                             userId,
                             provider: 'instagram',
                             name: displayName,
-                            credentials: JSON.stringify({
+                            credentials: serializeConnectionCredentials({
                                 accessToken: page.access_token, // IG Graph API uses the FB Page Access Token for publishing
                                 username: igUsername || igId,
                                 userId: igId,

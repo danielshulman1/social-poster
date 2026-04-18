@@ -10,6 +10,7 @@ import { AgentServiceModule } from './modules/agent-service/agent-service.module
 import { NotificationServiceModule } from './modules/notification-service/notification-service.module';
 import { IntegrationServiceModule } from './modules/integration-service/integration-service.module';
 import { TermsServiceModule } from './modules/terms-service/terms-service.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
 import { SharedModule } from './shared/shared.module';
 import { DatabaseModule } from './database/database.module';
 import { ConfigService } from './config/config.service';
@@ -44,6 +45,7 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
     // Feature Modules
     AuthServiceModule,
     TermsServiceModule,
+    ComplianceModule,
     OrgServiceModule,
     EmailIntelServiceModule,
     WorkflowServiceModule,

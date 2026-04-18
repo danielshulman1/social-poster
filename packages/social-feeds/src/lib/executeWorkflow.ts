@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+    parseConnectionCredentials,
+    serializeConnectionCredentials,
+} from "@/lib/connection-credentials";
 import { publishBlogToEasyAi, type PublishBlogPayload } from "@/lib/publishBlog";
 import {
     applyHttpTemplate,
@@ -21,6 +25,7 @@ import {
     type WorkflowExecutionStatus,
 } from "@/lib/workflowExecutionLog";
 import { assertUserCanPublishPlatform } from "@/lib/tier-access";
+import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -419,14 +424,14 @@ async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): 
 
         let connection = connections[0];
         for (const c of connections) {
-            const parsed = JSON.parse(c.credentials || '{}');
+            const parsed = parseConnectionCredentials(c.credentials);
             if (parsed.refreshToken) {
                 connection = c;
                 break;
             }
         }
 
-        const creds = JSON.parse(connection.credentials || '{}');
+        const creds = parseConnectionCredentials(connection.credentials);
         const now = Date.now();
         const expiresAt = typeof creds.expiresAt === 'number' ? creds.expiresAt : 0;
 
@@ -458,7 +463,7 @@ async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): 
                 };
                 await prisma.externalConnection.update({
                     where: { id: connection.id },
-                    data: { credentials: JSON.stringify(nextCreds) },
+                    data: { credentials: serializeConnectionCredentials(nextCreds) },
                 });
                 return nextCreds.accessToken;
             }
@@ -593,10 +598,10 @@ export async function executeWorkflow(
     }
 
     // Load user's API key and connections
-    const user = await prisma.user.findUnique({
+    const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
         select: { openaiApiKey: true, googleApiKey: true },
-    });
+    }));
 
     const connections = await prisma.externalConnection.findMany({
         where: { userId: userId },
@@ -810,10 +815,10 @@ export async function executeWorkflow(
 
                     const spreadsheetId = normalizeSpreadsheetId(sheetId);
 
-                    const userWithKey = await prisma.user.findUnique({
+                    const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({
                         where: { id: userId },
                         select: { googleApiKey: true }
-                    });
+                    }));
                     const readToken = await getGoogleWriteAccessToken(userId);
 
                     if (!readToken && !userWithKey?.googleApiKey) {
@@ -880,7 +885,7 @@ export async function executeWorkflow(
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                         const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
 
-                        const userWithKey = await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } });
+                        const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } }));
                         const readToken = await getGoogleWriteAccessToken(userId);
 
                         if ((readToken || userWithKey?.googleApiKey) && sheetId) {
@@ -1015,7 +1020,7 @@ export async function executeWorkflow(
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                         const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
 
-                        const userWithKey = await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } });
+                        const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } }));
                         const readToken = await getGoogleWriteAccessToken(userId);
 
                         if ((readToken || userWithKey?.googleApiKey) && sheetId) {
@@ -1120,10 +1125,10 @@ export async function executeWorkflow(
                         if (!output) throw new Error('DALL-E 3 generated no image URL.');
 
                     } else if (provider === 'nano-banana' || provider === 'gemini') {
-                        const userWithGoogle = await prisma.user.findUnique({
+                        const userWithGoogle = decryptUserSecretFields(await prisma.user.findUnique({
                             where: { id: userId },
                             select: { googleApiKey: true }
-                        });
+                        }));
 
                         if (!userWithGoogle?.googleApiKey) throw new Error('No Google API key configured for Nano Banana. Go to Settings.');
 
@@ -1160,8 +1165,7 @@ export async function executeWorkflow(
                     const connection = connections.find(c => c.id === accountId);
                     if (!connection) throw new Error('Facebook connection not found. Reconnect in Connections page.');
 
-                    let creds: any = {};
-                    try { creds = JSON.parse(connection.credentials); } catch { }
+                    const creds = parseConnectionCredentials(connection.credentials);
                     const pageToken = creds.accessToken;
                     const pageId = creds.pageId || creds.username || connection.name;
 
@@ -1279,8 +1283,7 @@ export async function executeWorkflow(
                     let lastLiError = '';
 
                     for (const liConn of selectedFirst) {
-                        let liCreds: any = {};
-                        try { liCreds = JSON.parse(liConn.credentials); } catch { }
+                        const liCreds = parseConnectionCredentials(liConn.credentials);
                         const liToken = liCreds.accessToken;
                         if (!liToken) { lastLiError = 'No access token'; continue; }
 
@@ -1441,8 +1444,7 @@ export async function executeWorkflow(
                     const igConnection = connections.find(c => c.id === igAccountId);
                     if (!igConnection) throw new Error('Instagram connection not found. Reconnect in Connections page.');
 
-                    let igCreds: any = {};
-                    try { igCreds = JSON.parse(igConnection.credentials); } catch { }
+                    const igCreds = parseConnectionCredentials(igConnection.credentials);
                     const igToken = normalizeAccessToken(igCreds.accessToken);
                     const igUserId = igCreds.userId || igCreds.username;
 
@@ -1538,8 +1540,7 @@ export async function executeWorkflow(
                     const connection = connections.find(c => c.id === accountId);
                     if (!connection) throw new Error('Threads connection not found.');
 
-                    let creds: any = {};
-                    try { creds = JSON.parse(connection.credentials); } catch { }
+                    const creds = parseConnectionCredentials(connection.credentials);
 
                     const accessToken = creds.accessToken;
                     const userId = creds.userId || creds.username;
@@ -1606,8 +1607,7 @@ export async function executeWorkflow(
                     const connection = connections.find(c => c.id === accountId);
                     if (!connection) throw new Error('WordPress connection not found.');
 
-                    let creds: any = {};
-                    try { creds = JSON.parse(connection.credentials); } catch { }
+                    const creds = parseConnectionCredentials(connection.credentials);
 
                     const siteUrl = (node.data?.siteUrl as string) || creds.siteUrl || creds.url;
                     if (!siteUrl) throw new Error('Set WordPress site URL in node config.');
@@ -1667,8 +1667,7 @@ export async function executeWorkflow(
                     const connection = connections.find(c => c.id === accountId);
                     if (!connection) throw new Error('Connection not found.');
 
-                    let creds: any = {};
-                    try { creds = JSON.parse(connection.credentials); } catch { }
+                    const creds = parseConnectionCredentials(connection.credentials);
 
                     const endpoint = (node.data?.siteUrl as string) || creds.endpoint || creds.siteUrl || creds.url;
                     if (!endpoint) throw new Error('Set API endpoint/site URL in node config.');
@@ -1734,10 +1733,10 @@ export async function executeWorkflow(
                     if (!sheetId) throw new Error('Spreadsheet ID is required.');
                     if (!sheetTab) throw new Error('Sheet Tab name is required.');
 
-                    const user = await prisma.user.findUnique({
+                    const user = decryptUserSecretFields(await prisma.user.findUnique({
                         where: { id: userId },
                         select: { googleApiKey: true }
-                    });
+                    }));
                     let accessToken = await getGoogleWriteAccessToken(userId);
 
                     if (!accessToken && !user?.googleApiKey) {

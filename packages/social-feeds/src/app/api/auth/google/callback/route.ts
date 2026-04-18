@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 import { verifyOAuthState } from "@/lib/oauth-state";
+import {
+    parseConnectionCredentials,
+    serializeConnectionCredentials,
+} from "@/lib/connection-credentials";
 
 export async function GET(req: Request) {
     const url = new URL(req.url);
@@ -90,7 +94,7 @@ export async function GET(req: Request) {
         });
 
         if (existing) {
-            const prev = JSON.parse(existing.credentials || "{}");
+            const prev = parseConnectionCredentials(existing.credentials);
             const prevScope = typeof prev.scope === "string" ? prev.scope : "";
             const prevHasSheetsScope = prevScope.includes("https://www.googleapis.com/auth/spreadsheets")
                 || prevScope.includes("https://www.googleapis.com/auth/spreadsheets.readonly");
@@ -104,7 +108,7 @@ export async function GET(req: Request) {
             };
             await prisma.externalConnection.update({
                 where: { id: existing.id },
-                data: { name: accountName, credentials: JSON.stringify(merged) },
+                data: { name: accountName, credentials: serializeConnectionCredentials(merged) },
             });
         } else {
             await prisma.externalConnection.create({
@@ -112,7 +116,7 @@ export async function GET(req: Request) {
                     userId,
                     provider: "google",
                     name: accountName,
-                    credentials: JSON.stringify(creds),
+                    credentials: serializeConnectionCredentials(creds),
                 },
             });
         }

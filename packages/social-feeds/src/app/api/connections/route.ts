@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 import { assertUserCanConnectProvider, isTierAccessError } from "@/lib/tier-access";
+import {
+    parseConnectionCredentials,
+    serializeConnectionCredentials,
+} from "@/lib/connection-credentials";
 
 const normalizeAccessToken = (raw: unknown): string => {
     if (typeof raw !== 'string') return '';
@@ -30,10 +34,7 @@ export async function GET(req: Request) {
     // DB has: { id, provider, name, credentials }
 
     const formatted = connections.map(c => {
-        let details: Record<string, any> = {};
-        try {
-            details = JSON.parse(c.credentials);
-        } catch (e) { }
+        const details = parseConnectionCredentials(c.credentials);
 
         return {
             id: c.id,
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
                 userId: auth.userId,
                 provider: platform,
                 name: name,
-                credentials: JSON.stringify({ accessToken: normalizedAccessToken, ...other })
+                credentials: serializeConnectionCredentials({ accessToken: normalizedAccessToken, ...other })
             }
         });
 
