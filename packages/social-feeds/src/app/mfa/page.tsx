@@ -17,20 +17,9 @@ export default function MfaPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login");
-      return;
-    }
-
-    if (session?.user?.mfaEnrollmentRequired) {
-      router.replace("/settings?security=mfa-required");
-      return;
-    }
-
-    if (session?.user?.mfaVerified) {
-      router.replace("/");
-    }
-  }, [router, session, status]);
+    // MFA is disabled - redirect to home
+    router.replace("/");
+  }, [router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

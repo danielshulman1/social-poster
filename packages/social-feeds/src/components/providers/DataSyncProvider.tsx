@@ -13,11 +13,7 @@ export default function DataSyncProvider({
     const { setAccounts, setPersonas } = useWorkflowStore();
 
     useEffect(() => {
-        if (
-            session?.user &&
-            !session.user.mfaEnrollmentRequired &&
-            !(session.user.mfaRequired && !session.user.mfaVerified)
-        ) {
+        if (session?.user) {
             const parseJsonResponse = async (res: Response) => {
                 const contentType = res.headers.get("content-type") || "";
                 const bodyText = await res.text();

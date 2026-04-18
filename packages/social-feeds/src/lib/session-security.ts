@@ -12,24 +12,8 @@ type TokenLike = {
   mfaEnrollmentRequired?: boolean | null;
 } | null;
 
-export const sessionNeedsMfaVerification = (session: SessionLike | TokenLike) =>
-  Boolean(session && "mfaRequired" in (session as TokenLike)
-    ? (session as TokenLike).mfaRequired && !(session as TokenLike).mfaVerified
-    : (session as SessionLike)?.user?.mfaRequired && !(session as SessionLike)?.user?.mfaVerified);
+export const sessionNeedsMfaVerification = (session: SessionLike | TokenLike) => false;
 
-export const sessionNeedsMfaEnrollment = (session: SessionLike | TokenLike) =>
-  Boolean(session && "mfaEnrollmentRequired" in (session as TokenLike)
-    ? (session as TokenLike).mfaEnrollmentRequired
-    : (session as SessionLike)?.user?.mfaEnrollmentRequired);
+export const sessionNeedsMfaEnrollment = (session: SessionLike | TokenLike) => false;
 
-export const getSensitiveActionRedirectPath = (session: SessionLike | TokenLike) => {
-  if (sessionNeedsMfaEnrollment(session)) {
-    return "/settings?security=mfa-required";
-  }
-
-  if (sessionNeedsMfaVerification(session)) {
-    return "/mfa";
-  }
-
-  return null;
-};
+export const getSensitiveActionRedirectPath = (session: SessionLike | TokenLike) => null;

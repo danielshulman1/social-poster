@@ -32,6 +32,25 @@ const copyText = async (value: string, message: string) => {
 };
 
 export function MfaSettingsCard() {
+  return (
+    <Card className="border-border/70 bg-card/90">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          Multi-Factor Authentication
+        </CardTitle>
+        <CardDescription>MFA is currently disabled</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          Multi-factor authentication is not available at this time.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MfaSettingsCardOld() {
   const { update } = useSession();
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [setupPayload, setSetupPayload] = useState<SetupPayload | null>(null);

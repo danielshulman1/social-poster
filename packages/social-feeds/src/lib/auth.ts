@@ -2,7 +2,6 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
-import { getMandatoryMfaRequirement } from "@/lib/mfa";
 
 export const authOptions: NextAuthOptions = {
     // Adapter is not needed for credentials provider and can cause issues if not configured correctly for hybrid
@@ -56,19 +55,15 @@ export const authOptions: NextAuthOptions = {
                         return null;
                     }
 
-                    const mfaPolicy = await getMandatoryMfaRequirement(user.id, user.role);
-                    const mfaEnabled = Boolean(user.mfaEnabled);
-                    const mfaEnrollmentRequired = mfaPolicy.required && !mfaEnabled;
-
                     return {
                         id: user.id,
                         email: user.email,
                         name: user.name,
                         role: user.role,
-                        mfaEnabled,
-                        mfaRequired: mfaEnabled,
-                        mfaVerified: !mfaEnabled,
-                        mfaEnrollmentRequired,
+                        mfaEnabled: false,
+                        mfaRequired: false,
+                        mfaVerified: true,
+                        mfaEnrollmentRequired: false,
                     };
                 } catch (error) {
                     console.error("Authorize error:", error);
