@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
     }
 
     const redirectUri = `${baseUrl}/api/auth/linkedin/callback`;
-    const state = Buffer.from(JSON.stringify({ userId: session.user.id })).toString('base64');
+    const state = createOAuthState({ userId: session.user.id, provider: "linkedin" });
     const scope = 'openid profile w_member_social w_organization_social';
 
     const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');

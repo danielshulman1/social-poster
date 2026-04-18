@@ -79,18 +79,13 @@ export async function POST(req: Request) {
             let creds: any = {};
             try { creds = JSON.parse(conn.credentials); } catch { }
 
-            const tokenPreview = creds.accessToken
-                ? `${creds.accessToken.substring(0, 10)}...${creds.accessToken.slice(-4)}`
-                : 'NO TOKEN';
-
             const result: any = {
                 connectionId: conn.id,
                 name: conn.name,
                 createdAt: conn.createdAt,
-                tokenPreview,
-                tokenLength: creds.accessToken?.length || 0,
                 connectedAt: creds.connectedAt || 'unknown',
                 expiresIn: creds.expiresIn || 'unknown',
+                hasAccessToken: Boolean(creds.accessToken),
             };
 
             if (creds.accessToken) {
@@ -123,11 +118,6 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
             totalConnections: connections.length,
-            debug: {
-                NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-                NEXTAUTH_URL_LENGTH: process.env.NEXTAUTH_URL?.length,
-                VERCEL_URL: process.env.VERCEL_URL,
-            },
             results
         });
     }

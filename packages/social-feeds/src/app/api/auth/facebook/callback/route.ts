@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +31,12 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_params`);
     }
 
-    let userId: string;
-    try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "facebook");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
 
     const prismaUser = await prisma.user.findUnique({
         where: { id: userId },
@@ -67,7 +69,7 @@ export async function GET(req: Request) {
 
         const tokenData = await tokenRes.json();
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('Facebook token error:', tokenData);
+            console.error('Facebook token exchange failed');
             const detail = tokenData?.error?.message || tokenData?.error_description || '';
             return NextResponse.redirect(`${baseUrl}/connections?error=${encodeURIComponent(`token_failed:${detail}`)}`);
         }
@@ -91,12 +93,8 @@ export async function GET(req: Request) {
         const pagesRes = await fetch(pagesUrl.toString());
         const pagesData = await pagesRes.json();
 
-        console.log('=== FACEBOOK PAGES REQUEST ===');
-        console.log('Pages endpoint response status:', pagesRes.status);
-        console.log('Full response:', JSON.stringify(pagesData, null, 2));
-
         if (pagesData?.error) {
-            console.error('Facebook API Error:', pagesData.error);
+            console.error('Facebook pages fetch failed');
         }
 
         let addedCount = 0;
@@ -104,13 +102,8 @@ export async function GET(req: Request) {
 
         // Extract pages from response
         const pages = (pagesRes.ok && pagesData.data) ? pagesData.data : [];
-        console.log('Pages found:', pages.length);
-        if (pages.length > 0) {
-            console.log('First page:', JSON.stringify(pages[0], null, 2));
-        }
 
         for (const page of pages) {
-            console.log('Processing page:', { id: page.id, name: page.name, hasToken: !!page.access_token });
             if (page.id && page.name && page.access_token) {
                 // Delete existing FB page connection if it exists to avoid duplicates
                 await prisma.externalConnection.deleteMany({
@@ -134,7 +127,6 @@ export async function GET(req: Request) {
                         }),
                     },
                 });
-                console.log('Saved Facebook connection:', { id: savedConnection.id, name: savedConnection.name });
                 addedCount++;
 
                 // 5. Try to fetch Instagram accounts linked to this page
@@ -149,11 +141,9 @@ export async function GET(req: Request) {
                     igPageUrl.searchParams.set('fields', 'instagram_business_account');
                     const igPageRes = await fetch(igPageUrl.toString());
                     const igPageData = await igPageRes.json();
-                    console.log('Fetching Instagram account for page:', { pageId: page.id, response: JSON.stringify(igPageData) });
 
                     if (igPageData.instagram_business_account?.id) {
                         igId = igPageData.instagram_business_account.id;
-                        console.log('Found Instagram ID:', { pageId: page.id, igId });
 
                         // Fetch the actual Instagram username and profile info
                         try {
@@ -162,27 +152,22 @@ export async function GET(req: Request) {
                             igProfileUrl.searchParams.set('fields', 'username,name,profile_picture_url');
                             const igProfileRes = await fetch(igProfileUrl.toString());
                             const igProfileData = await igProfileRes.json();
-                            console.log('Instagram profile data:', JSON.stringify(igProfileData));
                             
                             if (igProfileData.username) {
                                 igUsername = igProfileData.username;
                                 igName = igProfileData.name || igUsername;
                             }
                         } catch (profileErr) {
-                            console.log('Failed to fetch Instagram profile:', profileErr);
+                            console.error('Failed to fetch Instagram profile');
                         }
-                    } else {
-                        console.log('No Instagram account linked to page:', { pageId: page.id, responseKeys: Object.keys(igPageData) });
                     }
                 } catch (e) {
-                    console.log('Failed to fetch Instagram account:', e);
+                    console.error('Failed to fetch Instagram account');
                 }
 
                 // If we found an Instagram account, save it
                 if (igId) {
                     const displayName = igUsername ? `@${igUsername}` : `IG linked to ${page.name}`;
-
-                    console.log('Found linked Instagram account:', { igId, igUsername, displayName, pageId: page.id });
 
                     // Delete existing IG connection to avoid duplicates
                     await prisma.externalConnection.deleteMany({
@@ -206,10 +191,7 @@ export async function GET(req: Request) {
                             }),
                         },
                     });
-                    console.log('Saved Instagram connection:', { id: savedIgConnection.id, name: savedIgConnection.name });
                     igAddedCount++;
-                } else {
-                    console.log('No linked Instagram account found for page:', page.name);
                 }
             }
         }
@@ -217,7 +199,6 @@ export async function GET(req: Request) {
         // Always succeed if we got a valid access token, even if pages are empty
         // (pages might not be accessible due to permission requirements)
         const redirectUrl = `${baseUrl}/connections?success=facebook&added=${addedCount}&igAdded=${igAddedCount}`;
-        console.log('Facebook callback success, redirecting to:', redirectUrl);
         return NextResponse.redirect(redirectUrl);
     } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'facebook_callback_failed';

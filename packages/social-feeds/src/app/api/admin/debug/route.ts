@@ -15,7 +15,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         status: 'not_authenticated',
         message: 'No authenticated user found',
-      });
+      }, { status: 401 });
+    }
+
+    if (auth.role !== 'admin') {
+      return NextResponse.json({
+        status: 'forbidden',
+        message: 'Admin access required',
+      }, { status: 403 });
     }
 
     // Get the actual user from DB to see their role
@@ -31,10 +38,14 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       status: 'authenticated',
-      auth,
-      user,
-      isAdmin: auth.role === 'admin',
-      canAccessAdminPanel: auth.role === 'admin',
+      user: user ? {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+      } : null,
+      isAdmin: true,
+      canAccessAdminPanel: true,
     });
   } catch (error: any) {
     return NextResponse.json({

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -17,15 +20,13 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_params`);
     }
 
-    let userId: string;
-    let codeVerifier: string;
-    try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-        codeVerifier = decoded.codeVerifier;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "twitter");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId || !verifiedState.codeVerifier) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
+    const codeVerifier = verifiedState.codeVerifier;
 
     // Read user's Twitter credentials
     const user = await prisma.user.findUnique({
@@ -58,7 +59,7 @@ export async function GET(req: Request) {
 
         const tokenData = await tokenRes.json();
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('Twitter token error:', tokenData);
+            console.error('Twitter token exchange failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=token_failed`);
         }
 
@@ -69,7 +70,7 @@ export async function GET(req: Request) {
         const profileData = await profileRes.json();
 
         if (!profileRes.ok || !profileData.data?.id) {
-            console.error('Twitter profile error:', profileData);
+            console.error('Twitter profile fetch failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=twitter_profile_failed`);
         }
 

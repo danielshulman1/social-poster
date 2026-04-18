@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export async function GET(req: Request) {
     const baseUrl = getAppBaseUrl(req.url) || "http://localhost:3000";
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_google_oauth_config`);
     }
 
-    const state = Buffer.from(JSON.stringify({ userId: session.user.id })).toString("base64");
+    const state = createOAuthState({ userId: session.user.id, provider: "google" });
     const scope = [
         "https://www.googleapis.com/auth/spreadsheets",
     ].join(" ");

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 
 export async function GET(req: Request) {
     const url = new URL(req.url);
@@ -22,13 +25,12 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_google_oauth_config`);
     }
 
-    let userId = "";
-    try {
-        const decoded = JSON.parse(Buffer.from(state, "base64").toString());
-        userId = decoded.userId;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "google");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
     if (!userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_user`);
     }

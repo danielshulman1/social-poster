@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export async function POST(req: Request) {
     try {
@@ -20,8 +21,15 @@ export async function POST(req: Request) {
             );
         }
 
-        const user = await prisma.user.findUnique({
-            where: { resetToken: token },
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { resetToken: hashedToken },
+                    { resetToken: token },
+                ],
+            },
         });
 
         if (!user || !user.resetTokenExpiry) {

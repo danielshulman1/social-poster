@@ -5,11 +5,12 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
     try {
-        const { email, password, name, tier, selectedTier } = await req.json();
+        const { email, password, name, tier, selectedTier, acceptedTerms } = await req.json();
         const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
         const normalizedName = typeof name === "string" ? name.trim() : "";
         const requestedTier = selectedTier ?? tier;
         const chosenTier = normalizeTier(requestedTier);
+        const hasAcceptedTerms = acceptedTerms === true;
 
         if (!normalizedEmail || !password) {
             return NextResponse.json(
@@ -21,6 +22,13 @@ export async function POST(req: Request) {
         if (!chosenTier) {
             return NextResponse.json(
                 { message: "Select a valid tier before creating an account" },
+                { status: 400 }
+            );
+        }
+
+        if (!hasAcceptedTerms) {
+            return NextResponse.json(
+                { message: "You must agree to the terms before creating an account" },
                 { status: 400 }
             );
         }

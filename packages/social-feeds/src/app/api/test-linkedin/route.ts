@@ -18,16 +18,11 @@ export async function GET(req: Request) {
         let creds: any = {};
         try { creds = JSON.parse(conn.credentials); } catch { }
 
-        const tokenPreview = creds.accessToken
-            ? `${creds.accessToken.substring(0, 10)}...${creds.accessToken.substring(creds.accessToken.length - 4)}`
-            : 'NO TOKEN';
-
         const result: any = {
             connectionId: conn.id,
             name: conn.name,
             createdAt: conn.createdAt,
-            tokenPreview,
-            tokenLength: creds.accessToken?.length || 0,
+            hasAccessToken: Boolean(creds.accessToken),
             hasUsername: !!creds.username,
             connectedAt: creds.connectedAt || 'unknown',
             expiresIn: creds.expiresIn || 'unknown',

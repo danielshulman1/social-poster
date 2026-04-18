@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
-import crypto from "crypto";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +38,7 @@ export async function GET(req: Request) {
     }
 
     const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
-    const state = Buffer.from(JSON.stringify({
-        userId: session.user.id,
-        nonce: crypto.randomUUID(),
-        createdAt: Date.now(),
-    })).toString('base64');
+    const state = createOAuthState({ userId: session.user.id, provider: "facebook" });
 
     // Request permissions to view and manage pages
     // Note: instagram_business_account requires instagram_basic to be accessible

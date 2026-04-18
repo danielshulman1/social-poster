@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     // DB has: { id, provider, name, credentials }
 
     const formatted = connections.map(c => {
-        let details = {};
+        let details: Record<string, any> = {};
         try {
             details = JSON.parse(c.credentials);
         } catch (e) { }
@@ -40,7 +40,9 @@ export async function GET(req: Request) {
             platform: c.provider,
             name: c.name,
             status: 'active', // TODO: check token expiry
-            ...details
+            username: typeof details.username === "string" ? details.username : undefined,
+            pageId: typeof details.pageId === "string" ? details.pageId : undefined,
+            connectedAt: typeof details.connectedAt === "string" ? details.connectedAt : undefined,
         };
     });
 
@@ -48,16 +50,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-    console.log("POST /api/connections called");
     try {
         const auth = await getApiAuthContext(req);
         if (!auth?.userId) {
-            console.log("Unauthorized: No session");
             return unauthorizedText();
         }
 
         const body = await req.json();
-        console.log("Request body:", body);
         const { platform, name, accessToken, ...other } = body;
         const normalizedAccessToken = normalizeAccessToken(accessToken);
 
@@ -71,7 +70,6 @@ export async function POST(req: Request) {
         }
 
         if (!platform || !name || !normalizedAccessToken) {
-            console.log("Missing fields:", { platform, name, accessToken: !!normalizedAccessToken });
             return new NextResponse("Missing fields", { status: 400 });
         }
 
@@ -81,7 +79,6 @@ export async function POST(req: Request) {
         // Prevent users from manually pasting their IG Business Account ID instead of a Page Access Token
         if (platform === 'instagram') {
             if (normalizedAccessToken.length < 50 || /^\d+$/.test(normalizedAccessToken)) {
-                console.log("Rejected invalid Instagram token format:", normalizedAccessToken.substring(0, 20));
                 return new NextResponse(
                     JSON.stringify({
                         error: "Invalid token format. Do not paste your Instagram User ID here. " +
@@ -102,7 +99,6 @@ export async function POST(req: Request) {
             }
         }
 
-        console.log("Creating connection in DB...");
         const connection = await prisma.externalConnection.create({
             data: {
                 userId: auth.userId,
@@ -111,9 +107,15 @@ export async function POST(req: Request) {
                 credentials: JSON.stringify({ accessToken: normalizedAccessToken, ...other })
             }
         });
-        console.log("Connection created:", connection.id);
 
-        return NextResponse.json(connection);
+        return NextResponse.json({
+            id: connection.id,
+            userId: connection.userId,
+            provider: connection.provider,
+            name: connection.name,
+            createdAt: connection.createdAt,
+            updatedAt: connection.updatedAt,
+        });
     } catch (error: any) {
         if (isTierAccessError(error)) {
             return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });

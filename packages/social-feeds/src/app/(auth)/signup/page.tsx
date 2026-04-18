@@ -20,6 +20,7 @@ export default function SignupPage() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
     const [selectedTier, setSelectedTier] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
 
@@ -36,13 +37,17 @@ export default function SignupPage() {
             toast.error("Choose a plan before creating the account.");
             return;
         }
+        if (!hasAcceptedTerms) {
+            toast.error("You must agree to the terms before creating an account.");
+            return;
+        }
         setIsLoading(true);
 
         try {
             const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password, tier: selectedTier }),
+                body: JSON.stringify({ name, email, password, tier: selectedTier, acceptedTerms: hasAcceptedTerms }),
             });
 
             if (!res.ok) {
@@ -150,10 +155,36 @@ export default function SignupPage() {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
+                        <div className="md:col-span-2">
+                            <label
+                                htmlFor="accepted-terms"
+                                className="flex cursor-pointer items-start gap-3 rounded-[1.4rem] border border-border/75 bg-background/70 px-4 py-3 text-sm leading-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
+                            >
+                                <input
+                                    id="accepted-terms"
+                                    type="checkbox"
+                                    checked={hasAcceptedTerms}
+                                    onChange={(e) => setHasAcceptedTerms(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-ring"
+                                    required
+                                />
+                                <span className="text-muted-foreground">
+                                    I agree to the{" "}
+                                    <Link href="/terms" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                                        Terms
+                                    </Link>{" "}
+                                    and{" "}
+                                    <Link href="/privacy" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                                        Privacy Policy
+                                    </Link>
+                                    .
+                                </span>
+                            </label>
+                        </div>
                     </div>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2">
-                    <Button className="w-full" type="submit" disabled={isLoading || !selectedTier}>
+                    <Button className="w-full" type="submit" disabled={isLoading || !selectedTier || !hasAcceptedTerms}>
                         {isLoading ? "Creating account..." : "Sign Up"}
                     </Button>
                     <div className="text-sm text-center text-muted-foreground">

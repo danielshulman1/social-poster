@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     }
 
     const redirectUri = `${baseUrl}/api/auth/pinterest/callback`;
-    const state = Buffer.from(JSON.stringify({ userId: session.user.id })).toString('base64');
+    const state = createOAuthState({ userId: session.user.id, provider: "pinterest" });
 
     const authUrl = new URL('https://api.pinterest.com/oauth/');
     authUrl.searchParams.set('response_type', 'code');

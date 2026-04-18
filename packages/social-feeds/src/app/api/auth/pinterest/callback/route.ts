@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -17,13 +20,12 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_params`);
     }
 
-    let userId: string;
-    try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "pinterest");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
 
     // Read user's Pinterest credentials
     const user = await prisma.user.findUnique({
@@ -55,7 +57,7 @@ export async function GET(req: Request) {
 
         const tokenData = await tokenRes.json();
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('Pinterest token error:', tokenData);
+            console.error('Pinterest token exchange failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=token_failed`);
         }
 
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
         const profileData = await profileRes.json();
 
         if (!profileRes.ok || !profileData.username) {
-            console.error('Pinterest profile error:', profileData);
+            console.error('Pinterest profile fetch failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=pinterest_profile_failed`);
         }
 

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +31,12 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_params`);
     }
 
-    let userId: string;
-    try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "threads");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
 
     const prismaUser = await prisma.user.findUnique({
         where: { id: userId },
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
         const tokenData = await tokenRes.json();
 
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('Threads token error:', tokenData);
+            console.error('Threads token exchange failed');
             const detail = tokenData?.error?.message || tokenData?.error_description || '';
             return NextResponse.redirect(`${baseUrl}/connections?error=${encodeURIComponent(`token_failed:${detail}`)}`);
         }
@@ -85,7 +87,7 @@ export async function GET(req: Request) {
         const userInfo = await userInfoRes.json();
 
         if (!userInfoRes.ok || !userInfo.id) {
-            console.error('Failed to fetch user info:', userInfo);
+            console.error('Failed to fetch Threads user info');
             return NextResponse.redirect(`${baseUrl}/connections?error=failed_to_fetch_user_info`);
         }
 
@@ -114,8 +116,6 @@ export async function GET(req: Request) {
                 }),
             },
         });
-
-        console.log('Saved Threads connection:', { id: savedConnection.id, name: savedConnection.name });
 
         const redirectUrl = `${baseUrl}/connections?success=threads&added=1`;
         return NextResponse.redirect(redirectUrl);

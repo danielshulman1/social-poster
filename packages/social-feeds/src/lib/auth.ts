@@ -17,10 +17,7 @@ export const authOptions: NextAuthOptions = {
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                console.log("Authorize called with full credentials:", credentials);
-
                 if (!credentials?.email || !credentials?.password) {
-                    console.error("Missing credentials in authorize");
                     return null;
                 }
 
@@ -44,10 +41,7 @@ export const authOptions: NextAuthOptions = {
                         },
                     });
 
-                    console.log("User found in DB:", user ? { id: user.id, email: user.email, role: user.role, hasPassword: !!user.password } : "NULL");
-
                     if (!user || !user.password) {
-                        console.error("User not found or has no password");
                         return null;
                     }
 
@@ -56,10 +50,7 @@ export const authOptions: NextAuthOptions = {
                         user.password
                     );
 
-                    console.log("Password comparison result:", isPasswordValid);
-
                     if (!isPasswordValid) {
-                        console.error("Invalid password for user:", email);
                         return null;
                     }
 
@@ -70,7 +61,7 @@ export const authOptions: NextAuthOptions = {
                         role: user.role,
                     };
                 } catch (error) {
-                    console.error("Authorize CAUGHT error:", error);
+                    console.error("Authorize error:", error);
                     return null;
                 }
             }

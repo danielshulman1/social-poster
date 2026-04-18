@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import { verifyOAuthState } from "@/lib/oauth-state";
 export async function GET(req: Request) {
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -17,13 +20,12 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/connections?error=missing_params`);
     }
 
-    let userId: string;
-    try {
-        const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
-        userId = decoded.userId;
-    } catch {
+    const session = await getServerSession(authOptions);
+    const verifiedState = verifyOAuthState(state, "linkedin");
+    if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);
     }
+    const userId = verifiedState.userId;
 
     // Read user's LinkedIn credentials from DB
     const user = await prisma.user.findUnique({
@@ -53,7 +55,7 @@ export async function GET(req: Request) {
 
         const tokenData = await tokenRes.json();
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('LinkedIn token error:', tokenData);
+            console.error('LinkedIn token exchange failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=token_failed`);
         }
 
@@ -64,7 +66,7 @@ export async function GET(req: Request) {
         const profileData = await profileRes.json();
 
         if (!profileRes.ok || !profileData.sub) {
-            console.error('LinkedIn profile error:', profileData);
+            console.error('LinkedIn profile fetch failed');
             return NextResponse.redirect(`${baseUrl}/connections?error=linkedin_profile_failed`);
         }
 
@@ -132,12 +134,10 @@ export async function GET(req: Request) {
                             }),
                         },
                     });
-                }
-            } else {
-                console.error('LinkedIn organizations fetch failed:', await orgsRes.text());
+            }
             }
         } catch (e) {
-            console.error('Error processing LinkedIn organizations:', e);
+            console.error('Error processing LinkedIn organizations');
         }
 
         return NextResponse.redirect(`${baseUrl}/connections?success=linkedin`);

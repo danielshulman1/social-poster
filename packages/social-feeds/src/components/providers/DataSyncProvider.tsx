@@ -53,7 +53,6 @@ export default function DataSyncProvider({
                                     name: item.name,
                                     status: 'active', // Default to active for now
                                     username: item.username,
-                                    accessToken: item.accessToken
                                 }))
                         );
                     }

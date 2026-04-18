@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
+import crypto from "crypto";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,16 +32,12 @@ export async function GET(req: Request) {
     const redirectUri = `${baseUrl}/api/auth/twitter/callback`;
 
     // Generate PKCE challenge
-    const codeVerifier = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64')
+    const codeVerifier = crypto.randomBytes(32).toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=/g, '');
 
-    // Store code verifier in a temporary way (via state parameter)
-    const state = Buffer.from(JSON.stringify({
-        userId: session.user.id,
-        codeVerifier
-    })).toString('base64');
+    const state = createOAuthState({ userId: session.user.id, provider: "twitter", codeVerifier });
 
     const authUrl = new URL('https://twitter.com/i/oauth2/authorize');
     authUrl.searchParams.set('response_type', 'code');
