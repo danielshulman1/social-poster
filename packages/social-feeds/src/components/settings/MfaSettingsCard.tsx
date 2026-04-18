@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { AlertTriangle, Copy, Loader2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const copyText = async (value: string, message: string) => {
 };
 
 export function MfaSettingsCard() {
+  const { update } = useSession();
   const [status, setStatus] = useState<MfaStatus | null>(null);
   const [setupPayload, setSetupPayload] = useState<SetupPayload | null>(null);
   const [setupCode, setSetupCode] = useState("");
@@ -98,6 +100,11 @@ export function MfaSettingsCard() {
 
       setSetupPayload(null);
       setSetupCode("");
+      await update({
+        mfaEnabled: true,
+        mfaVerified: true,
+        mfaEnrollmentRequired: false,
+      });
       await loadStatus();
       toast.success("Two-factor authentication is now enabled.");
     } catch (error) {
@@ -126,6 +133,11 @@ export function MfaSettingsCard() {
       }
 
       setDisableCode("");
+      await update({
+        mfaEnabled: false,
+        mfaVerified: false,
+        mfaEnrollmentRequired: false,
+      });
       await loadStatus();
       toast.success("Two-factor authentication has been disabled.");
     } catch (error) {

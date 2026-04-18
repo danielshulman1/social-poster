@@ -100,13 +100,15 @@ export const authOptions: NextAuthOptions = {
             }
 
             if (trigger === "update") {
-                if (session?.mfaVerified === true) {
-                    token.mfaVerified = true;
+                if (typeof session?.mfaVerified === "boolean") {
+                    token.mfaVerified = session.mfaVerified;
                 }
-                if (session?.mfaEnrollmentRequired === false) {
-                    token.mfaEnrollmentRequired = false;
-                    token.mfaEnabled = true;
-                    token.mfaRequired = true;
+                if (typeof session?.mfaEnrollmentRequired === "boolean") {
+                    token.mfaEnrollmentRequired = session.mfaEnrollmentRequired;
+                }
+                if (typeof session?.mfaEnabled === "boolean") {
+                    token.mfaEnabled = session.mfaEnabled;
+                    token.mfaRequired = session.mfaEnabled;
                 }
             }
             return token;

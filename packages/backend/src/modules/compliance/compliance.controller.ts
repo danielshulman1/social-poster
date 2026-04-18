@@ -11,6 +11,7 @@ import {
   Body,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
+import { RateLimit } from '../../shared/decorators/rate-limit.decorator';
 import { ComplianceService } from './compliance.service';
 
 @Controller('api/compliance')
@@ -26,6 +27,7 @@ export class ComplianceController {
    */
   @Get('user/data-export')
   @UseGuards(JwtAuthGuard)
+  @RateLimit({ ttl: 60000, limit: 10 })
   async exportUserData(@Request() req) {
     try {
       const userId = req.user.id;
@@ -93,6 +95,7 @@ export class ComplianceController {
    */
   @Delete('user/data')
   @UseGuards(JwtAuthGuard)
+  @RateLimit({ ttl: 3600000, limit: 5 })
   async deleteUserData(
     @Request() req,
     @Body() body: { confirmation: boolean; reason?: string },
@@ -145,6 +148,7 @@ export class ComplianceController {
    * User can request deletion without being logged in (for verification flow)
    */
   @Post('user/deletion-request')
+  @RateLimit({ ttl: 3600000, limit: 5 })
   async requestDeletion(@Body() body: { email: string }) {
     try {
       const { email } = body;

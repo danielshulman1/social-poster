@@ -8,6 +8,7 @@ import {
     parseConnectionCredentials,
     serializeConnectionCredentials,
 } from "@/lib/connection-credentials";
+import { getSensitiveActionRedirectPath } from "@/lib/session-security";
 
 export async function GET(req: Request) {
     const url = new URL(req.url);
@@ -30,6 +31,10 @@ export async function GET(req: Request) {
     }
 
     const session = await getServerSession(authOptions);
+    const securityRedirect = getSensitiveActionRedirectPath(session);
+    if (securityRedirect) {
+        return NextResponse.redirect(`${baseUrl}${securityRedirect}`);
+    }
     const verifiedState = verifyOAuthState(state, "google");
     if (!verifiedState || !session?.user?.id || session.user.id !== verifiedState.userId) {
         return NextResponse.redirect(`${baseUrl}/connections?error=invalid_state`);

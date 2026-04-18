@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 import { createOAuthState } from "@/lib/oauth-state";
+import { getSensitiveActionRedirectPath } from "@/lib/session-security";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,10 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
         return NextResponse.redirect(new URL('/login', baseUrl));
+    }
+    const securityRedirect = getSensitiveActionRedirectPath(session);
+    if (securityRedirect) {
+        return NextResponse.redirect(new URL(securityRedirect, baseUrl));
     }
 
     const prismaUser = await prisma.user.findUnique({

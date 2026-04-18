@@ -48,7 +48,7 @@ export default function MfaPage() {
         throw new Error(data.error || "Verification failed");
       }
 
-      await update({ mfaVerified: true });
+      await update({ mfaEnabled: true, mfaVerified: true, mfaEnrollmentRequired: false });
       toast.success(data.usedBackupCode ? "Backup code accepted." : "Authenticator verified.");
       router.replace("/");
       router.refresh();

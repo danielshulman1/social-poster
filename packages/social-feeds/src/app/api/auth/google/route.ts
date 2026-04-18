@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getAppBaseUrl, normalizeEnv } from "@/lib/appUrl";
 import { createOAuthState } from "@/lib/oauth-state";
+import { getSensitiveActionRedirectPath } from "@/lib/session-security";
 
 export async function GET(req: Request) {
     const baseUrl = getAppBaseUrl(req.url) || "http://localhost:3000";
@@ -13,6 +14,10 @@ export async function GET(req: Request) {
 
     if (!session?.user?.id) {
         return NextResponse.redirect(`${baseUrl}/connections?error=unauthorized`);
+    }
+    const securityRedirect = getSensitiveActionRedirectPath(session);
+    if (securityRedirect) {
+        return NextResponse.redirect(`${baseUrl}${securityRedirect}`);
     }
 
     if (!clientId) {

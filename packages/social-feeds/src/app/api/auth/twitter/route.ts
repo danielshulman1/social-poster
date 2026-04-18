@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppBaseUrl } from "@/lib/appUrl";
 import crypto from "crypto";
 import { createOAuthState } from "@/lib/oauth-state";
+import { getSensitiveActionRedirectPath } from "@/lib/session-security";
 import { decryptUserSecretFields } from "@/lib/user-secrets";
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,10 @@ export async function GET(req: Request) {
 
     if (!session?.user?.id) {
         return NextResponse.redirect(new URL('/login', baseUrl));
+    }
+    const securityRedirect = getSensitiveActionRedirectPath(session);
+    if (securityRedirect) {
+        return NextResponse.redirect(new URL(securityRedirect, baseUrl));
     }
 
     // Read user's Twitter credentials from DB

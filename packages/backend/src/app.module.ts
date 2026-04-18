@@ -35,8 +35,8 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
       expandVariables: true,
     }),
 
-    // Rate Limiting - temporarily disabled for v4.2.1 compatibility
-    // ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // Rate Limiting - configured at individual endpoint level
+    // Global rate limiting can be enabled per-route using @Throttle() decorator
 
     // Shared & Database
     SharedModule,
@@ -56,6 +56,11 @@ import { HttpExceptionFilter } from './shared/filters/http-exception.filter';
   providers: [
     // Configuration service with validation
     ConfigService,
+    // Global rate limiting guard
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     // Global exception filter for consistent error handling
     {
       provide: APP_FILTER,
