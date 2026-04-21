@@ -232,13 +232,13 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
               ) : selectedTier === currentTier ? (
                 'Current Plan Selected'
               ) : (
-                'Upgrade Now'
+                'Start 7-Day Free Trial'
               )}
             </button>
           </div>
           <div className="text-center mt-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-               Secure payment encrypted and processed by Stripe. You can cancel at any time.
+               Try for 7 days free. Cancel anytime before your trial ends and you won't be charged. Secure payment encrypted and processed by Stripe.
             </p>
           </div>
         </div>

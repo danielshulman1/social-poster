@@ -57,6 +57,7 @@ export async function POST(request) {
     sessionData.append('line_items[0][price]', priceId);
     sessionData.append('line_items[0][quantity]', '1');
     sessionData.append('mode', 'subscription');
+    sessionData.append('subscription_data[trial_period_days]', '7');
     sessionData.append('customer_email', user.email);
     sessionData.append('client_reference_id', user.id.toString());
     sessionData.append('metadata[user_id]', user.id.toString());
