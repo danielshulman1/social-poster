@@ -67,10 +67,13 @@ export default function SignupPage() {
         setIsLoading(true);
 
         try {
+            const payload = { name, email, password, tier: selectedTier, acceptedTerms: hasAcceptedTerms };
+            console.log("[signup] Sending payload:", payload);
+
             const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password, tier: selectedTier, acceptedTerms: hasAcceptedTerms }),
+                body: JSON.stringify(payload),
             });
 
             if (!res.ok) {

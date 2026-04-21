@@ -17,6 +17,8 @@ export async function POST(req: Request) {
         const chosenTier = normalizeTier(requestedTier);
         const hasAcceptedTerms = acceptedTerms === true;
 
+        console.log("[register] Input:", { email, name, tier, selectedTier, acceptedTerms, requestedTier, chosenTier });
+
         if (!normalizedEmail || !password) {
             return NextResponse.json(
                 { message: "Missing email or password" },
