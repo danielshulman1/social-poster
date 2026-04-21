@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/utils/db';
-import { requireAdmin, requireAuth, hashPassword } from '@/utils/auth';
+import { query, getClient } from '@/utils/db';
+import { requireAdmin, hashPassword } from '@/utils/auth';
+import { TIERS } from '@/utils/tier-config';
+import { ensureUserTiersTable } from '@/utils/tier-db';
 
 export async function GET(request) {
     try {
@@ -52,13 +54,28 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+    const client = await getClient();
+
     try {
         const admin = await requireAdmin(request);
-        const { email, password, firstName, lastName, role, isAdmin } = await request.json();
+        const { email, password, firstName, lastName, role, isAdmin, tier, selectedTier } = await request.json();
+        const normalizedEmail = email?.trim().toLowerCase();
+        const allowedRoles = new Set(['member', 'manager', 'admin']);
+        const requestedRole = allowedRoles.has(role) ? role : 'member';
+        const requestedIsAdmin = Boolean(isAdmin) || requestedRole === 'admin';
+        const requestedTier = selectedTier || tier || TIERS.FREE;
+        const allowedTiers = new Set(Object.values(TIERS));
 
-        if (!email || !password) {
+        if (!normalizedEmail || !password) {
             return NextResponse.json(
                 { error: 'Email and password are required' },
+                { status: 400 }
+            );
+        }
+
+        if (!allowedTiers.has(requestedTier)) {
+            return NextResponse.json(
+                { error: 'A valid package is required' },
                 { status: 400 }
             );
         }
@@ -70,8 +87,11 @@ export async function POST(request) {
             );
         }
 
+        await ensureUserTiersTable();
+        await client.query('BEGIN');
+
         // Check organization user limit
-        const orgCheck = await query(
+        const orgCheck = await client.query(
             `SELECT o.max_users, COUNT(om.id) as current_users
              FROM organisations o
              LEFT JOIN org_members om ON o.id = om.org_id AND om.is_active = true
@@ -80,8 +100,17 @@ export async function POST(request) {
             [admin.org_id]
         );
 
+        if (orgCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return NextResponse.json(
+                { error: 'Organization not found' },
+                { status: 404 }
+            );
+        }
+
         const { max_users, current_users } = orgCheck.rows[0];
         if (parseInt(current_users) >= parseInt(max_users)) {
+            await client.query('ROLLBACK');
             return NextResponse.json(
                 { error: `User limit reached. Your organization is limited to ${max_users} users. Please upgrade your subscription.` },
                 { status: 403 }
@@ -89,90 +118,117 @@ export async function POST(request) {
         }
 
         // Check if user already exists
-        const existingUser = await query(
+        const existingUser = await client.query(
             'SELECT id FROM users WHERE email = $1',
-            [email]
+            [normalizedEmail]
         );
 
         let user;
         let userId;
+        const passwordHash = await hashPassword(password);
 
         if (existingUser.rows.length > 0) {
             userId = existingUser.rows[0].id;
 
-            // Ensure user isn't already in this organization
-            const membershipCheck = await query(
-                `SELECT id FROM org_members WHERE org_id = $1 AND user_id = $2`,
+            const membershipCheck = await client.query(
+                `SELECT id, is_active FROM org_members WHERE org_id = $1 AND user_id = $2`,
                 [admin.org_id, userId]
             );
 
-            if (membershipCheck.rows.length > 0) {
+            if (membershipCheck.rows[0]?.is_active) {
+                await client.query('ROLLBACK');
                 return NextResponse.json(
                     { error: 'User is already part of this organization' },
                     { status: 400 }
                 );
             }
 
-            if (password) {
-                if (password.length < 8) {
-                    return NextResponse.json(
-                        { error: 'Password must be at least 8 characters' },
-                        { status: 400 }
-                    );
-                }
-
-                const passwordHash = await hashPassword(password);
-                await query(
-                    `UPDATE auth_accounts 
-                     SET password_hash = $1
-                     WHERE user_id = $2 AND provider = 'email'`,
-                    [passwordHash, userId]
-                );
-            }
-
-            const userInfo = await query(
+            const userInfo = await client.query(
                 `SELECT id, email, first_name, last_name FROM users WHERE id = $1`,
                 [userId]
             );
             user = userInfo.rows[0];
         } else {
-            if (!password || password.length < 8) {
-                return NextResponse.json(
-                    { error: 'Password must be at least 8 characters' },
-                    { status: 400 }
-                );
-            }
-
-            const passwordHash = await hashPassword(password);
-
-            const userResult = await query(
+            const userResult = await client.query(
                 `INSERT INTO users (email, first_name, last_name)
                  VALUES ($1, $2, $3)
                  RETURNING id, email, first_name, last_name, created_at`,
-                [email, firstName || null, lastName || null]
+                [normalizedEmail, firstName?.trim() || null, lastName?.trim() || null]
             );
 
             user = userResult.rows[0];
             userId = user.id;
+        }
 
-            await query(
+        const authAccountUpdate = await client.query(
+            `UPDATE auth_accounts
+             SET password_hash = $1, updated_at = NOW()
+             WHERE user_id = $2 AND provider = 'email'`,
+            [passwordHash, userId]
+        );
+
+        if (authAccountUpdate.rowCount === 0) {
+            await client.query(
                 `INSERT INTO auth_accounts (user_id, provider, password_hash)
                  VALUES ($1, 'email', $2)`,
                 [userId, passwordHash]
             );
         }
 
-        await query(
-            `INSERT INTO org_members (org_id, user_id, role, is_admin, is_active)
-             VALUES ($1, $2, $3, $4, true)`,
-            [admin.org_id, userId, role || 'member', isAdmin || false]
+        const nextBillingDate = new Date();
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+        await client.query(
+            `INSERT INTO user_tiers (
+                user_id,
+                current_tier,
+                setup_fee_paid,
+                setup_fee_paid_at,
+                subscription_start_date,
+                subscription_status,
+                next_billing_date,
+                updated_at
+             )
+             VALUES ($1, $2, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'active', $3, CURRENT_TIMESTAMP)
+             ON CONFLICT (user_id)
+             DO UPDATE SET
+                current_tier = EXCLUDED.current_tier,
+                setup_fee_paid = true,
+                setup_fee_paid_at = CURRENT_TIMESTAMP,
+                subscription_start_date = CURRENT_TIMESTAMP,
+                subscription_status = 'active',
+                next_billing_date = EXCLUDED.next_billing_date,
+                updated_at = CURRENT_TIMESTAMP`,
+            [userId, requestedTier, nextBillingDate]
         );
 
-        await query(
+        const existingMembership = await client.query(
+            `SELECT id FROM org_members WHERE org_id = $1 AND user_id = $2`,
+            [admin.org_id, userId]
+        );
+
+        if (existingMembership.rows.length > 0) {
+            await client.query(
+                `UPDATE org_members
+                 SET role = $1, is_admin = $2, is_active = true
+                 WHERE org_id = $3 AND user_id = $4`,
+                [requestedRole, requestedIsAdmin, admin.org_id, userId]
+            );
+        } else {
+            await client.query(
+                `INSERT INTO org_members (org_id, user_id, role, is_admin, is_active)
+                 VALUES ($1, $2, $3, $4, true)`,
+                [admin.org_id, userId, requestedRole, requestedIsAdmin]
+            );
+        }
+
+        await client.query(
             `INSERT INTO user_activity (org_id, user_id, activity_type, description)
              VALUES ($1, $2, 'user_created', $3)`,
-            [admin.org_id, admin.id, `Admin added user ${email} to organization`]
+            [admin.org_id, admin.id, `Admin added user ${normalizedEmail} to organization`]
         );
+
+        await client.query('COMMIT');
 
         return NextResponse.json({
             success: true,
@@ -181,22 +237,32 @@ export async function POST(request) {
                 email: user.email,
                 firstName: user.first_name,
                 lastName: user.last_name,
-                role: role || 'member',
-                isAdmin: isAdmin || false,
+                role: requestedRole,
+                isAdmin: requestedIsAdmin,
+                tier: requestedTier,
             },
         });
     } catch (error) {
+        await client.query('ROLLBACK').catch(() => { });
         if (error.message === 'Admin access required') {
             return NextResponse.json(
                 { error: 'Admin access required' },
                 { status: 403 }
             );
         }
+        if (error.message === 'Unauthorized') {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
         console.error('Create user error:', error);
         return NextResponse.json(
-            { error: 'Failed to create user' },
+            { error: error.message || 'Failed to create user' },
             { status: 500 }
         );
+    } finally {
+        client.release();
     }
 }
 

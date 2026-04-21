@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS user_tiers (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   current_tier VARCHAR(50) NOT NULL DEFAULT 'free',
   setup_fee_paid BOOLEAN DEFAULT false,
   setup_fee_paid_at TIMESTAMP,

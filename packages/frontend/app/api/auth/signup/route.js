@@ -4,11 +4,18 @@ import { hashPassword, generateToken } from '@/utils/auth';
 
 export async function POST(request) {
     try {
-        const { email, password, firstName, lastName, selectedTier } = await request.json();
+        const { email, password, firstName, lastName, selectedTier, acceptedTerms } = await request.json();
 
         if (!email || !password) {
             return NextResponse.json(
                 { error: 'Email and password are required' },
+                { status: 400 }
+            );
+        }
+
+        if (acceptedTerms !== true) {
+            return NextResponse.json(
+                { error: 'You must agree to the terms before creating an account' },
                 { status: 400 }
             );
         }

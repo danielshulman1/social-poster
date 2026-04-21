@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, Loader2, Check } from 'lucide-react';
 import UpgradePlanModal from '../../components/UpgradePlanModal';
-import { TIER_CONFIG, getTierLimit } from '../../utils/tier-config';
+import ConnectionServiceChips from '../../components/ConnectionServiceChips';
+import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG } from '../../utils/tier-config';
 
 export default function UpgradePage() {
   const [user, setUser] = useState(null);
@@ -97,6 +98,13 @@ export default function UpgradePage() {
           </div>
 
           <ul className="space-y-3 mb-8 flex-grow">
+            <li className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <span className="text-white/80">App supports these connection options</span>
+                <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+              </div>
+            </li>
             <li className="flex items-center gap-3">
               <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
               <span className="text-white/80">1 platform</span>
@@ -152,6 +160,13 @@ export default function UpgradePage() {
               </div>
 
               <ul className="space-y-3 mb-8 flex-grow">
+                <li className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <span className="text-white/80">App supports these connection options</span>
+                    <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+                  </div>
+                </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
                   <span className="text-white/80">{config.features.maxPlatforms} platforms</span>

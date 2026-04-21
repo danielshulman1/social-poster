@@ -33,7 +33,7 @@ export async function GET(request) {
       );
     }
 
-    const tierInfo = await getUserTier(parseInt(userId));
+    const tierInfo = await getUserTier(userId);
 
     return Response.json({
       success: true,
@@ -81,7 +81,7 @@ export async function POST(request) {
 
     // Update tier
     const updated = await updateUserTier(
-      parseInt(userId),
+      userId,
       newTier,
       setupFeePaid === true
     );

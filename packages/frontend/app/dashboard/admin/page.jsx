@@ -27,6 +27,7 @@ export default function AdminPage() {
         lastName: '',
         role: 'member',
         isAdmin: false,
+        tier: TIERS.STARTER,
     });
     const [newTask, setNewTask] = useState({
         title: '',
@@ -159,6 +160,7 @@ export default function AdminPage() {
                     lastName: '',
                     role: 'member',
                     isAdmin: false,
+                    tier: TIERS.STARTER,
                 });
                 checkAccess();
                 alert('User created successfully!');
@@ -814,6 +816,24 @@ export default function AdminPage() {
                                     <option value="member">Member</option>
                                     <option value="manager">Manager</option>
                                     <option value="admin">Admin</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-plus-jakarta font-medium text-black dark:text-white mb-2">
+                                    Package *
+                                </label>
+                                <select
+                                    required
+                                    value={newUser.tier}
+                                    onChange={(e) => setNewUser({ ...newUser, tier: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-[#E6E6E6] dark:border-[#333333] bg-white dark:bg-[#0A0A0A] text-black dark:text-white font-inter focus:outline-none focus:border-black dark:focus:border-white transition-colors"
+                                >
+                                    {Object.values(TIERS).map((tier) => (
+                                        <option key={tier} value={tier}>
+                                            {getTierConfig(tier).name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 

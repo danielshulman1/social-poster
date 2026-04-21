@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
-import { TIER_CONFIG } from '../../utils/tier-config';
+import ConnectionServiceChips from '../../components/ConnectionServiceChips';
+import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG } from '../../utils/tier-config';
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -13,6 +14,7 @@ export default function SignUpPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -27,6 +29,12 @@ export default function SignUpPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!hasAcceptedTerms) {
+            setError('You must agree to the terms before creating an account.');
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -38,6 +46,7 @@ export default function SignUpPage() {
                     password,
                     firstName: name,
                     selectedTier,
+                    acceptedTerms: hasAcceptedTerms,
                 }),
             });
 
@@ -87,6 +96,13 @@ export default function SignUpPage() {
                                     </div>
 
                                     <ul className="space-y-3 mb-6">
+                                        <li className="flex gap-2 items-start text-white/80 text-sm">
+                                            <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <span>App supports these connection options</span>
+                                                <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+                                            </div>
+                                        </li>
                                         <li className="flex gap-2 items-center text-white/80 text-sm">
                                             <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
                                             {config.features.maxPlatforms} platform{config.features.maxPlatforms > 1 ? 's' : ''}
@@ -192,10 +208,35 @@ export default function SignUpPage() {
                             />
                         </div>
 
+                        <label
+                            htmlFor="accepted-terms"
+                            className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-[#0b0b0b] p-3 text-sm leading-6 text-white/70"
+                        >
+                            <input
+                                id="accepted-terms"
+                                type="checkbox"
+                                checked={hasAcceptedTerms}
+                                onChange={(e) => setHasAcceptedTerms(e.target.checked)}
+                                required
+                                className="mt-1 h-4 w-4 flex-shrink-0 rounded border-white/20 bg-[#050505] accent-white"
+                            />
+                            <span>
+                                I agree to the{' '}
+                                <Link href="/terms" className="font-semibold text-white hover:underline">
+                                    Terms and Conditions
+                                </Link>{' '}
+                                and{' '}
+                                <Link href="/privacy" className="font-semibold text-white hover:underline">
+                                    Privacy Policy
+                                </Link>
+                                .
+                            </span>
+                        </label>
+
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="w-full bg-white text-black font-semibold py-2 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                            disabled={loading || !hasAcceptedTerms}
+                            className="w-full bg-white text-black font-semibold py-2 rounded-lg hover:bg-gray-200 transition disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {loading ? 'Creating account...' : 'Create Account'}
                         </button>

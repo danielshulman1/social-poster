@@ -34,6 +34,9 @@ const menuItems = [
 export function AppSidebar() {
     const pathname = usePathname();
     const { data: session } = useSession();
+    const visibleMenuItems = session?.user?.role === 'admin'
+        ? menuItems.filter((item) => item.href !== '/onboarding')
+        : menuItems;
 
     return (
         <aside className="w-full border-b border-sidebar-border bg-sidebar text-sidebar-foreground lg:sticky lg:top-0 lg:flex lg:h-[var(--app-shell-min-height)] lg:max-h-[var(--app-shell-min-height)] lg:w-80 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0">
@@ -60,7 +63,7 @@ export function AppSidebar() {
                         Command Deck
                     </p>
                     <div className="flex gap-2 lg:flex-col lg:gap-1.5">
-                {menuItems.map((item) => {
+                {visibleMenuItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
 

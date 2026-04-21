@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { TIER_CONFIG, TIER_ORDER } from "@/lib/tiers";
+import { CONNECTABLE_PROVIDER_LABELS, TIER_CONFIG, TIER_ORDER } from "@/lib/tiers";
 
 export default function PricingPage() {
     return (
@@ -36,25 +36,25 @@ export default function PricingPage() {
                                     Choose the level of publishing support you actually want to run.
                                 </h1>
                                 <p className="max-w-2xl text-base leading-8 text-muted-foreground">
-                                    Every plan controls access inside the app. Users can only connect the platforms, book the support, and publish at the volume their tier allows.
+                                    Every package shows the full connection surface. Tier allowances still control which channels and publishing volume a user can use.
                                 </p>
                             </div>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
                             <div className="metric-panel">
-                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Starter</p>
-                                <p className="mt-3 text-2xl font-semibold text-foreground">3 platforms</p>
-                                <p className="mt-1 text-sm text-muted-foreground">Facebook, Instagram, LinkedIn</p>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Connections</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">{CONNECTABLE_PROVIDER_LABELS.length} services</p>
+                                <p className="mt-1 text-sm text-muted-foreground">Support list, not a usage limit</p>
                             </div>
                             <div className="metric-panel">
-                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Core</p>
-                                <p className="mt-3 text-2xl font-semibold text-foreground">5 posts/week</p>
-                                <p className="mt-1 text-sm text-muted-foreground">More weekly volume on the same core channels</p>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Sources</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">Sheets + RSS</p>
+                                <p className="mt-1 text-sm text-muted-foreground">Use connected content sources in workflows</p>
                             </div>
                             <div className="metric-panel">
-                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Premium</p>
-                                <p className="mt-3 text-2xl font-semibold text-foreground">Daily output</p>
-                                <p className="mt-1 text-sm text-muted-foreground">Priority support with wider platform access</p>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Publishing</p>
+                                <p className="mt-3 text-2xl font-semibold text-foreground">Social + web</p>
+                                <p className="mt-1 text-sm text-muted-foreground">Publish through connected accounts</p>
                             </div>
                         </div>
                     </div>
@@ -79,6 +79,21 @@ export default function PricingPage() {
                                 <CardContent className="space-y-4">
                                     <div className="text-4xl font-semibold tracking-[-0.04em]">{tier.priceLabel}</div>
                                     <ul className="space-y-3 text-sm">
+                                        <li className="space-y-2">
+                                            <div className="flex items-start gap-3">
+                                                <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+                                                    <Check className="h-3.5 w-3.5" />
+                                                </span>
+                                                <span className="font-medium text-foreground">App supports these connections:</span>
+                                            </div>
+                                            <div className="ml-9 flex flex-wrap gap-1.5">
+                                                {CONNECTABLE_PROVIDER_LABELS.map((label) => (
+                                                    <span key={label} className="rounded-full border border-border/80 bg-background/80 px-2 py-1 text-xs text-muted-foreground">
+                                                        {label}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </li>
                                         {tier.features.map((feature) => (
                                             <li key={feature} className="flex items-start gap-3">
                                                 <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-secondary-foreground">

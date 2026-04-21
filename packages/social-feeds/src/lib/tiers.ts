@@ -26,6 +26,24 @@ export const RESTRICTED_SOCIAL_PROVIDERS = [
 export type RestrictedSocialProvider =
   (typeof RESTRICTED_SOCIAL_PROVIDERS)[number];
 
+export const CONNECTABLE_PROVIDERS = [
+  "facebook",
+  "instagram",
+  "linkedin",
+  "tiktok",
+  "twitter",
+  "threads",
+  "youtube",
+  "pinterest",
+  "wordpress",
+  "wix",
+  "squarespace",
+  "google",
+  "rss",
+] as const;
+
+export type ConnectableProvider = (typeof CONNECTABLE_PROVIDERS)[number];
+
 export const PROVIDER_LABELS: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
@@ -38,8 +56,13 @@ export const PROVIDER_LABELS: Record<string, string> = {
   wordpress: "WordPress",
   wix: "Wix",
   squarespace: "Squarespace",
-  google: "Google",
+  google: "Google Sheets",
+  rss: "RSS Feeds",
 };
+
+export const CONNECTABLE_PROVIDER_LABELS = CONNECTABLE_PROVIDERS.map(
+  (provider) => PROVIDER_LABELS[provider]
+);
 
 export type TierConfig = {
   name: string;

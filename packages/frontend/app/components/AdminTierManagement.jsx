@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { TIERS, TIER_CONFIG } from '../utils/tier-config';
+import ConnectionServiceChips from './ConnectionServiceChips';
+import { CONNECTABLE_SERVICE_COUNT, TIERS, TIER_CONFIG } from '../utils/tier-config';
 
 export function AdminTierManagement() {
   const [users, setUsers] = useState([]);
@@ -417,6 +418,14 @@ export function AdminTierManagement() {
                   📝 {config.features.postsPerWeek ||
                     'Unlimited'}{' '}
                   posts/week
+                </li>
+                <li>
+                  <ConnectionServiceChips
+                    className="mt-2"
+                    label={`${CONNECTABLE_SERVICE_COUNT} connectable services`}
+                    labelClassName="text-gray-500"
+                    chipClassName="border-gray-200 bg-gray-50 text-gray-600"
+                  />
                 </li>
                 {config.features.voiceTraining && (
                   <li>🎤 Voice training</li>

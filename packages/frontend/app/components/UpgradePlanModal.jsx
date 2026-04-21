@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
-import { getTierConfig, formatPrice } from '../utils/tier-config';
+import ConnectionServiceChips from './ConnectionServiceChips';
+import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG, formatPrice } from '../utils/tier-config';
 
 export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuthToken }) {
   const [selectedTier, setSelectedTier] = useState('starter');
@@ -10,7 +11,7 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
   const [error, setError] = useState(null);
 
   const tiers = ['starter', 'core', 'premium'];
-  const tierConfigs = getTierConfig();
+  const tierConfigs = TIER_CONFIG;
 
   const handleUpgrade = async () => {
     try {
@@ -116,19 +117,34 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                   <div className="space-y-3">
                     <div className="flex gap-2 items-start">
                       <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          App supports these connection options
+                        </span>
+                        <ConnectionServiceChips
+                          className="mt-3"
+                          label={`${CONNECTABLE_SERVICE_COUNT} services`}
+                          labelClassName="text-gray-500 dark:text-gray-400"
+                          chipClassName="border-gray-200 bg-white text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 items-start">
+                      <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {config.maxPlatforms} platform{config.maxPlatforms !== 1 ? 's' : ''}
+                        {config.features.maxPlatforms} platform{config.features.maxPlatforms !== 1 ? 's' : ''}
                       </span>
                     </div>
 
                     <div className="flex gap-2 items-start">
                       <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {config.postsPerWeek} posts/week
+                        {config.features.postsPerWeek} posts/week
                       </span>
                     </div>
 
-                    {config.voiceTraining && (
+                    {config.features.voiceTraining && (
                       <div className="flex gap-2 items-start">
                         <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -137,7 +153,7 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                       </div>
                     )}
 
-                    {config.prioritySupport && (
+                    {config.features.prioritySupport && (
                       <div className="flex gap-2 items-start">
                         <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -146,11 +162,11 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                       </div>
                     )}
 
-                    {config.checkInCalls > 0 && (
+                    {config.features.checkInCallsPerMonth > 0 && (
                       <div className="flex gap-2 items-start">
                         <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {config.checkInCalls} check-in call{config.checkInCalls !== 1 ? 's' : ''}/month
+                          {config.features.checkInCallsPerMonth} check-in call{config.features.checkInCallsPerMonth !== 1 ? 's' : ''}/month
                         </span>
                       </div>
                     )}

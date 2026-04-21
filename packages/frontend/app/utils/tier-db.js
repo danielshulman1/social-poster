@@ -11,10 +11,22 @@ import { TIERS } from './tier-config';
  */
 export async function ensureUserTiersTable() {
   try {
+    const userIdTypeResult = await query(
+      `SELECT data_type, udt_name
+       FROM information_schema.columns
+       WHERE table_name = 'users' AND column_name = 'id'
+       LIMIT 1`
+    );
+    const userIdColumn = userIdTypeResult.rows[0];
+    const userIdType =
+      userIdColumn?.data_type === 'uuid' || userIdColumn?.udt_name === 'uuid'
+        ? 'UUID'
+        : 'INTEGER';
+
     await query(
       `CREATE TABLE IF NOT EXISTS user_tiers (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        user_id ${userIdType} NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
         current_tier VARCHAR(50) NOT NULL DEFAULT $1,
         setup_fee_paid BOOLEAN DEFAULT false,
         setup_fee_paid_at TIMESTAMP,
@@ -26,6 +38,44 @@ export async function ensureUserTiersTable() {
       )`,
       [TIERS.FREE]
     );
+
+    const tierUserIdTypeResult = await query(
+      `SELECT data_type, udt_name
+       FROM information_schema.columns
+       WHERE table_name = 'user_tiers' AND column_name = 'user_id'
+       LIMIT 1`
+    );
+    const tierUserIdColumn = tierUserIdTypeResult.rows[0];
+    const tierUserIdType =
+      tierUserIdColumn?.data_type === 'uuid' || tierUserIdColumn?.udt_name === 'uuid'
+        ? 'UUID'
+        : 'INTEGER';
+
+    if (tierUserIdType !== userIdType) {
+      const tierRows = await query('SELECT COUNT(*)::int AS count FROM user_tiers');
+      if ((tierRows.rows[0]?.count || 0) === 0) {
+        await query('DROP TABLE user_tiers');
+        await query(
+          `CREATE TABLE user_tiers (
+            id SERIAL PRIMARY KEY,
+            user_id ${userIdType} NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            current_tier VARCHAR(50) NOT NULL DEFAULT $1,
+            setup_fee_paid BOOLEAN DEFAULT false,
+            setup_fee_paid_at TIMESTAMP,
+            subscription_start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            subscription_status VARCHAR(50) NOT NULL DEFAULT 'active',
+            next_billing_date TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )`,
+          [TIERS.FREE]
+        );
+      } else {
+        throw new Error(
+          `user_tiers.user_id is ${tierUserIdType}, but users.id is ${userIdType}. Migrate user_tiers.user_id before assigning packages.`
+        );
+      }
+    }
 
     // Create index for faster lookups
     await query(

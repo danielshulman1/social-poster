@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, Lock, AlertCircle, Trash2, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, CheckCircle2, Lock, AlertCircle, Trash2, Save, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { TIER_CONFIG, TIER_ORDER, TIER_OPTIONS } from "@/lib/tiers";
 
@@ -33,6 +36,14 @@ interface User {
     };
 }
 
+interface NewUserForm {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    tier: string;
+}
+
 export default function AdminUsersPage() {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -42,21 +53,17 @@ export default function AdminUsersPage() {
     const [deleting, setDeleting] = useState<string | null>(null);
     const [savingTierFor, setSavingTierFor] = useState<string | null>(null);
     const [selectedTiers, setSelectedTiers] = useState<Record<string, string>>({});
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
+    const [newUser, setNewUser] = useState<NewUserForm>({
+        name: "",
+        email: "",
+        password: "",
+        role: "user",
+        tier: TIER_OPTIONS.STARTER,
+    });
 
-    useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/login");
-        } else if (status === "authenticated") {
-            if (session?.user?.role !== "admin") {
-                toast.error("Unauthorized: Admins only");
-                router.push("/dashboard");
-                return;
-            }
-            fetchUsers();
-        }
-    }, [status, session, router]);
-
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             const res = await fetch("/api/admin/users");
             if (!res.ok) throw new Error("Failed to fetch users");
@@ -71,6 +78,55 @@ export default function AdminUsersPage() {
             toast.error("Error fetching users");
         } finally {
             setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/login");
+        } else if (status === "authenticated") {
+            if (session?.user?.role !== "admin") {
+                toast.error("Unauthorized: Admins only");
+                router.push("/dashboard");
+                return;
+            }
+            queueMicrotask(() => {
+                void fetchUsers();
+            });
+        }
+    }, [status, session, router, fetchUsers]);
+
+    const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setIsCreatingUser(true);
+
+        try {
+            const res = await fetch("/api/admin/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newUser),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.error || "Failed to create user");
+            }
+
+            toast.success(`Account created for ${data.email}`);
+            setIsCreateDialogOpen(false);
+            setNewUser({
+                name: "",
+                email: "",
+                password: "",
+                role: "user",
+                tier: TIER_OPTIONS.STARTER,
+            });
+            await fetchUsers();
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "Failed to create user");
+        } finally {
+            setIsCreatingUser(false);
         }
     };
 
@@ -188,7 +244,13 @@ export default function AdminUsersPage() {
                             <CardTitle>Registered Users</CardTitle>
                             <CardDescription>Manage application users and view subscription status</CardDescription>
                         </div>
-                        <Button onClick={fetchUsers} variant="outline" size="sm">Refresh</Button>
+                        <div className="flex items-center gap-2">
+                            <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
+                                <UserPlus className="w-4 h-4" />
+                                Create Account
+                            </Button>
+                            <Button onClick={fetchUsers} variant="outline" size="sm">Refresh</Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -321,6 +383,104 @@ export default function AdminUsersPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Create User Account</DialogTitle>
+                        <DialogDescription>
+                            Create a login for a new user and assign their starting role and tier.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateUser} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-user-name">Name</Label>
+                            <Input
+                                id="new-user-name"
+                                value={newUser.name}
+                                onChange={(event) => setNewUser((current) => ({ ...current, name: event.target.value }))}
+                                placeholder="Jane Smith"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-user-email">Email</Label>
+                            <Input
+                                id="new-user-email"
+                                type="email"
+                                required
+                                value={newUser.email}
+                                onChange={(event) => setNewUser((current) => ({ ...current, email: event.target.value }))}
+                                placeholder="jane@example.com"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-user-password">Temporary Password</Label>
+                            <Input
+                                id="new-user-password"
+                                type="password"
+                                required
+                                minLength={8}
+                                value={newUser.password}
+                                onChange={(event) => setNewUser((current) => ({ ...current, password: event.target.value }))}
+                                placeholder="At least 8 characters"
+                            />
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label>Role</Label>
+                                <Select
+                                    value={newUser.role}
+                                    onValueChange={(value) => setNewUser((current) => ({ ...current, role: value }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="user">User</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Tier</Label>
+                                <Select
+                                    value={newUser.tier}
+                                    onValueChange={(value) => setNewUser((current) => ({ ...current, tier: value }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select tier" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TIER_ORDER.map((tierId) => (
+                                            <SelectItem key={tierId} value={tierId}>
+                                                {TIER_CONFIG[tierId].name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsCreateDialogOpen(false)}
+                                disabled={isCreatingUser}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isCreatingUser}>
+                                {isCreatingUser ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <UserPlus className="w-4 h-4" />
+                                )}
+                                Create Account
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

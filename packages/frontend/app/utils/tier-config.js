@@ -11,6 +11,25 @@ export const TIERS = {
   PREMIUM: 'premium',
 };
 
+export const CONNECTABLE_SERVICE_LABELS = [
+  'Facebook',
+  'Instagram',
+  'LinkedIn',
+  'TikTok',
+  'Twitter/X',
+  'Threads',
+  'YouTube',
+  'Pinterest',
+  'WordPress',
+  'Wix',
+  'Squarespace',
+  'Google Sheets',
+  'RSS Feeds',
+];
+
+export const CONNECTABLE_SERVICE_COUNT = CONNECTABLE_SERVICE_LABELS.length;
+export const CONNECTABLE_SERVICE_SUMMARY = CONNECTABLE_SERVICE_LABELS.join(', ');
+
 export const TIER_CONFIG = {
   [TIERS.FREE]: {
     name: 'Free',

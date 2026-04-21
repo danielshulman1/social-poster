@@ -45,6 +45,11 @@ export default function PersonaOnboardingPage() {
       const userData = await meRes.json();
       setUser(userData.user);
 
+      if (userData.user?.isAdmin || userData.user?.isSuperadmin) {
+        router.replace('/dashboard');
+        return;
+      }
+
       // Check tier status
       const tierRes = await fetch('/api/auth/tier-check', {
         headers: { Authorization: `Bearer ${token}` },

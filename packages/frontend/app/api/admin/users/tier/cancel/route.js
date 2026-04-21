@@ -34,7 +34,7 @@ export async function POST(request) {
     }
 
     // Cancel subscription
-    const updated = await cancelUserSubscription(parseInt(userId));
+    const updated = await cancelUserSubscription(userId);
 
     return Response.json({
       success: true,

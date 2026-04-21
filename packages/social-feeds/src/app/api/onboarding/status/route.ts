@@ -34,6 +34,35 @@ export async function GET(req: Request) {
     if (!auth?.userId) return unauthorizedText();
 
     try {
+        if (auth.role === "admin") {
+            return NextResponse.json({
+                completed: true,
+                completedAt: null,
+                needsOnboarding: false,
+                currentStep: 0,
+                adminBypass: true,
+                steps: {
+                    social: {
+                        complete: true,
+                        count: 0,
+                        connections: [],
+                    },
+                    ai: {
+                        complete: true,
+                        provider: null,
+                    },
+                    persona: {
+                        complete: true,
+                        updatedAt: null,
+                    },
+                    workflow: {
+                        complete: true,
+                        count: 0,
+                    },
+                },
+            });
+        }
+
         await ensureOnboardingProgressTable();
 
         const user = await prisma.user.findUnique({

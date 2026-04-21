@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { forbiddenText, getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { normalizeTier } from "@/lib/tiers";
+import bcrypt from "bcryptjs";
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +67,119 @@ export async function GET(req: Request) {
     } catch (error) {
         console.error("Failed to fetch users:", error);
         return new NextResponse("Internal Server Error", { status: 500 });
+    }
+}
+
+export async function POST(req: Request) {
+    const auth = await getApiAuthContext(req);
+    if (!auth?.userId) return unauthorizedText();
+    if (auth.role !== "admin") return forbiddenText();
+
+    try {
+        const { name, email, password, role, tier } = await req.json();
+        const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+        const normalizedName = typeof name === "string" ? name.trim() : "";
+        const normalizedRole = role === "admin" ? "admin" : "user";
+        const normalizedTier = normalizeTier(tier);
+
+        if (!normalizedEmail || !password) {
+            return NextResponse.json(
+                { error: "Email and password are required" },
+                { status: 400 }
+            );
+        }
+
+        if (!normalizedTier) {
+            return NextResponse.json(
+                { error: "A valid package is required" },
+                { status: 400 }
+            );
+        }
+
+        if (typeof password !== "string" || password.length < 8) {
+            return NextResponse.json(
+                { error: "Password must be at least 8 characters" },
+                { status: 400 }
+            );
+        }
+
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                email: {
+                    equals: normalizedEmail,
+                    mode: "insensitive",
+                },
+            },
+            select: { id: true },
+        });
+
+        if (existingUser) {
+            return NextResponse.json(
+                { error: "A user with that email already exists" },
+                { status: 409 }
+            );
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+        const nextBillingDate = new Date();
+        nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+
+        const user = await prisma.user.create({
+            data: {
+                name: normalizedName || null,
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: normalizedRole,
+                subscription: {
+                    create: {
+                        status: "active",
+                        priceId: normalizedTier,
+                        currentPeriodEnd: nextBillingDate,
+                    },
+                },
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                createdAt: true,
+                subscription: {
+                    select: {
+                        status: true,
+                        priceId: true,
+                    },
+                },
+                _count: {
+                    select: { workflows: true },
+                },
+            },
+        });
+
+        return NextResponse.json(
+            {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                createdAt: user.createdAt,
+                workflowCount: user._count.workflows,
+                subscription: user.subscription
+                    ? {
+                        status: user.subscription.status,
+                        plan: user.subscription.priceId,
+                    }
+                    : null,
+                persona: null,
+            },
+            { status: 201 }
+        );
+    } catch (error) {
+        console.error("Failed to create user:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
     }
 }
 

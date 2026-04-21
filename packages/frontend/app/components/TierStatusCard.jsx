@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Zap, ArrowRight, Loader2 } from 'lucide-react';
+import ConnectionServiceChips from './ConnectionServiceChips';
 import UpgradePlanModal from './UpgradePlanModal';
-import { getTierConfig, formatPrice, getTierLimit } from '../utils/tier-config';
+import { CONNECTABLE_SERVICE_COUNT, getTierConfig } from '../utils/tier-config';
 
 export default function TierStatusCard() {
   const [user, setUser] = useState(null);
@@ -103,6 +104,14 @@ export default function TierStatusCard() {
 
         {/* Features */}
         <div className="space-y-4 mb-8">
+          <div className="flex items-start gap-3">
+            <div className="mt-2 w-2 h-2 rounded-full bg-gradient-accent" />
+            <div className="min-w-0">
+              <span className="text-white/80">App supports these connection options</span>
+              <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+            </div>
+          </div>
+
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-gradient-accent" />
             <span className="text-white/80">

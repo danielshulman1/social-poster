@@ -30,6 +30,7 @@ type OnboardingStatus = {
     completedAt: string | null;
     needsOnboarding: boolean;
     currentStep: number;
+    adminBypass?: boolean;
     steps: {
         social: {
             complete: boolean;
@@ -122,6 +123,12 @@ function InstructionList({ steps }: { steps: string[] }) {
     );
 }
 
+async function fetchOnboardingStatus(): Promise<OnboardingStatus> {
+    const res = await fetch("/api/onboarding/status", { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to load onboarding status");
+    return res.json();
+}
+
 export default function OnboardingPage() {
     const router = useRouter();
     const [status, setStatus] = useState<OnboardingStatus | null>(null);
@@ -135,9 +142,11 @@ export default function OnboardingPage() {
 
     const loadStatus = async () => {
         try {
-            const res = await fetch("/api/onboarding/status", { cache: "no-store" });
-            if (!res.ok) throw new Error("Failed to load onboarding status");
-            const data = await res.json();
+            const data = await fetchOnboardingStatus();
+            if (data?.adminBypass) {
+                router.replace("/dashboard");
+                return;
+            }
             setStatus(data);
         } catch {
             toast.error("Failed to load onboarding progress");
@@ -147,8 +156,33 @@ export default function OnboardingPage() {
     };
 
     useEffect(() => {
-        loadStatus();
-    }, []);
+        let isMounted = true;
+
+        const loadInitialStatus = async () => {
+            try {
+                const data = await fetchOnboardingStatus();
+                if (data?.adminBypass) {
+                    router.replace("/dashboard");
+                    return;
+                }
+                if (isMounted) {
+                    setStatus(data);
+                }
+            } catch {
+                toast.error("Failed to load onboarding progress");
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        void loadInitialStatus();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [router]);
 
     const handleSaveOpenAiKey = async () => {
         if (!openaiKey.trim()) {
