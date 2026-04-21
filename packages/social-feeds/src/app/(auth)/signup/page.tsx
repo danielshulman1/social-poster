@@ -94,8 +94,8 @@ export default function SignupPage() {
                 <div className="flex items-start gap-3">
                     <span className="text-xl">✨</span>
                     <div>
-                        <p className="text-sm font-bold text-emerald-900">Start your free trial today</p>
-                        <p className="text-xs text-emerald-700 mt-1">Get full access to all features. Upgrade when you're ready.</p>
+                        <p className="text-sm font-bold text-emerald-900">7-day free trial</p>
+                        <p className="text-xs text-emerald-700 mt-1">Full access for 7 days. We'll charge on day 8 unless you cancel.</p>
                     </div>
                 </div>
             </div>
@@ -339,7 +339,7 @@ export default function SignupPage() {
                             type="submit"
                             disabled={isLoading || !selectedTier || !hasAcceptedTerms}
                         >
-                            {isLoading ? "Creating your account..." : "Start 7-Day Free Trial"}
+                            {isLoading ? "Setting up payment..." : "Start Free Trial (Payment Required)"}
                         </Button>
                         <div className="text-xs text-center text-muted-foreground">
                             Already have an account?{" "}
@@ -348,7 +348,7 @@ export default function SignupPage() {
                             </Link>
                         </div>
                         <div className="text-xs text-center text-muted-foreground/70 pt-1 border-t border-border/30">
-                            7-day free trial • Cancel anytime • Access to the plan you select
+                            Payment required • Charged on day 8 • Cancel anytime to avoid charges
                         </div>
                     </CardFooter>
                 </form>

@@ -55,9 +55,9 @@ export default function AuthLayout({
                                 </div>
                             </div>
                             <div className="rounded-[1.2rem] border border-emerald-500/40 bg-emerald-500/15 p-3 backdrop-blur-sm">
-                                <p className="text-xs uppercase tracking-[0.15em] text-emerald-300 font-bold">⚡ Start Free</p>
-                                <p className="text-sm text-emerald-100 mt-2 font-medium">7-day free trial</p>
-                                <p className="text-xs text-emerald-200/80 mt-1">Cancel anytime. Access the plan you select.</p>
+                                <p className="text-xs uppercase tracking-[0.15em] text-emerald-300 font-bold">⚡ 7-Day Trial</p>
+                                <p className="text-sm text-emerald-100 mt-2 font-medium">Free full access</p>
+                                <p className="text-xs text-emerald-200/80 mt-1">Charges on day 8. Cancel anytime to avoid charges.</p>
                             </div>
                             <div className="rounded-[1.2rem] border border-white/10 bg-white/6 p-3 backdrop-blur-sm">
                                 <p className="text-xs uppercase tracking-[0.15em] text-white/55 font-medium">Why Social Poster</p>

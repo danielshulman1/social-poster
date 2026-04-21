@@ -121,22 +121,25 @@ git push origin main
 1. User selects tier (Starter/Core/Premium)
 2. Clicks "Start 7-Day Free Trial"
 3. Redirected to Stripe checkout
-4. **No payment method required**
-5. Creates subscription with 7-day trial period
+4. **Must enter valid payment card and billing address**
+5. Subscription created with 7-day trial (no charge yet)
 6. Webhook creates subscription record in DB
 7. User has instant access to selected tier
+8. Payment method saved for automatic charge
 
 ### Day 1-7 - Trial Period
 - User has full access to their tier
-- No charge yet
-- Can cancel anytime without payment
+- No charge applied during trial
+- **User must actively cancel to stop payment**
+- If they do nothing, automatically charged on day 8
 - Database tracks `trial_ends_at` date
 
 ### Day 8 - First Charge
-- Stripe automatically charges payment method
+- Stripe **automatically charges the saved payment card**
 - `invoice.payment_succeeded` webhook fires
 - Database updates `subscription_status` to "active"
 - User continues with access
+- Subscription renews monthly
 
 ### Ongoing - Monthly Renewal
 - Stripe charges every 30 days
