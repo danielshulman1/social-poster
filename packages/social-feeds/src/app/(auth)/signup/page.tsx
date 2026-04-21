@@ -82,6 +82,7 @@ export default function SignupPage() {
             }
 
             const data = await res.json();
+            console.log("[signup] Account created:", data);
 
             // Create Stripe checkout session
             const checkoutRes = await fetch("/api/stripe/checkout", {
@@ -94,14 +95,17 @@ export default function SignupPage() {
                 }),
             });
 
-            if (!checkoutRes.ok) {
-                throw new Error("Failed to create checkout session");
-            }
-
+            console.log("[signup] Checkout response status:", checkoutRes.status);
             const checkoutData = await checkoutRes.json();
+            console.log("[signup] Checkout response:", checkoutData);
+
+            if (!checkoutRes.ok) {
+                throw new Error(`Checkout failed: ${checkoutData.error || checkoutRes.statusText}`);
+            }
 
             // Redirect to Stripe checkout
             if (checkoutData.url) {
+                console.log("[signup] Redirecting to:", checkoutData.url);
                 window.location.href = checkoutData.url;
             } else {
                 throw new Error("No checkout URL received");
