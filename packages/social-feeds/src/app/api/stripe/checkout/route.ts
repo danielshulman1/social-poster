@@ -27,6 +27,33 @@ function getCheckoutConfigStatus() {
   };
 }
 
+function normalizeBaseUrl(value: string | null | undefined) {
+  const trimmed = (value || "").trim().replace(/\/+$/, "");
+
+  if (!trimmed || trimmed.includes("[") || trimmed.includes("]")) {
+    return null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return null;
+    }
+
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function getCheckoutBaseUrl(request: NextRequest) {
+  return (
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ||
+    normalizeBaseUrl(request.nextUrl.origin) ||
+    "http://localhost:3000"
+  );
+}
+
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -99,6 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = getStripeClient();
+    const baseUrl = getCheckoutBaseUrl(request);
 
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email || email,
@@ -118,8 +146,8 @@ export async function POST(request: NextRequest) {
       },
       payment_method_collection: "always",
       billing_address_collection: "required",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=success&tier=${normalizedTier}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=cancelled`,
+      success_url: `${baseUrl}/dashboard?payment=success&tier=${normalizedTier}`,
+      cancel_url: `${baseUrl}/dashboard?payment=cancelled`,
       metadata: {
         user_id: userId,
         tier: normalizedTier,
