@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
           tier: tier,
         },
       },
+      payment_method_collection: "always",
+      billing_address_collection: "required",
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=success&tier=${tier}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=cancelled`,
       metadata: {

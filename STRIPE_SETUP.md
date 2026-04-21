@@ -148,10 +148,13 @@ git push origin main
 - User receives Stripe email reminders
 
 ### User Cancels
-- `customer.subscription.deleted` webhook fires
-- `subscription_status` becomes "canceled"
+- User clicks "Cancel Subscription" in app settings
+- API calls `POST /api/stripe/cancel-subscription`
+- Subscription marked as `cancel_at_period_end` in Stripe
+- `subscription_status` becomes "canceled" in database
 - `subscription_tier` resets to "free"
-- User loses access after current period ends
+- User retains access until end of billing period
+- Webhook logs the cancellation event
 
 ## Testing
 
@@ -240,6 +243,30 @@ WHERE subscription_status = 'trialing'
 ```
 
 ## Frontend Integration
+
+### In Settings/Dashboard Page
+
+Add subscription management to user settings:
+
+```typescript
+import { SubscriptionSettings } from '@/components/subscription-settings';
+
+export default function SettingsPage() {
+  const userId = useAuth().user?.id;
+  
+  return (
+    <div>
+      <SubscriptionSettings userId={userId} />
+    </div>
+  );
+}
+```
+
+Users can now:
+- View current tier and status
+- See trial end date or next renewal date
+- **Cancel subscription directly in app**
+- Receive confirmation with access end date
 
 ### In Signup Page
 
