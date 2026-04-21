@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
 import ConnectionServiceChips from '../../components/ConnectionServiceChips';
-import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG } from '../../utils/tier-config';
+import { CONNECTABLE_SERVICE_COUNT, CONNECTABLE_SERVICE_SUMMARY, TIER_CONFIG } from '../../utils/tier-config';
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -73,7 +73,10 @@ export default function SignUpPage() {
                     <div className="text-center mb-12">
                         <p className="text-xs uppercase tracking-widest text-white/60 mb-2">Choose Your Plan</p>
                         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Select a Tier to Get Started</h1>
-                        <p className="text-white/70 max-w-2xl mx-auto">Pick the plan that fits your needs. You can always upgrade or downgrade later.</p>
+                        <p className="text-white/70 max-w-2xl mx-auto">
+                            Pick the plan that fits your needs. Connect to {CONNECTABLE_SERVICE_SUMMARY} and more.
+                            You can always upgrade or downgrade later.
+                        </p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -99,8 +102,8 @@ export default function SignUpPage() {
                                         <li className="flex gap-2 items-start text-white/80 text-sm">
                                             <Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
                                             <div className="min-w-0">
-                                                <span>App supports these connection options</span>
-                                                <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+                                                <span>Connect to {CONNECTABLE_SERVICE_SUMMARY}</span>
+                                                <ConnectionServiceChips className="mt-3" label="All Supported Connections" />
                                             </div>
                                         </li>
                                         <li className="flex gap-2 items-center text-white/80 text-sm">

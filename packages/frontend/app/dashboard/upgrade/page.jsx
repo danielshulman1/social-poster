@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, Loader2, Check } from 'lucide-react';
 import UpgradePlanModal from '../../components/UpgradePlanModal';
 import ConnectionServiceChips from '../../components/ConnectionServiceChips';
-import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG } from '../../utils/tier-config';
+import { CONNECTABLE_SERVICE_COUNT, CONNECTABLE_SERVICE_SUMMARY, TIER_CONFIG } from '../../utils/tier-config';
 
 export default function UpgradePage() {
   const [user, setUser] = useState(null);
@@ -66,7 +66,7 @@ export default function UpgradePage() {
         <p className="text-xs uppercase tracking-[0.18em] text-white/50">Plans & Pricing</p>
         <h1 className="text-4xl font-bold text-white">Choose Your Plan</h1>
         <p className="text-white/70 max-w-2xl mx-auto">
-          Start with our Free tier and upgrade whenever you're ready. All paid plans include voice training and onboarding session.
+          Start with our Free tier and upgrade whenever you're ready. Connect to {CONNECTABLE_SERVICE_SUMMARY} and more. All paid plans include voice training and onboarding session.
         </p>
       </div>
 
@@ -101,8 +101,8 @@ export default function UpgradePage() {
             <li className="flex items-start gap-3">
               <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <span className="text-white/80">App supports these connection options</span>
-                <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+                <span className="text-white/80">Connect to {CONNECTABLE_SERVICE_SUMMARY}</span>
+                <ConnectionServiceChips className="mt-3" label="All Supported Connections" />
               </div>
             </li>
             <li className="flex items-center gap-3">
@@ -163,8 +163,8 @@ export default function UpgradePage() {
                 <li className="flex items-start gap-3">
                   <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <span className="text-white/80">App supports these connection options</span>
-                    <ConnectionServiceChips className="mt-3" label={`${CONNECTABLE_SERVICE_COUNT} services`} />
+                    <span className="text-white/80">Connect to {CONNECTABLE_SERVICE_SUMMARY}</span>
+                    <ConnectionServiceChips className="mt-3" label="All Supported Connections" />
                   </div>
                 </li>
                 <li className="flex items-center gap-3">

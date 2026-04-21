@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { X, Check, Loader2 } from 'lucide-react';
 import ConnectionServiceChips from './ConnectionServiceChips';
-import { CONNECTABLE_SERVICE_COUNT, TIER_CONFIG, formatPrice } from '../utils/tier-config';
+import { CONNECTABLE_SERVICE_COUNT, CONNECTABLE_SERVICE_SUMMARY, TIER_CONFIG, formatPrice } from '../utils/tier-config';
 
 export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuthToken }) {
   const [selectedTier, setSelectedTier] = useState('starter');
@@ -119,11 +119,11 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                       <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
                         <span className="text-sm text-gray-700 dark:text-gray-300">
-                          App supports these connection options
+                          Connect to {CONNECTABLE_SERVICE_SUMMARY}
                         </span>
                         <ConnectionServiceChips
                           className="mt-3"
-                          label={`${CONNECTABLE_SERVICE_COUNT} services`}
+                          label="All Available Connections"
                           labelClassName="text-gray-500 dark:text-gray-400"
                           chipClassName="border-gray-200 bg-white text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                         />
