@@ -78,10 +78,33 @@ export default function SignupPage() {
                 throw new Error(data.message || "Registration failed");
             }
 
-            toast.success("Account created. Sign in to start onboarding.");
-            router.push("/login");
+            const data = await res.json();
+
+            // Create Stripe checkout session
+            const checkoutRes = await fetch("/api/stripe/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: data.user.email,
+                    userId: data.user.id,
+                    tier: selectedTier
+                }),
+            });
+
+            if (!checkoutRes.ok) {
+                throw new Error("Failed to create checkout session");
+            }
+
+            const checkoutData = await checkoutRes.json();
+
+            // Redirect to Stripe checkout
+            if (checkoutData.url) {
+                window.location.href = checkoutData.url;
+            } else {
+                throw new Error("No checkout URL received");
+            }
         } catch (error: unknown) {
-            toast.error(error instanceof Error ? error.message : "Registration failed");
+            toast.error(error instanceof Error ? error.message : "Failed to proceed to payment");
         } finally {
             setIsLoading(false);
         }
