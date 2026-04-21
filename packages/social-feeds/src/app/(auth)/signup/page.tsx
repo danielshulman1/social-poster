@@ -12,7 +12,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { normalizeTier, TIER_CONFIG, TIER_ORDER } from "@/lib/tiers";
+import { normalizeTier, TIER_CONFIG, TIER_ORDER, CONNECTABLE_PROVIDER_SUMMARY } from "@/lib/tiers";
 
 export default function SignupPage() {
     const router = useRouter();
@@ -70,7 +70,7 @@ export default function SignupPage() {
                 <div className="page-kicker w-fit">Plan Selection</div>
                 <CardTitle className="text-4xl">Create your account</CardTitle>
                 <CardDescription>
-                    Pick a subscription first. Account creation stays locked until one tier is selected.
+                    Connect to {CONNECTABLE_PROVIDER_SUMMARY}. Pick a subscription first to unlock account creation.
                 </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>

@@ -64,6 +64,8 @@ export const CONNECTABLE_PROVIDER_LABELS = CONNECTABLE_PROVIDERS.map(
   (provider) => PROVIDER_LABELS[provider]
 );
 
+export const CONNECTABLE_PROVIDER_SUMMARY = CONNECTABLE_PROVIDER_LABELS.join(", ");
+
 export type TierConfig = {
   name: string;
   description: string;
