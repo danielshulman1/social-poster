@@ -2,45 +2,48 @@
 
 ## Exact Products to Create in Stripe Dashboard
 
-### Product 1: Social Poster Starter Plan
+### Product 1: Social Poster Starter Plan ✅
 **Name:** Social Poster Starter  
-**Description:** 3 posts per week across 3 core platforms
+**Description:** 3 posts per week across 3 core platforms  
+**Status:** LIVE
 
 **Pricing:**
-- **Price ID:** `price_1QaXxXXXXXXXXXXX` (you'll get this from Stripe)
+- **Price ID:** `price_1TOg7zL5hf1GNiJP7YeJa8vB` ✅
 - **Amount:** £27.99 (in pence: 2799)
 - **Currency:** GBP
 - **Billing Interval:** Monthly
 - **Recurring:** Yes
-- **Trial Period:** DO NOT SET (handled at checkout)
+- **Trial Period:** Handled at checkout (7 days)
 
 ---
 
-### Product 2: Social Poster Core
+### Product 2: Social Poster Core ✅
 **Name:** Social Poster Core  
-**Description:** 5 posts per week across 3 core platforms
+**Description:** 5 posts per week across 3 core platforms  
+**Status:** LIVE
 
 **Pricing:**
-- **Price ID:** `price_1QaXxYYYYYYYYYYY` (you'll get this from Stripe)
+- **Price ID:** `price_1TOg8HL5hf1GNiJPjOlW0UPz` ✅
 - **Amount:** £47.00 (in pence: 4700)
 - **Currency:** GBP
 - **Billing Interval:** Monthly
 - **Recurring:** Yes
-- **Trial Period:** DO NOT SET (handled at checkout)
+- **Trial Period:** Handled at checkout (7 days)
 
 ---
 
-### Product 3: Social Poster Premium
+### Product 3: Social Poster Premium ✅
 **Name:** Social Poster Premium  
-**Description:** 7 posts per day across 5 platforms (Facebook, Instagram, LinkedIn, TikTok, Twitter/X)
+**Description:** 7 posts per day across 5 platforms (Facebook, Instagram, LinkedIn, TikTok, Twitter/X)  
+**Status:** LIVE
 
 **Pricing:**
-- **Price ID:** `price_1QaXxZZZZZZZZZZZ` (you'll get this from Stripe)
+- **Price ID:** `price_1TOg92L5hf1GNiJP4oBFAfFD` ✅
 - **Amount:** £97.00 (in pence: 9700)
 - **Currency:** GBP
 - **Billing Interval:** Monthly
 - **Recurring:** Yes
-- **Trial Period:** DO NOT SET (handled at checkout)
+- **Trial Period:** Handled at checkout (7 days)
 
 ---
 
@@ -69,20 +72,35 @@ After creating products:
 
 ---
 
-## Environment Variables to Set
+## Environment Variables ✅
 
-After getting your Price IDs, add these to your `.env.local`:
+All variables are now configured! Add to your hosting platform:
 
-See `.env.stripe.template` in the root directory for the exact format.
+### Already Have:
+```env
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51S5PRGL5hf1GNiJPyL3kjSyhmO6GIwKX7KeFH6vaFpQVFG72QvTAYeTJ5NvyhWNP5iyxJnlRphwSD4t4IB2ulaX200qyhFh69F
 
-**You'll need to fill in:**
-1. `STRIPE_SECRET_KEY` - Get from https://dashboard.stripe.com/apikeys
-2. `STRIPE_PUBLIC_KEY` - Get from https://dashboard.stripe.com/apikeys
-3. `STRIPE_PRICE_STARTER` - Get from https://dashboard.stripe.com/products (Starter product)
-4. `STRIPE_PRICE_CORE` - Get from https://dashboard.stripe.com/products (Core product)
-5. `STRIPE_PRICE_PREMIUM` - Get from https://dashboard.stripe.com/products (Premium product)
-6. `STRIPE_WEBHOOK_SECRET` - Get from https://dashboard.stripe.com/webhooks (after creating endpoint)
-7. `NEXT_PUBLIC_APP_URL=https://socialposter.easy-ai.co.uk`
+STRIPE_PRICE_STARTER=price_1TOg7zL5hf1GNiJP7YeJa8vB
+STRIPE_PRICE_CORE=price_1TOg8HL5hf1GNiJPjOlW0UPz
+STRIPE_PRICE_PREMIUM=price_1TOg92L5hf1GNiJP4oBFAfFD
+
+STRIPE_WEBHOOK_SECRET=whsec_WvmlYRqrXC3hBdrulesWsDgeNL06lrQL
+```
+
+### Still Need:
+1. `STRIPE_SECRET_KEY` - Get from https://dashboard.stripe.com/apikeys (sk_live_...)
+   - This is the only SECRET that must not be committed to git
+   - Add ONLY to your hosting platform's environment variables
+
+2. `NEXT_PUBLIC_APP_URL=https://socialposter.easy-ai.co.uk` - Already set
+
+### Add to Your Hosting Platform
+**Vercel / Netlify / Railway / etc:**
+1. Go to your hosting dashboard
+2. Settings → Environment Variables
+3. Add `STRIPE_SECRET_KEY` with the value from Stripe
+4. Add all the STRIPE_PRICE_* variables above
+5. Redeploy
 
 ---
 
