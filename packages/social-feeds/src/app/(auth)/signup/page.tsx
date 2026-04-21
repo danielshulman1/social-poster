@@ -75,9 +75,13 @@ export default function SignupPage() {
         console.log("[signup] Checkout response status:", checkoutRes.status);
         const checkoutData = await checkoutRes.json().catch(() => ({}));
         console.log("[signup] Checkout response:", checkoutData);
+        console.log("[signup] Checkout response JSON:", JSON.stringify(checkoutData));
 
         if (!checkoutRes.ok) {
-            throw new Error(`Checkout failed: ${checkoutData.error || checkoutRes.statusText}`);
+            const configStatus = checkoutData.config
+                ? ` Config: ${JSON.stringify(checkoutData.config)}`
+                : "";
+            throw new Error(`Checkout failed: ${checkoutData.error || checkoutRes.statusText}.${configStatus}`);
         }
 
         if (!checkoutData.url) {

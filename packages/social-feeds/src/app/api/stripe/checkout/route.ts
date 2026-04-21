@@ -10,10 +10,31 @@ const TIER_PRICES: Record<string, string> = {
   premium: process.env.STRIPE_PRICE_PREMIUM || "",
 };
 
+function isPlaceholderSecret(value: string) {
+  return value.includes("[") || value.includes("PASTE");
+}
+
+function getCheckoutConfigStatus() {
+  const secretKey = process.env.STRIPE_SECRET_KEY || "";
+
+  return {
+    hasSecretKey: !!secretKey,
+    secretKeyLooksPlaceholder: !!secretKey && isPlaceholderSecret(secretKey),
+    hasStarterPrice: !!process.env.STRIPE_PRICE_STARTER,
+    hasCorePrice: !!process.env.STRIPE_PRICE_CORE,
+    hasPremiumPrice: !!process.env.STRIPE_PRICE_PREMIUM,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL || null,
+  };
+}
+
 function getStripeClient() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+
+  if (isPlaceholderSecret(secretKey)) {
+    throw new Error("STRIPE_SECRET_KEY is still set to a placeholder value");
   }
 
   return new Stripe(secretKey, {
@@ -124,9 +145,17 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
     });
   } catch (error) {
-    console.error("[stripe-checkout]", error);
+    const message = getStripeErrorMessage(error);
+    console.error("[stripe-checkout]", {
+      message,
+      config: getCheckoutConfigStatus(),
+    });
+
     return NextResponse.json(
-      { error: getStripeErrorMessage(error) },
+      {
+        error: message,
+        config: getCheckoutConfigStatus(),
+      },
       { status: 500 }
     );
   }
