@@ -65,9 +65,6 @@ export async function POST(req: Request) {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const currentPeriodEnd = new Date();
-        currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-
         const user = await prisma.$transaction(async (tx) => {
             const createdUser = await tx.user.create({
                 data: {
@@ -84,15 +81,15 @@ export async function POST(req: Request) {
             await tx.subscription.upsert({
                 where: { userId: createdUser.id },
                 update: {
-                    status: "active",
+                    status: "incomplete",
                     priceId: chosenTier,
-                    currentPeriodEnd,
+                    currentPeriodEnd: null,
                 },
                 create: {
                     userId: createdUser.id,
-                    status: "active",
+                    status: "incomplete",
                     priceId: chosenTier,
-                    currentPeriodEnd,
+                    currentPeriodEnd: null,
                 },
             });
 

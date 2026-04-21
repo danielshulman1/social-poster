@@ -1,25 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { getSubscriptionStatus, getUserSubscription } from "@/lib/subscription";
 
 interface SubscriptionSettingsProps {
   userId: string;
 }
 
+type SubscriptionView = {
+  subscription_tier: string;
+  subscription_status: string;
+  trial_ends_at: string | null;
+  subscription_ends_at: string | null;
+};
+
+function getSubscriptionStatus(subscription: {
+  subscription_status: string;
+  trial_ends_at: string | null;
+  subscription_ends_at: string | null;
+}) {
+  const now = new Date();
+
+  if (subscription.subscription_status === "trialing" && subscription.trial_ends_at) {
+    const trialEnds = new Date(subscription.trial_ends_at);
+    const daysLeft = Math.ceil((trialEnds.getTime() - now.getTime()) / 86400000);
+
+    return daysLeft > 0
+      ? { message: `Free trial active (${daysLeft} days remaining)` }
+      : { message: "Trial period expired" };
+  }
+
+  if (subscription.subscription_status === "active") {
+    if (subscription.subscription_ends_at) {
+      const subEnds = new Date(subscription.subscription_ends_at);
+      const daysLeft = Math.ceil((subEnds.getTime() - now.getTime()) / 86400000);
+      return { message: `Active subscription (renews in ${daysLeft} days)` };
+    }
+
+    return { message: "Active subscription" };
+  }
+
+  if (subscription.subscription_status === "canceling") {
+    return { message: "Canceled, access remains until period end" };
+  }
+
+  return { message: "Free plan" };
+}
+
 export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<SubscriptionView | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCanceling, setIsCanceling] = useState(false);
 
-  useEffect(() => {
-    loadSubscription();
-  }, [userId]);
-
-  async function loadSubscription() {
+  const loadSubscription = useCallback(async () => {
     try {
       const response = await fetch(`/api/stripe/get-subscription?userId=${userId}`);
       if (response.ok) {
@@ -31,7 +66,12 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [userId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadSubscription();
+  }, [loadSubscription]);
 
   async function handleCancel() {
     if (!confirm("Are you sure you want to cancel? You'll lose access at the end of your billing period.")) {
@@ -69,7 +109,7 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
       <Card>
         <CardHeader>
           <CardTitle>No Active Subscription</CardTitle>
-          <CardDescription>You're on the free plan</CardDescription>
+          <CardDescription>You&apos;re on the free plan</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -138,6 +178,12 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
           >
             {isCanceling ? "Canceling..." : "Cancel Subscription"}
           </Button>
+        ) : subscription.subscription_status === "canceling" ? (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
+            <p className="text-sm text-amber-700">
+              Subscription is canceled. Access remains until the period ends.
+            </p>
+          </div>
         ) : (
           <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
             <p className="text-sm text-red-700">Subscription is {subscription.subscription_status}</p>

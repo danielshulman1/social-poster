@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
+import { prisma } from "@/lib/prisma";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-04-10",
-});
+function getStripeClient() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
+  return new Stripe(secretKey, {
+    apiVersion: "2026-01-28.clover",
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await getApiAuthContext(request);
+    if (!auth?.userId) return unauthorizedText();
+
     const body = await request.json();
-    const { userId } = body;
+    const requestedUserId = body.userId;
+    const userId =
+      auth.role === "admin" && requestedUserId ? requestedUserId : auth.userId;
 
     if (!userId) {
       return NextResponse.json(
@@ -23,30 +31,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's subscription
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("stripe_subscription_id, subscription_tier, subscription_status")
-      .eq("id", userId)
-      .single();
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        stripeSubscriptionId: true,
+      },
+    });
 
-    if (userError || !user) {
+    if (!subscription) {
       return NextResponse.json(
-        { error: "User not found" },
+        { error: "Subscription not found" },
         { status: 404 }
       );
     }
 
-    if (!user.stripe_subscription_id) {
+    if (!subscription.stripeSubscriptionId) {
       return NextResponse.json(
         { error: "No active subscription" },
         { status: 400 }
       );
     }
 
+    const stripe = getStripeClient();
+
     // Cancel subscription in Stripe
     const canceledSubscription = await stripe.subscriptions.update(
-      user.stripe_subscription_id,
+      subscription.stripeSubscriptionId,
       {
         cancel_at_period_end: true,
         metadata: {
@@ -57,32 +68,21 @@ export async function POST(request: NextRequest) {
     );
 
     // Update user status in database
-    await supabase
-      .from("users")
-      .update({
-        subscription_status: "canceled",
-        subscription_tier: "free",
-      })
-      .eq("id", userId);
-
-    // Log cancellation
-    await supabase
-      .from("subscription_logs")
-      .insert({
-        user_id: userId,
-        event_type: "subscription_canceled_by_user",
-        stripe_subscription_id: user.stripe_subscription_id,
-        status: "canceled",
-        metadata: {
-          canceled_at: new Date().toISOString(),
-        },
-      });
+    await prisma.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "canceling",
+        currentPeriodEnd:
+          getCurrentPeriodEnd(canceledSubscription) ??
+          undefined,
+      },
+    });
 
     return NextResponse.json({
       success: true,
       message: "Subscription canceled",
       canceledAt: canceledSubscription.canceled_at,
-      currentPeriodEnd: canceledSubscription.current_period_end,
+      currentPeriodEnd: getCurrentPeriodEnd(canceledSubscription)?.toISOString() ?? null,
     });
   } catch (error) {
     console.error("[cancel-subscription]", error);
@@ -91,4 +91,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function getCurrentPeriodEnd(subscription: Stripe.Subscription) {
+  const timestamp = (
+    subscription as Stripe.Subscription & { current_period_end?: number }
+  ).current_period_end;
+
+  return typeof timestamp === "number" ? new Date(timestamp * 1000) : null;
 }

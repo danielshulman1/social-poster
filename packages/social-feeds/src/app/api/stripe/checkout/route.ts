@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { headers } from "next/headers";
 import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-04-10",
-});
+import { getApiAuthContext } from "@/lib/apiAuth";
+import { prisma } from "@/lib/prisma";
+import { normalizeTier } from "@/lib/tiers";
 
 const TIER_PRICES: Record<string, string> = {
   starter: process.env.STRIPE_PRICE_STARTER || "",
@@ -12,32 +10,77 @@ const TIER_PRICES: Record<string, string> = {
   premium: process.env.STRIPE_PRICE_PREMIUM || "",
 };
 
+function getStripeClient() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2026-01-28.clover",
+  });
+}
+
+function getStripeErrorMessage(error: unknown) {
+  if (error instanceof Stripe.errors.StripeError) {
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Checkout failed";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { tier, email, userId } = body;
+    const { tier, email } = body;
+    const requestedUserId = typeof body.userId === "string" ? body.userId : null;
+    const normalizedTier = normalizeTier(tier);
+    const auth = await getApiAuthContext(request);
+    const userId = requestedUserId || auth?.userId;
 
-    if (!tier || !["starter", "core", "premium"].includes(tier)) {
+    if (!normalizedTier) {
       return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
     }
 
-    if (!email || !userId) {
+    if (!userId) {
       return NextResponse.json(
-        { error: "Email and userId required" },
-        { status: 400 }
+        { error: "Sign in required before checkout can start" },
+        { status: 401 }
       );
     }
 
-    const priceId = TIER_PRICES[tier];
+    if (auth?.userId && requestedUserId && requestedUserId !== auth.userId && auth.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized checkout user" }, { status: 403 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found for checkout" },
+        { status: 404 }
+      );
+    }
+
+    const priceId = TIER_PRICES[normalizedTier];
     if (!priceId) {
       return NextResponse.json(
-        { error: `Price not configured for tier: ${tier}` },
+        { error: `Price not configured for tier: ${normalizedTier}` },
         { status: 500 }
       );
     }
 
+    const stripe = getStripeClient();
+
     const session = await stripe.checkout.sessions.create({
-      customer_email: email,
+      customer_email: user.email || email,
       line_items: [
         {
           price: priceId,
@@ -49,16 +92,29 @@ export async function POST(request: NextRequest) {
         trial_period_days: 7,
         metadata: {
           user_id: userId,
-          tier: tier,
+          tier: normalizedTier,
         },
       },
       payment_method_collection: "always",
       billing_address_collection: "required",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=success&tier=${tier}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=success&tier=${normalizedTier}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?payment=cancelled`,
       metadata: {
         user_id: userId,
-        tier: tier,
+        tier: normalizedTier,
+      },
+    });
+
+    await prisma.subscription.upsert({
+      where: { userId },
+      update: {
+        status: "incomplete",
+        priceId: normalizedTier,
+      },
+      create: {
+        userId,
+        status: "incomplete",
+        priceId: normalizedTier,
       },
     });
 
@@ -70,7 +126,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[stripe-checkout]", error);
     return NextResponse.json(
-      { error: "Checkout failed" },
+      { error: getStripeErrorMessage(error) },
       { status: 500 }
     );
   }

@@ -1,9 +1,9 @@
 "use client";
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,33 +35,70 @@ const getPasswordStrength = (pwd: string) => {
 };
 
 export default function SignupPage() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
-    const [selectedTier, setSelectedTier] = useState<string>("");
+    const [selectedTier, setSelectedTier] = useState<string>(
+        () => normalizeTier(searchParams.get("plan")) ?? ""
+    );
     const [isLoading, setIsLoading] = useState(false);
+    const [formError, setFormError] = useState("");
 
     const passwordStrength = getPasswordStrength(password);
 
-    useEffect(() => {
-        const tierFromQuery = normalizeTier(searchParams.get("plan"));
-        if (tierFromQuery) {
-            setSelectedTier(tierFromQuery);
+    const signInForCheckout = async () => {
+        const signInResult = await signIn("credentials", {
+            email,
+            password,
+            redirect: false,
+        });
+
+        if (signInResult?.error) {
+            throw new Error("This email already has an account. Use the existing password or reset it before starting checkout.");
         }
-    }, [searchParams]);
+    };
+
+    const redirectToCheckout = async (user?: { id: string; email: string }) => {
+        const checkoutRes = await fetch("/api/stripe/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: user?.email || email,
+                userId: user?.id,
+                tier: selectedTier,
+            }),
+        });
+
+        console.log("[signup] Checkout response status:", checkoutRes.status);
+        const checkoutData = await checkoutRes.json().catch(() => ({}));
+        console.log("[signup] Checkout response:", checkoutData);
+
+        if (!checkoutRes.ok) {
+            throw new Error(`Checkout failed: ${checkoutData.error || checkoutRes.statusText}`);
+        }
+
+        if (!checkoutData.url) {
+            throw new Error("No checkout URL received from Stripe.");
+        }
+
+        console.log("[signup] Redirecting to:", checkoutData.url);
+        window.location.assign(checkoutData.url);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError("");
         if (!selectedTier) {
             toast.error("Choose a plan before creating the account.");
+            setFormError("Choose a plan before creating the account.");
             return;
         }
         if (!hasAcceptedTerms) {
             toast.error("You must agree to the terms before creating an account.");
+            setFormError("You must agree to the terms before creating an account.");
             return;
         }
         setIsLoading(true);
@@ -76,42 +113,27 @@ export default function SignupPage() {
                 body: JSON.stringify(payload),
             });
 
+            const data = await res.json().catch(() => ({}));
+
             if (!res.ok) {
-                const data = await res.json();
+                if (data.message === "User already exists") {
+                    console.log("[signup] Existing user; signing in before checkout");
+                    await signInForCheckout();
+                    await redirectToCheckout();
+                    return;
+                }
+
                 throw new Error(data.message || "Registration failed");
             }
 
-            const data = await res.json();
             console.log("[signup] Account created:", data);
 
-            // Create Stripe checkout session
-            const checkoutRes = await fetch("/api/stripe/checkout", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: data.user.email,
-                    userId: data.user.id,
-                    tier: selectedTier
-                }),
-            });
-
-            console.log("[signup] Checkout response status:", checkoutRes.status);
-            const checkoutData = await checkoutRes.json();
-            console.log("[signup] Checkout response:", checkoutData);
-
-            if (!checkoutRes.ok) {
-                throw new Error(`Checkout failed: ${checkoutData.error || checkoutRes.statusText}`);
-            }
-
-            // Redirect to Stripe checkout
-            if (checkoutData.url) {
-                console.log("[signup] Redirecting to:", checkoutData.url);
-                window.location.href = checkoutData.url;
-            } else {
-                throw new Error("No checkout URL received");
-            }
+            await signInForCheckout();
+            await redirectToCheckout(data.user);
         } catch (error: unknown) {
-            toast.error(error instanceof Error ? error.message : "Failed to proceed to payment");
+            const message = error instanceof Error ? error.message : "Failed to proceed to payment";
+            setFormError(message);
+            toast.error(message);
         } finally {
             setIsLoading(false);
         }
@@ -125,7 +147,7 @@ export default function SignupPage() {
                     <span className="text-xl">✨</span>
                     <div>
                         <p className="text-sm font-bold text-emerald-900">7-day free trial</p>
-                        <p className="text-xs text-emerald-700 mt-1">Full access for 7 days. We'll charge on day 8 unless you cancel.</p>
+                        <p className="text-xs text-emerald-700 mt-1">Full access for 7 days. We&apos;ll charge on day 8 unless you cancel.</p>
                     </div>
                 </div>
             </div>
@@ -192,6 +214,11 @@ export default function SignupPage() {
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="grid gap-4">
+                    {formError && (
+                        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+                            {formError}
+                        </div>
+                    )}
                     <div className="grid gap-2">
                         <Label>Choose your tier</Label>
                         <div className="grid gap-3 lg:grid-cols-3">

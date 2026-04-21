@@ -1,13 +1,27 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
+import { prisma } from "@/lib/prisma";
+import {
+  getTierConfig,
+  normalizeTier,
+  type RestrictedSocialProvider,
+  type TierConfig,
+  type TierId,
+} from "@/lib/tiers";
 
 export interface UserSubscription {
   id: string;
+  userId: string;
   email: string;
+  tier: TierId | null;
+  status: string;
+  isValid: boolean;
+  config: TierConfig | null;
+  allowedPlatforms: RestrictedSocialProvider[];
+  postsPerWeekPerPlatform: number;
+  maxPlatforms: number;
+  canAccessCheckInCall: boolean;
+  canAccessPrioritySupport: boolean;
+  canAccessStrategyCall: boolean;
+  supportLabel: string;
   subscription_tier: string;
   subscription_status: string;
   trial_ends_at: string | null;
@@ -16,22 +30,67 @@ export interface UserSubscription {
   stripe_subscription_id: string | null;
 }
 
+function isValidSubscriptionStatus(status: string, periodEnd: Date | null) {
+  if (status === "trialing") {
+    return !!periodEnd && periodEnd.getTime() > Date.now();
+  }
+
+  if (status === "active") {
+    return !periodEnd || periodEnd.getTime() > Date.now();
+  }
+
+  if (status === "canceling") {
+    return !!periodEnd && periodEnd.getTime() > Date.now();
+  }
+
+  return false;
+}
+
 export async function getUserSubscription(
   userId: string
 ): Promise<UserSubscription | null> {
-  const { data, error } = await supabase
-    .from("users")
-    .select(
-      "id, email, subscription_tier, subscription_status, trial_ends_at, subscription_ends_at, stripe_customer_id, stripe_subscription_id"
-    )
-    .eq("id", userId)
-    .single();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      email: true,
+      subscription: true,
+    },
+  });
 
-  if (error || !data) {
+  if (!user?.subscription) {
     return null;
   }
 
-  return data;
+  const subscription = user.subscription;
+  const tier = normalizeTier(subscription.priceId);
+  const config = tier ? getTierConfig(tier) : null;
+  const periodEndIso = subscription.currentPeriodEnd?.toISOString() ?? null;
+  const isValid = !!tier && isValidSubscriptionStatus(subscription.status, subscription.currentPeriodEnd);
+
+  return {
+    id: subscription.id,
+    userId: user.id,
+    email: user.email,
+    tier,
+    status: subscription.status,
+    isValid,
+    config,
+    allowedPlatforms: config?.allowedPlatforms ?? [],
+    postsPerWeekPerPlatform: config?.postsPerWeekPerPlatform ?? 0,
+    maxPlatforms: config?.allowedPlatforms.length ?? 0,
+    canAccessCheckInCall:
+      !!config?.hasMonthlyCheckInCall || !!config?.hasWeeklyCheckInCall,
+    canAccessPrioritySupport: !!config?.hasPrioritySupport,
+    canAccessStrategyCall: !!config?.hasStrategyCall,
+    supportLabel: config?.supportLabel ?? "No active support tier",
+    subscription_tier: tier ?? "free",
+    subscription_status: subscription.status,
+    trial_ends_at: subscription.status === "trialing" ? periodEndIso : null,
+    subscription_ends_at: periodEndIso,
+    stripe_customer_id: subscription.stripeCustomerId,
+    stripe_subscription_id: subscription.stripeSubscriptionId,
+  };
 }
 
 export async function isSubscriptionActive(
@@ -43,23 +102,7 @@ export async function isSubscriptionActive(
     return false;
   }
 
-  // Check if in trial period
-  if (
-    subscription.subscription_status === "trialing" &&
-    subscription.trial_ends_at
-  ) {
-    const trialEndsAt = new Date(subscription.trial_ends_at);
-    if (new Date() < trialEndsAt) {
-      return true;
-    }
-  }
-
-  // Check if subscription is active
-  if (subscription.subscription_status === "active") {
-    return true;
-  }
-
-  return false;
+  return subscription.isValid;
 }
 
 export function getDaysUntilCharge(trialEndsAt: string | null): number {
@@ -79,28 +122,7 @@ export function getDaysUntilCharge(trialEndsAt: string | null): number {
 export async function getUserTierAccess(userId: string): Promise<string> {
   const subscription = await getUserSubscription(userId);
 
-  if (!subscription) {
-    return "free";
-  }
-
-  // If in trial, they get the tier they selected
-  if (
-    subscription.subscription_status === "trialing" &&
-    subscription.trial_ends_at
-  ) {
-    const trialEnds = new Date(subscription.trial_ends_at);
-    if (new Date() < trialEnds) {
-      return subscription.subscription_tier;
-    }
-  }
-
-  // If active (after trial), they get their paid tier
-  if (subscription.subscription_status === "active") {
-    return subscription.subscription_tier;
-  }
-
-  // Otherwise free
-  return "free";
+  return subscription?.isValid && subscription.tier ? subscription.tier : "free";
 }
 
 export function canAccessFeature(
@@ -168,6 +190,26 @@ export function getSubscriptionStatus(
     return {
       status: "active",
       message: "Active subscription",
+    };
+  }
+
+  if (subscription.subscription_status === "canceling") {
+    if (subscription.subscription_ends_at) {
+      const subEnds = new Date(subscription.subscription_ends_at);
+      const daysLeft = Math.ceil(
+        (subEnds.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        status: "active",
+        message: `Canceled, access ends in ${daysLeft} days`,
+        daysLeft,
+      };
+    }
+
+    return {
+      status: "active",
+      message: "Canceled, access remains until period end",
     };
   }
 

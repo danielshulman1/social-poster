@@ -1,56 +1,143 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-04-10",
-});
+import { prisma } from "@/lib/prisma";
+import { normalizeTier, type TierId } from "@/lib/tiers";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
-
-async function updateUserSubscription(
-  userId: string,
-  data: {
-    stripe_subscription_id?: string;
-    stripe_customer_id?: string;
-    subscription_tier?: string;
-    subscription_status?: string;
-    trial_ends_at?: string;
-    subscription_ends_at?: string;
+function getStripeClient() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not configured");
   }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2026-01-28.clover",
+  });
+}
+
+function getCustomerId(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null
 ) {
-  const { error } = await supabase
-    .from("users")
-    .update(data)
-    .eq("id", userId);
+  return typeof customer === "string" ? customer : customer?.id ?? null;
+}
 
-  if (error) {
-    console.error("[webhook] Update error:", error);
-    throw error;
+function getTimestampDate(value: unknown) {
+  return typeof value === "number" ? new Date(value * 1000) : null;
+}
+
+function getCurrentPeriodEnd(subscription: Stripe.Subscription) {
+  return getTimestampDate(
+    (subscription as Stripe.Subscription & { current_period_end?: number })
+      .current_period_end
+  );
+}
+
+function getTrialEnd(subscription: Stripe.Subscription) {
+  return getTimestampDate(subscription.trial_end);
+}
+
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const rawInvoice = invoice as Stripe.Invoice & {
+    subscription?: string | { id?: string };
+    parent?: {
+      subscription_details?: {
+        subscription?: string | { id?: string };
+      };
+    };
+  };
+
+  const subscription =
+    rawInvoice.subscription ?? rawInvoice.parent?.subscription_details?.subscription;
+
+  return typeof subscription === "string" ? subscription : subscription?.id ?? null;
+}
+
+async function findStoredSubscription(stripeSubscriptionId?: string | null, customerId?: string | null) {
+  if (stripeSubscriptionId) {
+    const subscription = await prisma.subscription.findUnique({
+      where: { stripeSubscriptionId },
+    });
+    if (subscription) return subscription;
   }
+
+  if (customerId) {
+    return prisma.subscription.findFirst({
+      where: { stripeCustomerId: customerId },
+    });
+  }
+
+  return null;
 }
 
 async function logSubscriptionEvent(
   userId: string,
   eventType: string,
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 ) {
-  const { error } = await supabase
-    .from("subscription_logs")
-    .insert({
-      user_id: userId,
-      event_type: eventType,
-      ...metadata,
-    });
-
-  if (error) {
-    console.error("[webhook] Log error:", error);
+  try {
+    await prisma.$executeRaw`
+      INSERT INTO subscription_logs (user_id, event_type, tier, stripe_subscription_id, status, trial_ends_at, subscription_ends_at, metadata)
+      VALUES (
+        ${userId},
+        ${eventType},
+        ${metadata.tier ?? null},
+        ${metadata.stripe_subscription_id ?? null},
+        ${metadata.status ?? null},
+        ${metadata.trial_ends_at ? new Date(String(metadata.trial_ends_at)) : null},
+        ${metadata.subscription_ends_at ? new Date(String(metadata.subscription_ends_at)) : null},
+        ${JSON.stringify(metadata)}
+      )
+    `;
+  } catch (error) {
+    console.warn("[webhook] Subscription log skipped:", error);
   }
+}
+
+async function upsertStripeSubscription(subscription: Stripe.Subscription) {
+  const customerId = getCustomerId(subscription.customer);
+  const stored = await findStoredSubscription(subscription.id, customerId);
+  const userId = subscription.metadata?.user_id || stored?.userId;
+
+  if (!userId) {
+    console.error("[webhook] No user_id for subscription", subscription.id);
+    return null;
+  }
+
+  const metadataTier = normalizeTier(subscription.metadata?.tier);
+  const storedTier = normalizeTier(stored?.priceId);
+  const tier: TierId | null = metadataTier ?? storedTier;
+  const trialEnd = getTrialEnd(subscription);
+  const periodEnd = getCurrentPeriodEnd(subscription);
+
+  const updated = await prisma.subscription.upsert({
+    where: { userId },
+    update: {
+      stripeSubscriptionId: subscription.id,
+      stripeCustomerId: customerId,
+      status: subscription.status,
+      priceId: tier,
+      currentPeriodEnd: trialEnd ?? periodEnd,
+    },
+    create: {
+      userId,
+      stripeSubscriptionId: subscription.id,
+      stripeCustomerId: customerId,
+      status: subscription.status,
+      priceId: tier,
+      currentPeriodEnd: trialEnd ?? periodEnd,
+    },
+  });
+
+  await logSubscriptionEvent(userId, `subscription_${subscription.status}`, {
+    tier,
+    stripe_subscription_id: subscription.id,
+    status: subscription.status,
+    trial_ends_at: trialEnd?.toISOString() ?? null,
+    subscription_ends_at: periodEnd?.toISOString() ?? null,
+  });
+
+  return updated;
 }
 
 export async function POST(request: NextRequest) {
@@ -65,10 +152,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!webhookSecret) {
+      return NextResponse.json(
+        { error: "STRIPE_WEBHOOK_SECRET is not configured" },
+        { status: 500 }
+      );
+    }
+
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = getStripeClient().webhooks.constructEvent(
+        body,
+        signature,
+        webhookSecret
+      );
     } catch (err) {
       console.error("[webhook] Invalid signature:", err);
       return NextResponse.json(
@@ -77,164 +175,88 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const subscription = event.data.object as Stripe.Subscription;
-
     switch (event.type) {
-      case "customer.subscription.created": {
-        const userId = subscription.metadata?.user_id;
-        if (!userId) {
-          console.error("[webhook] No user_id in metadata");
-          return NextResponse.json({ received: true });
-        }
-
-        const tier = subscription.metadata?.tier || "free";
-        const trialEndsAt = subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null;
-
-        await updateUserSubscription(userId, {
-          stripe_subscription_id: subscription.id,
-          stripe_customer_id: subscription.customer as string,
-          subscription_tier: tier,
-          subscription_status: "trialing",
-          trial_ends_at: trialEndsAt || undefined,
-        });
-
-        await logSubscriptionEvent(userId, "subscription_created", {
-          tier,
-          stripe_subscription_id: subscription.id,
-          status: "trialing",
-          trial_ends_at: trialEndsAt,
-          metadata: {
-            message: `User enrolled in ${tier} tier with 7-day trial access`,
-          },
-        });
-
-        console.log(`[webhook] Subscription created for user ${userId}, tier: ${tier}, trial until ${trialEndsAt}`);
-        break;
-      }
-
+      case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const userId = subscription.metadata?.user_id;
-        if (!userId) {
-          return NextResponse.json({ received: true });
-        }
-
-        const tier = subscription.metadata?.tier || "free";
-        const status = subscription.status;
-        const currentPeriodEnd = subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
-          : null;
-
-        await updateUserSubscription(userId, {
-          subscription_tier: tier,
-          subscription_status: status,
-          subscription_ends_at: currentPeriodEnd || undefined,
-        });
-
-        await logSubscriptionEvent(userId, "subscription_updated", {
-          tier,
-          stripe_subscription_id: subscription.id,
-          status,
-          subscription_ends_at: currentPeriodEnd,
-        });
-
-        console.log(
-          `[webhook] Subscription updated for user ${userId}, status: ${status}`
-        );
+        const subscription = event.data.object as Stripe.Subscription;
+        await upsertStripeSubscription(subscription);
         break;
       }
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
+        const stripeSubscriptionId = getInvoiceSubscriptionId(invoice);
+        const customerId = getCustomerId(invoice.customer);
+        const stored = await findStoredSubscription(stripeSubscriptionId, customerId);
 
-        // Find user by stripe customer id
-        const { data: users, error: queryError } = await supabase
-          .from("users")
-          .select("id, subscription_tier")
-          .eq("stripe_customer_id", customerId)
-          .limit(1)
-          .single();
-
-        if (queryError || !users) {
-          console.error(
-            "[webhook] User not found for customer:",
-            customerId
-          );
+        if (!stored) {
+          console.error("[webhook] Subscription not found for paid invoice", {
+            stripeSubscriptionId,
+            customerId,
+          });
           return NextResponse.json({ received: true });
         }
 
-        const userId = users.id;
+        await prisma.subscription.update({
+          where: { id: stored.id },
+          data: { status: "active" },
+        });
 
-        await logSubscriptionEvent(userId, "invoice_paid", {
-          stripe_subscription_id: invoice.subscription,
+        await logSubscriptionEvent(stored.userId, "invoice_paid", {
+          tier: stored.priceId,
+          stripe_subscription_id: stripeSubscriptionId,
           status: "active",
-          metadata: {
-            invoice_id: invoice.id,
-            amount_paid: invoice.amount_paid,
-          },
+          invoice_id: invoice.id,
+          amount_paid: invoice.amount_paid,
         });
-
-        // Update subscription status to active (payment succeeded after trial)
-        await updateUserSubscription(userId, {
-          subscription_status: "active",
-        });
-
-        console.log(
-          `[webhook] Invoice paid for user ${userId}, subscription now active`
-        );
         break;
       }
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
+        const stripeSubscriptionId = getInvoiceSubscriptionId(invoice);
+        const customerId = getCustomerId(invoice.customer);
+        const stored = await findStoredSubscription(stripeSubscriptionId, customerId);
 
-        const { data: users } = await supabase
-          .from("users")
-          .select("id")
-          .eq("stripe_customer_id", customerId)
-          .limit(1)
-          .single();
-
-        if (users) {
-          const userId = users.id;
-          await logSubscriptionEvent(userId, "invoice_failed", {
-            stripe_subscription_id: invoice.subscription,
-            status: "payment_failed",
-            metadata: {
-              invoice_id: invoice.id,
-              failure_message: invoice.last_payment_error?.message,
-            },
+        if (stored) {
+          await prisma.subscription.update({
+            where: { id: stored.id },
+            data: { status: "past_due" },
           });
 
-          await updateUserSubscription(userId, {
-            subscription_status: "payment_failed",
+          await logSubscriptionEvent(stored.userId, "invoice_failed", {
+            tier: stored.priceId,
+            stripe_subscription_id: stripeSubscriptionId,
+            status: "past_due",
+            invoice_id: invoice.id,
           });
         }
-
-        console.log("[webhook] Invoice payment failed");
         break;
       }
 
       case "customer.subscription.deleted": {
-        const userId = subscription.metadata?.user_id;
-        if (!userId) {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = getCustomerId(subscription.customer);
+        const stored = await findStoredSubscription(subscription.id, customerId);
+
+        if (!stored) {
           return NextResponse.json({ received: true });
         }
 
-        await updateUserSubscription(userId, {
-          subscription_status: "canceled",
-          subscription_tier: "free",
+        await prisma.subscription.update({
+          where: { id: stored.id },
+          data: {
+            status: "canceled",
+            priceId: null,
+            currentPeriodEnd: getCurrentPeriodEnd(subscription),
+          },
         });
 
-        await logSubscriptionEvent(userId, "subscription_canceled", {
+        await logSubscriptionEvent(stored.userId, "subscription_canceled", {
+          tier: stored.priceId,
           stripe_subscription_id: subscription.id,
           status: "canceled",
         });
-
-        console.log(`[webhook] Subscription canceled for user ${userId}`);
         break;
       }
 

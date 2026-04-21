@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-);
+import { getApiAuthContext, unauthorizedText } from "@/lib/apiAuth";
+import { getUserSubscription } from "@/lib/subscription";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get("userId");
+    const auth = await getApiAuthContext(request);
+    if (!auth?.userId) return unauthorizedText();
+
+    const requestedUserId = request.nextUrl.searchParams.get("userId");
+    const userId =
+      auth.role === "admin" && requestedUserId ? requestedUserId : auth.userId;
 
     if (!userId) {
       return NextResponse.json(
@@ -17,22 +18,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
-      .from("users")
-      .select(
-        "id, email, subscription_tier, subscription_status, trial_ends_at, subscription_ends_at, stripe_customer_id, stripe_subscription_id"
-      )
-      .eq("id", userId)
-      .single();
+    const subscription = await getUserSubscription(userId);
 
-    if (error || !data) {
+    if (!subscription) {
       return NextResponse.json(
-        { error: "User not found" },
+        { error: "Subscription not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(subscription);
   } catch (error) {
     console.error("[get-subscription]", error);
     return NextResponse.json(

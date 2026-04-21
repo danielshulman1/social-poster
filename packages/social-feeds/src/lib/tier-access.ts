@@ -3,8 +3,8 @@ import { getUserSubscription } from "@/lib/subscription";
 import {
   getProviderLabel,
   isPlatformAllowedForTier,
-  isRestrictedSocialProvider,
   type RestrictedSocialProvider,
+  type TierConfig,
   type TierId,
 } from "@/lib/tiers";
 
@@ -34,17 +34,24 @@ function getEndOfWeekUtc(date = new Date()) {
   return end;
 }
 
-async function requireActiveTier(userId: string) {
+type ActiveSubscription = NonNullable<
+  Awaited<ReturnType<typeof getUserSubscription>>
+> & {
+  tier: TierId;
+  config: TierConfig;
+};
+
+async function requireActiveTier(userId: string): Promise<ActiveSubscription> {
   const subscription = await getUserSubscription(userId);
 
-  if (!subscription?.tier || !subscription.isValid) {
+  if (!subscription?.tier || !subscription.config || !subscription.isValid) {
     throw new TierAccessError(
       "An active subscription is required to use this feature.",
       "SUBSCRIPTION_REQUIRED"
     );
   }
 
-  return subscription;
+  return subscription as ActiveSubscription;
 }
 
 export async function assertUserCanConnectProvider(
