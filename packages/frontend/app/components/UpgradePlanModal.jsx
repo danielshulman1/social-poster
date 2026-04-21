@@ -76,29 +76,50 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
               const isSelected = selectedTier === tier;
               const isCurrent = tier === currentTier;
 
-              return (
-                <button
-                  key={tier}
-                  onClick={() => setSelectedTier(tier)}
-                  disabled={isCurrent}
-                  className={`text-left p-6 rounded-2xl border-2 transition-all ${
-                    isSelected
-                      ? 'border-black dark:border-white bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900'
-                      : isCurrent
-                      ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-60'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
-                  }`}
-                >
-                  {/* Current badge */}
-                  {isCurrent && (
-                    <span className="inline-block px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold mb-3">
-                      Current Plan
-                    </span>
-                  )}
+              const isRecommended = tier === 'core';
 
-                  <h3 className="text-xl font-sora font-bold text-black dark:text-white capitalize mb-2">
-                    {tier}
-                  </h3>
+              return (
+                <div key={tier} className="relative">
+                  {isRecommended && !isSelected && !isCurrent && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                      <span className="inline-block rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                        Recommended
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setSelectedTier(tier)}
+                    disabled={isCurrent}
+                    className={`h-full w-full flex flex-col text-left p-6 rounded-[1.6rem] border-2 transition-all ${
+                      isSelected
+                        ? isRecommended
+                          ? 'border-blue-500/60 bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/20 dark:to-[#1E1E1E] shadow-[0_8px_30px_rgba(59,130,246,0.15)]'
+                          : 'border-black dark:border-white bg-gray-50 dark:bg-gray-800 shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(255,255,255,0.08)]'
+                        : isCurrent
+                        ? 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 cursor-not-allowed opacity-60'
+                        : isRecommended
+                        ? 'border-blue-200 dark:border-blue-800 bg-white dark:bg-[#1E1E1E] hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-[#1E1E1E]'
+                    }`}
+                  >
+                    <div className="flex w-full items-start justify-between mb-4">
+                      <h3 className="text-xl font-sora font-bold text-black dark:text-white capitalize">
+                        {tier}
+                      </h3>
+                      {isSelected ? (
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isRecommended ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-black text-white dark:bg-white dark:text-black'}`}>
+                          Selected
+                        </span>
+                      ) : isCurrent ? (
+                        <span className="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold">
+                          Current
+                        </span>
+                      ) : isRecommended ? (
+                        <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-semibold">
+                          Recommended
+                        </span>
+                      ) : null}
+                    </div>
 
                   <div className="mb-6">
                     <span className="text-3xl font-bold text-black dark:text-white">
@@ -114,11 +135,13 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                   </div>
 
                   {/* Features */}
-                  <div className="space-y-3">
-                    <div className="flex gap-2 items-start">
-                      <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-4">
+                    <div className="flex gap-3 items-start">
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                        <Check className="h-3 w-3" />
+                      </span>
                       <div className="min-w-0">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Connect to {CONNECTABLE_SERVICE_SUMMARY}
                         </span>
                         <ConnectionServiceChips
@@ -130,48 +153,59 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
                       </div>
                     </div>
 
-                    <div className="flex gap-2 items-start">
-                      <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex gap-3 items-start">
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                        <Check className="h-3 w-3" />
+                      </span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         {config.features.maxPlatforms} platform{config.features.maxPlatforms !== 1 ? 's' : ''}
                       </span>
                     </div>
 
-                    <div className="flex gap-2 items-start">
-                      <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex gap-3 items-start">
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                        <Check className="h-3 w-3" />
+                      </span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         {config.features.postsPerWeek} posts/week
                       </span>
                     </div>
 
                     {config.features.voiceTraining && (
-                      <div className="flex gap-2 items-start">
-                        <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <div className="flex gap-3 items-start">
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                          <Check className="h-3 w-3" />
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
                           Voice training
                         </span>
                       </div>
                     )}
 
                     {config.features.prioritySupport && (
-                      <div className="flex gap-2 items-start">
-                        <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <div className="flex gap-3 items-start">
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                          <Check className="h-3 w-3" />
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
                           Priority support
                         </span>
                       </div>
                     )}
 
                     {config.features.checkInCallsPerMonth > 0 && (
-                      <div className="flex gap-2 items-start">
-                        <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <div className="flex gap-3 items-start">
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isRecommended ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                          <Check className="h-3 w-3" />
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
                           {config.features.checkInCallsPerMonth} check-in call{config.features.checkInCallsPerMonth !== 1 ? 's' : ''}/month
                         </span>
                       </div>
                     )}
                   </div>
                 </button>
+              </div>
               );
             })}
           </div>
@@ -188,19 +222,24 @@ export default function UpgradePlanModal({ isOpen, onClose, currentTier, getAuth
             <button
               onClick={handleUpgrade}
               disabled={loading || selectedTier === currentTier}
-              className="flex-1 px-6 py-3 rounded-full bg-black dark:bg-white text-white dark:text-black font-plus-jakarta font-semibold hover:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
+              className="flex-1 px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-plus-jakarta font-semibold hover:scale-[0.98] transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                   Processing...
                 </>
               ) : selectedTier === currentTier ? (
-                'Current Plan'
+                'Current Plan Selected'
               ) : (
                 'Upgrade Now'
               )}
             </button>
+          </div>
+          <div className="text-center mt-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+               Secure payment encrypted and processed by Stripe. You can cancel at any time.
+            </p>
           </div>
         </div>
       </div>
