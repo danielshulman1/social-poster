@@ -83,7 +83,7 @@ export type TierConfig = {
 export const TIER_CONFIG: Record<TierId, TierConfig> = {
   [TIER_OPTIONS.STARTER]: {
     name: "Starter",
-    description: "For consistent posting across the core three channels.",
+    description: "Connect to Facebook, Instagram, LinkedIn, TikTok, Twitter/X, Threads, YouTube, Pinterest, WordPress, Wix, Squarespace, Google Sheets, RSS Feeds.",
     priceLabel: "£27.99/mo",
     allowedPlatforms: ["facebook", "instagram", "linkedin"],
     postsPerWeekPerPlatform: 3,
@@ -93,14 +93,13 @@ export const TIER_CONFIG: Record<TierId, TierConfig> = {
     hasPrioritySupport: false,
     hasStrategyCall: false,
     features: [
-      "Facebook, Instagram, and LinkedIn",
       "3 posts per week per platform",
       "Self-serve support",
     ],
   },
   [TIER_OPTIONS.CORE]: {
     name: "Core",
-    description: "For teams that need more volume across the same core channels.",
+    description: "Connect to Facebook, Instagram, LinkedIn, TikTok, Twitter/X, Threads, YouTube, Pinterest, WordPress, Wix, Squarespace, Google Sheets, RSS Feeds.",
     priceLabel: "£47/mo",
     allowedPlatforms: ["facebook", "instagram", "linkedin"],
     postsPerWeekPerPlatform: 5,
@@ -110,14 +109,13 @@ export const TIER_CONFIG: Record<TierId, TierConfig> = {
     hasPrioritySupport: false,
     hasStrategyCall: false,
     features: [
-      "Facebook, Instagram, and LinkedIn",
       "5 posts per week per platform",
       "Standard support",
     ],
   },
   [TIER_OPTIONS.PREMIUM]: {
     name: "Premium",
-    description: "For high-frequency posting with broader channel access.",
+    description: "Connect to Facebook, Instagram, LinkedIn, TikTok, Twitter/X, Threads, YouTube, Pinterest, WordPress, Wix, Squarespace, Google Sheets, RSS Feeds.",
     priceLabel: "£97/mo",
     allowedPlatforms: ["facebook", "instagram", "linkedin", "tiktok", "twitter"],
     postsPerWeekPerPlatform: 7,
@@ -127,7 +125,6 @@ export const TIER_CONFIG: Record<TierId, TierConfig> = {
     hasPrioritySupport: true,
     hasStrategyCall: false,
     features: [
-      "Facebook, Instagram, LinkedIn, TikTok, and Twitter/X",
       "Daily posts per platform",
       "Priority support",
     ],
