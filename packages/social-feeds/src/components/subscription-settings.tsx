@@ -86,19 +86,36 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Plan</p>
+            <p className="text-sm text-muted-foreground">Current Tier</p>
             <p className="text-lg font-semibold capitalize">{subscription.subscription_tier}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Status</p>
+            <p className="text-sm text-muted-foreground">Access Status</p>
             <p className="text-lg font-semibold">{status.message}</p>
           </div>
         </div>
 
-        {subscription.trial_ends_at && (
-          <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3">
-            <p className="text-sm text-yellow-700">
-              Trial ends on {new Date(subscription.trial_ends_at).toLocaleDateString()}
+        {subscription.subscription_status === "trialing" && subscription.trial_ends_at && (
+          <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
+            <p className="text-sm font-semibold text-blue-900 mb-1">
+              Free {subscription.subscription_tier.charAt(0).toUpperCase() + subscription.subscription_tier.slice(1)} Trial
+            </p>
+            <p className="text-sm text-blue-700">
+              Full {subscription.subscription_tier} access until {new Date(subscription.trial_ends_at).toLocaleDateString()}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Auto-charges {new Date(new Date(subscription.trial_ends_at).getTime() + 86400000).toLocaleDateString()} unless you cancel
+            </p>
+          </div>
+        )}
+
+        {subscription.subscription_status === "active" && subscription.trial_ends_at && (
+          <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
+            <p className="text-sm font-semibold text-green-900 mb-1">
+              {subscription.subscription_tier.charAt(0).toUpperCase() + subscription.subscription_tier.slice(1)} Subscription Active
+            </p>
+            <p className="text-sm text-green-700">
+              Payment made. Access confirmed.
             </p>
           </div>
         )}

@@ -76,6 +76,50 @@ export function getDaysUntilCharge(trialEndsAt: string | null): number {
   return Math.max(0, daysLeft);
 }
 
+export async function getUserTierAccess(userId: string): Promise<string> {
+  const subscription = await getUserSubscription(userId);
+
+  if (!subscription) {
+    return "free";
+  }
+
+  // If in trial, they get the tier they selected
+  if (
+    subscription.subscription_status === "trialing" &&
+    subscription.trial_ends_at
+  ) {
+    const trialEnds = new Date(subscription.trial_ends_at);
+    if (new Date() < trialEnds) {
+      return subscription.subscription_tier;
+    }
+  }
+
+  // If active (after trial), they get their paid tier
+  if (subscription.subscription_status === "active") {
+    return subscription.subscription_tier;
+  }
+
+  // Otherwise free
+  return "free";
+}
+
+export function canAccessFeature(
+  userTier: string,
+  requiredTier: "starter" | "core" | "premium"
+): boolean {
+  const tierLevels: Record<string, number> = {
+    free: 0,
+    starter: 1,
+    core: 2,
+    premium: 3,
+  };
+
+  const userLevel = tierLevels[userTier] || 0;
+  const requiredLevel = tierLevels[requiredTier] || 0;
+
+  return userLevel >= requiredLevel;
+}
+
 export function getSubscriptionStatus(
   subscription: UserSubscription
 ): {

@@ -105,9 +105,12 @@ export async function POST(request: NextRequest) {
           stripe_subscription_id: subscription.id,
           status: "trialing",
           trial_ends_at: trialEndsAt,
+          metadata: {
+            message: `User enrolled in ${tier} tier with 7-day trial access`,
+          },
         });
 
-        console.log(`[webhook] Subscription created for user ${userId}`);
+        console.log(`[webhook] Subscription created for user ${userId}, tier: ${tier}, trial until ${trialEndsAt}`);
         break;
       }
 

@@ -128,11 +128,18 @@ git push origin main
 8. Payment method saved for automatic charge
 
 ### Day 1-7 - Trial Period
-- User has full access to their tier
+- User has **full access to the tier they selected** (Starter, Core, or Premium)
 - No charge applied during trial
+- All features for their tier are unlocked
 - **User must actively cancel to stop payment**
 - If they do nothing, automatically charged on day 8
-- Database tracks `trial_ends_at` date
+- Database tracks `trial_ends_at` date and `subscription_tier`
+
+**Example:**
+- Selected Starter → Gets Starter features (3 posts/week, 3 platforms)
+- Selected Core → Gets Core features (5 posts/week, same 3 platforms)  
+- Selected Premium → Gets Premium features (7 posts/week, 5 platforms)
+- Access matches the tier throughout trial
 
 ### Day 8 - First Charge
 - Stripe **automatically charges the saved payment card**
@@ -301,16 +308,57 @@ if (status.status === 'trialing') {
 }
 ```
 
+### Check User's Tier Access
+
+Get the tier a user has access to (works for trial and paid):
+
+```typescript
+import { getUserTierAccess, canAccessFeature } from '@/lib/subscription';
+
+// Get user's current tier
+const userTier = await getUserTierAccess(userId);
+// Returns: "free", "starter", "core", or "premium"
+
+// Check if user can access a specific feature
+const hasCore = canAccessFeature(userTier, "core");
+const hasPremium = canAccessFeature(userTier, "premium");
+
+if (hasCore) {
+  // Show Core-only features
+}
+```
+
 ### Protect Features by Tier
 
 ```typescript
-import { isSubscriptionActive } from '@/lib/subscription';
+import { isSubscriptionActive, canAccessFeature } from '@/lib/subscription';
 
 const canUseFeature = await isSubscriptionActive(userId);
 
 if (!canUseFeature) {
   // Redirect to upgrade page
 }
+
+// Check specific tier requirements
+const userTier = await getUserTierAccess(userId);
+if (!canAccessFeature(userTier, "premium")) {
+  // Show "Upgrade to Premium" message
+}
+```
+
+### Tier Hierarchy
+
+Access is hierarchical:
+- **Free** (level 0) - No paid features
+- **Starter** (level 1) - Access to Starter features
+- **Core** (level 2) - Access to Starter + Core features
+- **Premium** (level 3) - Access to all features
+
+Example:
+```typescript
+canAccessFeature("core", "starter");  // true (Core >= Starter)
+canAccessFeature("starter", "core");  // false (Starter < Core)
+canAccessFeature("premium", "core");  // true (Premium >= Core)
 ```
 
 ## Troubleshooting
