@@ -54,6 +54,27 @@ export default function SignUpPage() {
 
             if (res.ok) {
                 localStorage.setItem('auth_token', data.token);
+                try {
+                    const checkoutRes = await fetch('/api/stripe/create-checkout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${data.token}`,
+                        },
+                        body: JSON.stringify({ tier: selectedTier, flow: 'signup' }),
+                    });
+
+                    const checkoutData = await checkoutRes.json().catch(() => ({}));
+                    if (checkoutRes.ok && checkoutData.url) {
+                        window.location.assign(checkoutData.url);
+                        return;
+                    }
+
+                    console.warn('[signup] Checkout not started:', checkoutData);
+                } catch (checkoutErr) {
+                    console.warn('[signup] Checkout error:', checkoutErr);
+                }
+
                 router.push('/account/pending');
             } else {
                 setError(data.error || 'Sign up failed');

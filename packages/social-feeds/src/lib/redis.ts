@@ -42,7 +42,7 @@ export function getRedisClient() {
     return redisClient;
   }
 
-  redisClient = new IORedis(connection);
+  redisClient = new IORedis(connection as any);
   redisClient.on("error", (error) => {
     console.error("Redis client error:", error);
   });

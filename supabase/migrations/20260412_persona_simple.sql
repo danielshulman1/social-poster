@@ -115,7 +115,7 @@ BEGIN
   NEW.updated_at = CURRENT_TIMESTAMP;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog;
 
 -- Drop and recreate triggers (they should be idempotent)
 DROP TRIGGER IF EXISTS update_user_personas_updated_at ON user_personas;

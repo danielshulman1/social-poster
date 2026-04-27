@@ -1,10 +1,10 @@
 import { Queue } from 'bullmq';
 import { getRedisConnectionOptions } from '@/lib/redis';
 
-const connection = getRedisConnectionOptions() || {
+const connection = (getRedisConnectionOptions() || {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
-};
+}) as any;
 
 let queue: Queue;
 

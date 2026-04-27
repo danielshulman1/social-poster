@@ -10,7 +10,9 @@
       "Bash(curl -s \"http://localhost:3010/api/test/facebook?token=EAAaevDTVgfsBRG5oy05UPsLKnQiKBXh93KVDk76IuTTHilOYOLH0Y7ZA5X2CwMAnjFfnUxZCgqoeiXvZAy1HYTiUKZCu0NuzDVi1Or54b23KIOeegQWpzXpMrJdr5mIuaRneUIMsZBePcUP1a5SpwXZASkfH5dqCAFGGjSsS44l8aafMLAUjfZB38vs0btL1aoZD\")",
       "Read(//tmp/**)",
       "Read(//c/tmp/**)",
-      "Bash(curl -s \"https://socialposter.easy-ai.co.uk/api/personas\" -w \"\\\\nHTTP Status: %{http_code}\\\\n\")"
+      "Bash(curl -s \"https://socialposter.easy-ai.co.uk/api/personas\" -w \"\\\\nHTTP Status: %{http_code}\\\\n\")",
+      "Bash(git commit -m 'Fix: correct regex escaping in blog build script *)",
+      "Bash(python build_blog.py)"
     ],
     "additionalDirectories": [
       "\\tmp"

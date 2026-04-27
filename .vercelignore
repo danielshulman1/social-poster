@@ -1,0 +1,19 @@
+.claude/
+
+# Local env files (Vercel uses dashboard env vars)
+.env*
+!.env.example
+
+# Local notes / setup docs (may contain secrets)
+VERCEL_ENV_SETUP.md
+
+# Logs / artifacts
+*.log
+vercel_*.txt
+vercel_*.log
+
+# Local scratch / backups
+backups/
+scratch/
+database/
+temp_easyaiwebsite/

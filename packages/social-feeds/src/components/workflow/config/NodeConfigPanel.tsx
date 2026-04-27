@@ -1177,7 +1177,7 @@ export const NodeConfigPanel = () => {
                             <p className="text-[10px] text-muted-foreground">Leave empty to post immediately.</p>
                         </div>
 
-                        {selectedNode.type !== 'google-sheets-publisher' && (
+                        {(selectedNode.type as string) !== 'google-sheets-publisher' && (
                             <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-1">

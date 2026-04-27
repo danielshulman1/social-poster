@@ -1179,8 +1179,8 @@ export async function executeWorkflow(
                             platform: 'facebook',
                             platformLabel: 'Facebook',
                             content: contentToPost,
-                            imageUrl,
-                            destination: connection.name,
+                            imageUrl: imageUrl || undefined,
+                            destination: connection.name || undefined,
                         });
                         output = approvalPreview.output;
                         resultDetails = approvalPreview.details;
@@ -1483,8 +1483,8 @@ export async function executeWorkflow(
                             platform: 'instagram',
                             platformLabel: 'Instagram',
                             content: igContent,
-                            imageUrl,
-                            destination: igConnection.name,
+                            imageUrl: imageUrl || undefined,
+                            destination: igConnection.name || undefined,
                         });
                         output = approvalPreview.output;
                         resultDetails = approvalPreview.details;
@@ -1543,8 +1543,8 @@ export async function executeWorkflow(
                     const creds = parseConnectionCredentials(connection.credentials);
 
                     const accessToken = creds.accessToken;
-                    const userId = creds.userId || creds.username;
-                    if (!accessToken || !userId) throw new Error('Threads connection requires accessToken and userId.');
+                    const threadsUserId = creds.userId || creds.username;
+                    if (!accessToken || !threadsUserId) throw new Error('Threads connection requires accessToken and userId.');
 
                     const text = (lastTextOutput || lastOutput || node.data?.content || '').slice(0, 500);
                     if (!text) throw new Error('No content to post to Threads.');
@@ -1554,14 +1554,14 @@ export async function executeWorkflow(
                             platform: 'threads',
                             platformLabel: 'Threads',
                             content: text,
-                            destination: connection.name,
+                            destination: connection.name || undefined,
                         });
                         output = approvalPreview.output;
                         resultDetails = approvalPreview.details;
                         break;
                     }
 
-                    const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
+                    const createRes = await fetch(`https://graph.threads.net/v1.0/${threadsUserId}/threads`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import BrandMark from '../components/BrandMark';
+
+const Link = NextLink as any;
 
 export default function LoginPage() {
   const router = useRouter();

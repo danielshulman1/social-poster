@@ -57,11 +57,15 @@ export default function SignupPage() {
         });
 
         if (signInResult?.error) {
-            throw new Error("This email already has an account. Use the existing password or reset it before starting checkout.");
+            if (signInResult.error === "CredentialsSignin") {
+                throw new Error("Could not sign in. Double-check your email and password, then try again.");
+            }
+
+            throw new Error("Could not sign in. Please try again or reset your password before starting checkout.");
         }
     };
 
-    const redirectToCheckout = async (user?: { id: string; email: string }) => {
+    const createCheckoutUrl = async (user?: { id: string; email: string }) => {
         const checkoutRes = await fetch("/api/stripe/checkout", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -88,8 +92,7 @@ export default function SignupPage() {
             throw new Error("No checkout URL received from Stripe.");
         }
 
-        console.log("[signup] Redirecting to:", checkoutData.url);
-        window.location.assign(checkoutData.url);
+        return checkoutData.url as string;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -123,7 +126,9 @@ export default function SignupPage() {
                 if (data.message === "User already exists") {
                     console.log("[signup] Existing user; signing in before checkout");
                     await signInForCheckout();
-                    await redirectToCheckout();
+                    const checkoutUrl = await createCheckoutUrl();
+                    console.log("[signup] Redirecting to:", checkoutUrl);
+                    window.location.assign(checkoutUrl);
                     return;
                 }
 
@@ -132,8 +137,17 @@ export default function SignupPage() {
 
             console.log("[signup] Account created:", data);
 
-            await signInForCheckout();
-            await redirectToCheckout(data.user);
+            const checkoutUrlPromise = createCheckoutUrl(data.user);
+            const signInPromise = signInForCheckout().catch((error: unknown) => {
+                const message = error instanceof Error ? error.message : "Sign-in failed before checkout";
+                console.warn("[signup] Sign-in failed; continuing to checkout anyway:", message);
+            });
+
+            const checkoutUrl = await checkoutUrlPromise;
+            await signInPromise;
+
+            console.log("[signup] Redirecting to:", checkoutUrl);
+            window.location.assign(checkoutUrl);
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Failed to proceed to payment";
             setFormError(message);

@@ -109,13 +109,19 @@ async function upsertStripeSubscription(subscription: Stripe.Subscription) {
   const tier: TierId | null = metadataTier ?? storedTier;
   const trialEnd = getTrialEnd(subscription);
   const periodEnd = getCurrentPeriodEnd(subscription);
+  const mappedStatus =
+    subscription.status === "canceled"
+      ? "canceled"
+      : subscription.cancel_at_period_end
+        ? "canceling"
+        : subscription.status;
 
   const updated = await prisma.subscription.upsert({
     where: { userId },
     update: {
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: customerId,
-      status: subscription.status,
+      status: mappedStatus,
       priceId: tier,
       currentPeriodEnd: trialEnd ?? periodEnd,
     },
@@ -123,16 +129,18 @@ async function upsertStripeSubscription(subscription: Stripe.Subscription) {
       userId,
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: customerId,
-      status: subscription.status,
+      status: mappedStatus,
       priceId: tier,
       currentPeriodEnd: trialEnd ?? periodEnd,
     },
   });
 
-  await logSubscriptionEvent(userId, `subscription_${subscription.status}`, {
+  await logSubscriptionEvent(userId, `subscription_${mappedStatus}`, {
     tier,
     stripe_subscription_id: subscription.id,
-    status: subscription.status,
+    status: mappedStatus,
+    stripe_status: subscription.status,
+    cancel_at_period_end: subscription.cancel_at_period_end,
     trial_ends_at: trialEnd?.toISOString() ?? null,
     subscription_ends_at: periodEnd?.toISOString() ?? null,
   });

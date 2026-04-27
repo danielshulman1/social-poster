@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { onCLS, onFID, onFCP, onLCP, onTTFB } from 'web-vitals';
+import { onCLS, onFCP, onLCP, onTTFB, onINP } from 'web-vitals';
 
 function reportWebVitals(metric: any) {
   if (typeof window === 'undefined') return;
@@ -25,7 +25,7 @@ function reportWebVitals(metric: any) {
 export default function WebVitalsMonitor() {
   useEffect(() => {
     onCLS(reportWebVitals);
-    onFID(reportWebVitals);
+    onINP(reportWebVitals);
     onFCP(reportWebVitals);
     onLCP(reportWebVitals);
     onTTFB(reportWebVitals);

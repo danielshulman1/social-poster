@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 
 interface SubscriptionSettingsProps {
-  userId: string;
+  userId?: string;
 }
 
 type SubscriptionView = {
@@ -43,6 +43,12 @@ function getSubscriptionStatus(subscription: {
   }
 
   if (subscription.subscription_status === "canceling") {
+    if (subscription.subscription_ends_at) {
+      const subEnds = new Date(subscription.subscription_ends_at);
+      const daysLeft = Math.ceil((subEnds.getTime() - now.getTime()) / 86400000);
+      return { message: `Canceled (access ends in ${Math.max(0, daysLeft)} days)` };
+    }
+
     return { message: "Canceled, access remains until period end" };
   }
 
@@ -56,7 +62,8 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
 
   const loadSubscription = useCallback(async () => {
     try {
-      const response = await fetch(`/api/stripe/get-subscription?userId=${userId}`);
+      const url = userId ? `/api/stripe/get-subscription?userId=${encodeURIComponent(userId)}` : "/api/stripe/get-subscription";
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setSubscription(data);
@@ -83,7 +90,7 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
       const response = await fetch("/api/stripe/cancel-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(userId ? { userId } : {}),
       });
 
       if (!response.ok) {
@@ -91,7 +98,7 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
         throw new Error(error.error || "Failed to cancel");
       }
 
-      toast.success("Subscription canceled. You'll have access until the end of your billing period.");
+      toast.success("Cancellation scheduled. You'll keep access until the end of your billing period.");
       loadSubscription();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Cancellation failed");
@@ -163,7 +170,8 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
         {subscription.subscription_ends_at && (
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
             <p className="text-sm text-blue-700">
-              Renews on {new Date(subscription.subscription_ends_at).toLocaleDateString()}
+              {subscription.subscription_status === "canceling" ? "Access ends on " : "Renews on "}
+              {new Date(subscription.subscription_ends_at).toLocaleDateString()}
             </p>
           </div>
         )}

@@ -9,6 +9,8 @@ export default function PendingPage() {
     const router = useRouter();
     const [tier, setTier] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [paymentLoading, setPaymentLoading] = useState(false);
+    const [paymentError, setPaymentError] = useState('');
 
     const getAuthToken = () => localStorage.getItem('auth_token');
 
@@ -47,6 +49,40 @@ export default function PendingPage() {
     const handleSignOut = () => {
         localStorage.removeItem('auth_token');
         router.push('/login');
+    };
+
+    const handleContinueToPayment = async () => {
+        setPaymentError('');
+        setPaymentLoading(true);
+
+        try {
+            const token = getAuthToken();
+            if (!token) {
+                router.push('/login');
+                return;
+            }
+
+            const checkoutRes = await fetch('/api/stripe/create-checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ tier: tier?.current_tier, flow: 'signup' }),
+            });
+
+            const data = await checkoutRes.json().catch(() => ({}));
+
+            if (!checkoutRes.ok || !data.url) {
+                throw new Error(data.error || 'Failed to start checkout');
+            }
+
+            window.location.assign(data.url);
+        } catch (error) {
+            setPaymentError(error?.message || 'Failed to start checkout');
+        } finally {
+            setPaymentLoading(false);
+        }
     };
 
     if (loading) {
@@ -112,6 +148,20 @@ export default function PendingPage() {
 
                     {/* Actions */}
                     <div className="space-y-3">
+                        {tier?.subscription_status === 'pending_payment' && tier?.current_tier && tier.current_tier !== 'free' && (
+                            <button
+                                onClick={handleContinueToPayment}
+                                disabled={paymentLoading}
+                                className="w-full py-3 rounded-xl bg-white text-black font-semibold hover:bg-gray-200 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {paymentLoading ? 'Opening payment...' : 'Continue to Payment'}
+                            </button>
+                        )}
+                        {paymentError && (
+                            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-300 text-sm">
+                                {paymentError}
+                            </div>
+                        )}
                         <button
                             onClick={loadTierInfo}
                             className="w-full py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/15 transition-all"

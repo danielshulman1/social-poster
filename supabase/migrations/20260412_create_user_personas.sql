@@ -116,7 +116,7 @@ BEGIN
   NEW.updated_at = CURRENT_TIMESTAMP;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog;
 
 -- Apply trigger to user_personas
 CREATE TRIGGER update_user_personas_updated_at

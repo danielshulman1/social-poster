@@ -6,10 +6,10 @@ import { getRedisConnectionOptions } from './lib/redis';
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const connection = getRedisConnectionOptions() || {
+const connection = (getRedisConnectionOptions() || {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
-};
+}) as any;
 
 console.log('Starting worker with connection:', connection);
 

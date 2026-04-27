@@ -26,7 +26,7 @@ BEGIN
   NEW.updated_at = CURRENT_TIMESTAMP;
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql SET search_path = pg_catalog;
 
 DROP TRIGGER IF EXISTS user_tiers_timestamp ON user_tiers;
 CREATE TRIGGER user_tiers_timestamp

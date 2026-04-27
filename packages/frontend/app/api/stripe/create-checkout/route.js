@@ -5,8 +5,6 @@
  */
 
 import { requireAuth } from '../../../utils/auth';
-import { getUserTier } from '../../../utils/tier-db';
-import { getTierConfig } from '../../../utils/tier-config';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const PRICE_IDS = {
@@ -17,8 +15,10 @@ const PRICE_IDS = {
 
 export async function POST(request) {
   try {
-    const user = await requireAuth(request);
-    if (!user) {
+    let user;
+    try {
+      user = await requireAuth(request);
+    } catch {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -30,7 +30,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { tier } = body;
+    const { tier, flow } = body;
 
     if (!tier || !['starter', 'core', 'premium'].includes(tier)) {
       return Response.json(
@@ -47,13 +47,15 @@ export async function POST(request) {
       );
     }
 
-    // Get user's current tier
-    const currentTier = await getUserTier(user.id);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const isSignup = flow === 'signup';
+    const successPath = isSignup ? '/account/pending' : '/dashboard';
+    const cancelPath = isSignup ? '/account/pending' : '/dashboard';
 
     // Create Stripe Checkout Session
     const sessionData = new URLSearchParams();
-    sessionData.append('success_url', `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=success&tier=${tier}`);
-    sessionData.append('cancel_url', `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?payment=cancelled`);
+    sessionData.append('success_url', `${appUrl}${successPath}?payment=success&tier=${tier}`);
+    sessionData.append('cancel_url', `${appUrl}${cancelPath}?payment=cancelled`);
     sessionData.append('line_items[0][price]', priceId);
     sessionData.append('line_items[0][quantity]', '1');
     sessionData.append('mode', 'subscription');

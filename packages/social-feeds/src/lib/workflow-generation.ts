@@ -270,7 +270,7 @@ export function parseWorkflowGenerationBlueprint(input: string) {
         data: isRecord(step?.data) ? step.data : {},
       } satisfies SupportedStep;
     })
-    .filter((step): step is SupportedStep => Boolean(step));
+    .filter((step): step is NonNullable<typeof step> => Boolean(step));
 
   return {
     name: getString(parsed.name) || "Generated Workflow",

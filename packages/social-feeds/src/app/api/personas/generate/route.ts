@@ -23,6 +23,7 @@ interface InterviewAnswerInput {
 }
 
 interface GeneratedPersonaData {
+  [key: string]: unknown;
   brandVoiceSummary: string;
   contentPillars: string[];
   referenceDocuments?: ReturnType<typeof buildReferenceDocumentMetadata>;
@@ -217,13 +218,13 @@ Example format:
     await prisma.userPersona.upsert({
       where: { userId: auth.userId },
       update: {
-        personaData: finalPersonaData,
+        personaData: finalPersonaData as any,
         auditUsed: true,
         auditAuthorizedAt: null, // Clear the authorization after using
       },
       create: {
         userId: auth.userId,
-        personaData: finalPersonaData,
+        personaData: finalPersonaData as any,
         auditUsed: true,
       },
     });
