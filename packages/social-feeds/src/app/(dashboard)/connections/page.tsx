@@ -110,6 +110,17 @@ function ConnectionsPageContent() {
         return match?.[1] || trimmed;
     };
 
+    const readJsonBody = async <T,>(res: Response): Promise<{ json: T | null; text: string }> => {
+        const text = await res.text().catch(() => "");
+        if (!text) return { json: null, text: "" };
+
+        try {
+            return { json: JSON.parse(text) as T, text };
+        } catch {
+            return { json: null, text };
+        }
+    };
+
     const fetchSheets = async (spreadsheetId: string) => {
         const normalizedSpreadsheetId = normalizeSpreadsheetId(spreadsheetId);
         if (!normalizedSpreadsheetId) {
@@ -119,11 +130,19 @@ function ConnectionsPageContent() {
 
         setIsFetchingSheets(true);
         try {
-            const res = await fetch(`/api/google/sheets/meta?spreadsheetId=${encodeURIComponent(normalizedSpreadsheetId)}`);
-            const data = await res.json();
+            const res = await fetch(
+                `/api/google/sheets/meta?spreadsheetId=${encodeURIComponent(normalizedSpreadsheetId)}`,
+                { cache: "no-store" }
+            );
+            const { json: data, text } = await readJsonBody<any>(res);
 
             if (!res.ok) {
-                throw new Error(data?.error || 'Failed to fetch sheets');
+                const fallback = text || res.statusText || 'Failed to fetch sheets';
+                throw new Error(data?.error || fallback);
+            }
+
+            if (!data) {
+                throw new Error("Unexpected response from server. Please try again.");
             }
 
             const sheets = Array.isArray(data.sheets) ? data.sheets : [];
@@ -303,6 +322,10 @@ function ConnectionsPageContent() {
         window.location.href = '/api/auth/facebook';
     };
 
+    const connectWithThreadsOAuth = () => {
+        window.location.href = '/api/auth/threads';
+    };
+
     const handleFetchPagesWithToken = async () => {
         const token = normalizeAccessToken(newAccountToken);
         if (!token) {
@@ -460,7 +483,11 @@ function ConnectionsPageContent() {
                 })
             });
 
-            if (!res.ok) throw new Error("Failed to save connection");
+            if (!res.ok) {
+                const payload = await res.json().catch(() => null);
+                const fallbackMessage = await res.text().catch(() => "Failed to save connection");
+                throw new Error(payload?.error || fallbackMessage || "Failed to save connection");
+            }
 
             const newConnection = await res.json();
 
@@ -610,6 +637,18 @@ function ConnectionsPageContent() {
                         </div>
                         <div className="rounded-3xl border border-border/70 bg-card/85 p-5">
                             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                <AtSign className="h-4 w-4 text-gray-700" />
+                                Threads
+                            </div>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                Connect Threads with OAuth or save a Threads access token manually. The app will fetch the Threads profile ID from the token when possible.
+                            </p>
+                            <Button className="mt-4 rounded-full bg-black px-5 text-white hover:bg-zinc-800" onClick={connectWithThreadsOAuth}>
+                                Connect Threads
+                            </Button>
+                        </div>
+                        <div className="rounded-3xl border border-border/70 bg-card/85 p-5">
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                 <ShieldCheck className="h-4 w-4 text-emerald-500" />
                                 Recovery path
                             </div>
@@ -706,6 +745,31 @@ function ConnectionsPageContent() {
                                                     >
                                                         {isFetchingPages ? 'Fetching...' : 'Fetch Pages'}
                                                     </Button>
+                                                </div>
+                                            </div>
+                                        ) : newAccountPlatform === 'threads' ? (
+                                            <div className="flex flex-col gap-3">
+                                                <Button
+                                                    onClick={connectWithThreadsOAuth}
+                                                    className="w-full bg-black hover:bg-zinc-800 text-white"
+                                                >
+                                                    <AtSign className="mr-2 h-4 w-4" />
+                                                    Connect with Threads
+                                                </Button>
+                                                <p className="text-[10px] text-muted-foreground text-center">
+                                                    OAuth is optional here. If you already have a Threads user token, paste it below and the app will try to resolve the Threads profile ID automatically.
+                                                </p>
+                                                <Separator />
+                                                <div className="flex flex-col gap-2">
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="Paste Threads access token..."
+                                                        value={newAccountToken}
+                                                        onChange={(e) => setNewAccountToken(e.target.value)}
+                                                    />
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        Manual token path. The app will call Threads `/me` during save and again during publish if the profile ID needs repair.
+                                                    </p>
                                                 </div>
                                             </div>
                                         ) : newAccountPlatform === 'linkedin' ? (

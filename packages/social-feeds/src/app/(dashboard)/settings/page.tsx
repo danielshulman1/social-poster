@@ -39,6 +39,12 @@ export default function SettingsPage() {
     const [linkedinClientIdPreview, setLinkedinClientIdPreview] = useState('');
     const [showLinkedinSecret, setShowLinkedinSecret] = useState(false);
     const [isSavingLinkedin, setIsSavingLinkedin] = useState(false);
+    const [threadsClientId, setThreadsClientId] = useState('');
+    const [threadsClientSecret, setThreadsClientSecret] = useState('');
+    const [hasThreadsCredentials, setHasThreadsCredentials] = useState(false);
+    const [threadsClientIdPreview, setThreadsClientIdPreview] = useState('');
+    const [showThreadsSecret, setShowThreadsSecret] = useState(false);
+    const [isSavingThreads, setIsSavingThreads] = useState(false);
     const [googleApiKey, setGoogleApiKey] = useState('');
     const [googleApiKeyPreview, setGoogleApiKeyPreview] = useState('');
     const [showGoogleKey, setShowGoogleKey] = useState(false);
@@ -61,6 +67,7 @@ export default function SettingsPage() {
     const [isSavingFacebookApp, setIsSavingFacebookApp] = useState(false);
     const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const facebookRedirectUri = appOrigin ? `${appOrigin}/api/auth/facebook/callback` : '';
+    const threadsRedirectUri = appOrigin ? `${appOrigin}/api/auth/threads/callback` : '';
 
     useEffect(() => {
         fetch('/api/user/settings')
@@ -75,6 +82,10 @@ export default function SettingsPage() {
                 if (data.hasLinkedinCredentials) {
                     setHasLinkedinCredentials(true);
                     setLinkedinClientIdPreview(data.linkedinClientId || '');
+                }
+                if (data.hasThreadsCredentials) {
+                    setHasThreadsCredentials(true);
+                    setThreadsClientIdPreview(data.threadsClientId || '');
                 }
                 if (data.hasGoogleApiKey) {
                     setHasGoogleApiKey(true);
@@ -323,8 +334,58 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveThreads = async () => {
+        if (!threadsClientId.trim() || !threadsClientSecret.trim()) {
+            toast.error('Please enter both Client ID and Client Secret');
+            return;
+        }
+        setIsSavingThreads(true);
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    threadsClientId: threadsClientId.trim(),
+                    threadsClientSecret: threadsClientSecret.trim(),
+                }),
+            });
+            if (!res.ok) throw new Error();
+            setHasThreadsCredentials(true);
+            setThreadsClientIdPreview(threadsClientId.trim());
+            setThreadsClientId('');
+            setThreadsClientSecret('');
+            toast.success('Threads credentials saved! Go to Connections to connect your account.');
+        } catch {
+            toast.error('Failed to save Threads credentials');
+        } finally {
+            setIsSavingThreads(false);
+        }
+    };
+
+    const handleRemoveThreads = async () => {
+        setIsSavingThreads(true);
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ threadsClientId: null, threadsClientSecret: null }),
+            });
+            if (!res.ok) throw new Error();
+            setHasThreadsCredentials(false);
+            setThreadsClientIdPreview('');
+            toast.success('Threads credentials removed');
+        } catch {
+            toast.error('Failed to remove Threads credentials');
+        } finally {
+            setIsSavingThreads(false);
+        }
+    };
+
     const aiReadyCount = Number(hasExistingKey) + Number(hasGoogleApiKey) + Number(hasOpenrouterApiKey);
-    const socialReadyCount = Number(hasLinkedinCredentials) + Number(hasFacebookAppCredentials);
+    const socialReadyCount =
+        Number(hasLinkedinCredentials) +
+        Number(hasThreadsCredentials) +
+        Number(hasFacebookAppCredentials);
     const settingsHealthLabel = socialReadyCount > 0 && aiReadyCount > 0 ? 'Operational' : 'Needs setup';
 
     if (isLoading) {
@@ -370,7 +431,7 @@ export default function SettingsPage() {
                                 <Radio className="h-5 w-5 text-rose-500" />
                                 <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Social Apps</span>
                             </div>
-                            <p className="mt-4 text-2xl font-semibold text-foreground">{socialReadyCount}/2</p>
+                            <p className="mt-4 text-2xl font-semibold text-foreground">{socialReadyCount}/3</p>
                             <p className="mt-1 text-sm text-muted-foreground">OAuth apps ready</p>
                         </div>
                     </div>
@@ -613,6 +674,62 @@ export default function SettingsPage() {
                             </div>
                             <p className="text-[11px] text-muted-foreground">
                                 Add redirect URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">{typeof window !== 'undefined' ? window.location.origin : ''}/api/auth/linkedin/callback</code>
+                            </p>
+                        </div>
+
+                        <Separator />
+
+                        {/* Facebook App Credentials */}
+                        <div className="grid gap-2">
+                            <Label>Threads Developer App</Label>
+                            <p className="text-[11px] text-muted-foreground mb-1">
+                                Required to connect and publish to Threads. Use the Threads App ID and Threads App Secret from the Threads product in Meta, not the Basic App ID from App Settings.
+                            </p>
+                            {hasThreadsCredentials && (
+                                <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">
+                                    <Badge variant="secondary" className="text-xs">Connected</Badge>
+                                    <span className="text-sm font-mono text-muted-foreground">{threadsClientIdPreview || 'Configured'}</span>
+                                    <Button variant="ghost" size="sm" className="ml-auto text-red-500 h-7" onClick={handleRemoveThreads} disabled={isSavingThreads}>
+                                        <Trash2 className="h-3 w-3 mr-1" /> Remove
+                                    </Button>
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <Input
+                                    type="text"
+                                    placeholder="Threads App ID"
+                                    value={threadsClientId}
+                                    onChange={(e) => setThreadsClientId(e.target.value)}
+                                />
+                                <div className="relative">
+                                    <Input
+                                        type={showThreadsSecret ? 'text' : 'password'}
+                                        placeholder="Threads App Secret"
+                                        value={threadsClientSecret}
+                                        onChange={(e) => setThreadsClientSecret(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setShowThreadsSecret(!showThreadsSecret)}
+                                    >
+                                        {showThreadsSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                <Button
+                                    onClick={handleSaveThreads}
+                                    disabled={isSavingThreads || !threadsClientId.trim() || !threadsClientSecret.trim()}
+                                    size="sm"
+                                >
+                                    {isSavingThreads && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Threads Credentials
+                                </Button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                Add redirect URL: <code className="text-xs bg-muted px-1 py-0.5 rounded">{threadsRedirectUri}</code>
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                                Meta Basic App ID and Threads App ID can be different. The value saved here must match the app where this redirect URI is whitelisted.
                             </p>
                         </div>
 

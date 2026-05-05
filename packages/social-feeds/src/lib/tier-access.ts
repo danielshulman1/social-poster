@@ -41,6 +41,16 @@ type ActiveSubscription = NonNullable<
   config: TierConfig;
 };
 
+const UNIVERSAL_PLATFORM_ACCESS = new Set<RestrictedSocialProvider>([
+  "threads",
+]);
+
+function isUniversallyAllowedPlatform(
+  platform: string
+): platform is RestrictedSocialProvider {
+  return UNIVERSAL_PLATFORM_ACCESS.has(platform as RestrictedSocialProvider);
+}
+
 async function requireActiveTier(userId: string): Promise<ActiveSubscription> {
   const subscription = await getUserSubscription(userId);
 
@@ -58,6 +68,10 @@ export async function assertUserCanConnectProvider(
   userId: string,
   provider: string
 ) {
+  if (isUniversallyAllowedPlatform(provider)) {
+    return null;
+  }
+
   const subscription = await requireActiveTier(userId);
 
   if (!isPlatformAllowedForTier(subscription.tier, provider)) {
@@ -74,6 +88,10 @@ export async function assertUserCanPublishPlatform(
   userId: string,
   platform: RestrictedSocialProvider
 ) {
+  if (isUniversallyAllowedPlatform(platform)) {
+    return null;
+  }
+
   const subscription = await requireActiveTier(userId);
 
   if (!isPlatformAllowedForTier(subscription.tier, platform)) {
@@ -159,8 +177,18 @@ export async function assertWorkflowDefinitionAllowed(
   userId: string,
   definition: string | WorkflowLikeDefinition | null | undefined
 ) {
-  const subscription = await requireActiveTier(userId);
   const restrictedPlatforms = extractRestrictedPlatformsFromDefinition(definition);
+
+  if (
+    restrictedPlatforms.length > 0 &&
+    restrictedPlatforms.every((platform) =>
+      isUniversallyAllowedPlatform(platform)
+    )
+  ) {
+    return null;
+  }
+
+  const subscription = await requireActiveTier(userId);
 
   const blockedPlatforms = restrictedPlatforms.filter(
     (platform) => !isPlatformAllowedForTier(subscription.tier, platform)

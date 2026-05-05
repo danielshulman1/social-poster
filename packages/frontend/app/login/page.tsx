@@ -177,6 +177,16 @@ export default function LoginPage() {
               Skip to dashboard (demo)
             </Link>
           </div>
+
+          <div className="mt-6 border-t border-slate-200 pt-4 text-center text-xs text-slate-500">
+            <Link className="underline underline-offset-4 hover:text-slate-900" href="/privacy">
+              Privacy Policy
+            </Link>{" "}
+            ·{" "}
+            <Link className="underline underline-offset-4 hover:text-slate-900" href="/terms">
+              Terms and Conditions
+            </Link>
+          </div>
         </div>
       </div>
     </div>

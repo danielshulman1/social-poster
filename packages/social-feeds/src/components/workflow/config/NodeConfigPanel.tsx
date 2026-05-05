@@ -1056,7 +1056,13 @@ export const NodeConfigPanel = () => {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {availableAccounts.length === 0 && <p className="text-[10px] text-red-500">No connected accounts found. Go to Connections to add one.</p>}
+                            {availableAccounts.length === 0 && (
+                                <p className="text-[10px] text-red-500">
+                                    {platform === 'threads'
+                                        ? 'No Threads account found. Go to Connections and use Connect with Threads.'
+                                        : 'No connected accounts found. Go to Connections to add one.'}
+                                </p>
+                            )}
                         </div>
 
                         {selectedNode.type === 'instagram-publisher' && (

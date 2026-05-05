@@ -9,12 +9,15 @@ export async function GET(req: Request) {
     if (!auth?.userId) return unauthorizedText();
 
     const subscription = await getUserSubscription(auth.userId);
+    const allowedPlatforms = Array.from(
+        new Set([...(subscription?.allowedPlatforms ?? []), "threads"])
+    );
 
     return NextResponse.json({
         isActive: !!subscription?.isValid,
         tier: subscription?.tier ?? null,
         status: subscription?.status ?? "inactive",
-        allowedPlatforms: subscription?.allowedPlatforms ?? [],
+        allowedPlatforms,
         postsPerWeekPerPlatform: subscription?.postsPerWeekPerPlatform ?? 0,
         maxPlatforms: subscription?.maxPlatforms ?? 0,
         canAccessCheckInCall: subscription?.canAccessCheckInCall ?? false,

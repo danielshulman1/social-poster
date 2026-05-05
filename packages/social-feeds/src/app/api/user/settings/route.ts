@@ -17,7 +17,18 @@ export async function GET(req: Request) {
 
     const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: auth.userId },
-        select: { name: true, email: true, openaiApiKey: true, googleApiKey: true, linkedinClientId: true, linkedinClientSecret: true, facebookAppId: true, facebookAppSecret: true },
+        select: {
+            name: true,
+            email: true,
+            openaiApiKey: true,
+            googleApiKey: true,
+            linkedinClientId: true,
+            linkedinClientSecret: true,
+            threadsClientId: true,
+            threadsClientSecret: true,
+            facebookAppId: true,
+            facebookAppSecret: true,
+        },
     }));
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -31,6 +42,8 @@ export async function GET(req: Request) {
         googleApiKeyPreview: getSecretPreview(user.googleApiKey),
         hasLinkedinCredentials: !!(user.linkedinClientId && user.linkedinClientSecret),
         linkedinClientId: user.linkedinClientId || '',
+        hasThreadsCredentials: !!(user.threadsClientId && user.threadsClientSecret),
+        threadsClientId: user.threadsClientId || '',
         hasFacebookAppCredentials: !!(user.facebookAppId && user.facebookAppSecret),
         facebookAppId: user.facebookAppId || '',
     });
@@ -49,6 +62,8 @@ export async function PUT(req: Request) {
     if (body.googleApiKey !== undefined) updateData.googleApiKey = body.googleApiKey;
     if (body.linkedinClientId !== undefined) updateData.linkedinClientId = body.linkedinClientId;
     if (body.linkedinClientSecret !== undefined) updateData.linkedinClientSecret = body.linkedinClientSecret;
+    if (body.threadsClientId !== undefined) updateData.threadsClientId = body.threadsClientId;
+    if (body.threadsClientSecret !== undefined) updateData.threadsClientSecret = body.threadsClientSecret;
     if (body.facebookAppId !== undefined) updateData.facebookAppId = body.facebookAppId;
     if (body.facebookAppSecret !== undefined) updateData.facebookAppSecret = body.facebookAppSecret;
 

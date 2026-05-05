@@ -36,15 +36,12 @@ const normalizeBaseUrlCandidate = (value: string) => {
 
 export const getAppBaseUrl = (requestUrl?: string) => {
     const candidates = [
-        ...extractCandidates(process.env.NEXT_PUBLIC_APP_URL),
         ...extractCandidates(process.env.NEXTAUTH_URL),
+        ...(requestUrl ? [requestUrl] : []),
+        ...extractCandidates(process.env.NEXT_PUBLIC_APP_URL),
         ...extractCandidates(process.env.VERCEL_PROJECT_PRODUCTION_URL),
         ...extractCandidates(process.env.VERCEL_URL),
     ];
-
-    if (requestUrl) {
-        candidates.push(requestUrl);
-    }
 
     for (const candidate of candidates) {
         const normalized = normalizeBaseUrlCandidate(candidate);

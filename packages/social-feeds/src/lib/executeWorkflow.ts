@@ -26,6 +26,11 @@ import {
 } from "@/lib/workflowExecutionLog";
 import { assertUserCanPublishPlatform } from "@/lib/tier-access";
 import { decryptUserSecretFields } from "@/lib/user-secrets";
+import {
+    fetchArticleExtract,
+    fetchRssFirstItemArticlePrompt,
+    formatArticleExtractForPrompt,
+} from "@/lib/rss-content";
 
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -58,32 +63,6 @@ const summarizeHttpError = (status: number, statusText: string, responseText: st
     return `HTTP Request failed: ${status}${statusLabel} - ${trimmed.slice(0, 300)}`;
 };
 
-const decodeHtml = (input: string) =>
-    input
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
-
-const stripTags = (input: string) =>
-    decodeHtml(input.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim());
-
-const extractMeta = (html: string, keys: string[]) => {
-    for (const key of keys) {
-        const re = new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["'][^>]*>`, 'i');
-        const match = html.match(re);
-        if (match?.[1]) return decodeHtml(match[1]);
-    }
-    return '';
-};
-
-const extractTag = (xml: string, tag: string) => {
-    const match = xml.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'));
-    if (!match?.[1]) return '';
-    return decodeHtml(match[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim());
-};
-
 const normalizeAccessToken = (raw: unknown): string => {
     if (typeof raw !== 'string') return '';
     let token = raw.trim();
@@ -111,16 +90,6 @@ const normalizeAccessToken = (raw: unknown): string => {
     }
 
     return token;
-};
-
-const parseRssItems = (xml: string) => {
-    const itemMatches = xml.match(/<item>[\\s\\S]*?<\/item>/gi) || [];
-    return itemMatches.map((itemXml) => ({
-        title: extractTag(itemXml, 'title'),
-        link: extractTag(itemXml, 'link'),
-        description: stripTags(extractTag(itemXml, 'description')),
-        pubDate: extractTag(itemXml, 'pubDate'),
-    }));
 };
 
 function normalizeSpreadsheetId(sheetId: string) {
@@ -739,8 +708,6 @@ export async function executeWorkflow(
                     const input = (node.data?.url as string || '').trim();
                     if (!input) throw new Error('No news URL or query provided.');
 
-                    let articleUrl = '';
-                    let sourceType: 'query' | 'url' = 'url';
                     let searchQuery = '';
 
                     try {
@@ -748,62 +715,25 @@ export async function executeWorkflow(
                         if (!['http:', 'https:'].includes(parsed.protocol)) {
                             throw new Error('Only http/https article URLs are supported.');
                         }
-                        articleUrl = parsed.toString();
+                        const extract = await fetchArticleExtract(parsed.toString());
+                        output = formatArticleExtractForPrompt(extract);
                     } catch {
-                        sourceType = 'query';
                         searchQuery = input;
-                        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
-                        const rssRes = await fetch(rssUrl, {
-                            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)' },
-                        });
-                        if (!rssRes.ok) {
-                            throw new Error(`News search failed: HTTP ${rssRes.status}`);
+
+                        const rssPrompt = await fetchRssFirstItemArticlePrompt(searchQuery);
+                        if (!rssPrompt.ok) {
+                            throw new Error(rssPrompt.error);
                         }
-                        const rssXml = await rssRes.text();
-                        const items = parseRssItems(rssXml);
-                        const firstItem = items.find((i) => i.link);
-                        if (!firstItem?.link) {
-                            throw new Error(`No news results found for query: ${searchQuery}`);
-                        }
-                        articleUrl = firstItem.link;
+
+                        output = `SEARCH_QUERY: ${searchQuery}\n${rssPrompt.promptText}`;
+                        resultDetails = {
+                            rssRequestUrl: rssPrompt.details.rssRequestUrl,
+                            rssItemTitle: rssPrompt.details.item.title,
+                            rssItemLink: rssPrompt.details.item.link,
+                            rssItemPubDate: rssPrompt.details.item.pubDate,
+                            resolvedArticleUrl: rssPrompt.details.articleUrl,
+                        };
                     }
-
-                    const articleRes = await fetch(articleUrl, {
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)',
-                            'Accept': 'text/html,application/xhtml+xml',
-                        },
-                    });
-
-                    if (!articleRes.ok) {
-                        throw new Error(`Failed to fetch article: HTTP ${articleRes.status}`);
-                    }
-
-                    const html = await articleRes.text();
-                    const title =
-                        extractMeta(html, ['og:title', 'twitter:title']) ||
-                        (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '').trim();
-                    const description =
-                        extractMeta(html, ['og:description', 'description', 'twitter:description']);
-
-                    const paragraphMatches = html.match(/<p\b[^>]*>([\s\S]*?)<\/p>/gi) || [];
-                    const content = paragraphMatches
-                        .map((p) => stripTags(p))
-                        .filter((p) => p.length > 40)
-                        .slice(0, 12)
-                        .join('\n')
-                        .slice(0, 4000);
-
-                    if (!title && !content) {
-                        throw new Error('Could not extract readable article content from this URL.');
-                    }
-
-                    output =
-                        (sourceType === 'query' ? `SEARCH_QUERY: ${searchQuery}\n` : '') +
-                        `SOURCE_URL: ${articleUrl}\n` +
-                        `TITLE: ${title || 'Untitled'}\n` +
-                        `DESCRIPTION: ${description || 'N/A'}\n` +
-                        `CONTENT:\n${content || description || title}`;
                     break;
                 }
 
@@ -864,16 +794,21 @@ export async function executeWorkflow(
                         const rssUrl = (node.data?.rssUrl as string || '').trim();
                         if (rssUrl) {
                             try {
-                                const rssRes = await fetch(rssUrl.startsWith('http') ? rssUrl : `https://news.google.com/rss/search?q=${encodeURIComponent(rssUrl)}`, {
-                                    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)' },
-                                });
-                                if (rssRes.ok) {
-                                    const rssXml = await rssRes.text();
-                                    const items = parseRssItems(rssXml);
-                                    const firstItem = items.find((i) => i.link);
-                                    if (firstItem) {
-                                        inputContent = `Title: ${firstItem.title}\nLink: ${firstItem.link}\nDescription: ${firstItem.description}`;
-                                    }
+                                const rssPrompt = await fetchRssFirstItemArticlePrompt(rssUrl);
+                                if (rssPrompt.ok) {
+                                    inputContent =
+                                        `${rssPrompt.promptText}\n\n` +
+                                        `FACTUALITY:\n- Only use details that appear in CONTENT/DESCRIPTION.\n- If a detail is missing, keep it general.`;
+                                    resultDetails = {
+                                        ...resultDetails,
+                                        rssRequestUrl: rssPrompt.details.rssRequestUrl,
+                                        rssItemTitle: rssPrompt.details.item.title,
+                                        rssItemLink: rssPrompt.details.item.link,
+                                        rssItemPubDate: rssPrompt.details.item.pubDate,
+                                        resolvedArticleUrl: rssPrompt.details.articleUrl,
+                                    };
+                                } else {
+                                    inputContent = rssPrompt.error;
                                 }
                             } catch (e) {
                                 inputContent = `Error fetching RSS: ${rssUrl}`;
@@ -999,16 +934,19 @@ export async function executeWorkflow(
                         const rssUrl = (node.data?.rssUrl as string || '').trim();
                         if (rssUrl) {
                             try {
-                                const rssRes = await fetch(rssUrl.startsWith('http') ? rssUrl : `https://news.google.com/rss/search?q=${encodeURIComponent(rssUrl)}`, {
-                                    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)' },
-                                });
-                                if (rssRes.ok) {
-                                    const rssXml = await rssRes.text();
-                                    const items = parseRssItems(rssXml);
-                                    const firstItem = items.find((i) => i.link);
-                                    if (firstItem) {
-                                        sourceText = `Title: ${firstItem.title}\nLink: ${firstItem.link}\nDescription: ${firstItem.description}`;
-                                    }
+                                const rssPrompt = await fetchRssFirstItemArticlePrompt(rssUrl);
+                                if (rssPrompt.ok) {
+                                    sourceText = rssPrompt.promptText;
+                                    resultDetails = {
+                                        ...resultDetails,
+                                        rssRequestUrl: rssPrompt.details.rssRequestUrl,
+                                        rssItemTitle: rssPrompt.details.item.title,
+                                        rssItemLink: rssPrompt.details.item.link,
+                                        rssItemPubDate: rssPrompt.details.item.pubDate,
+                                        resolvedArticleUrl: rssPrompt.details.articleUrl,
+                                    };
+                                } else {
+                                    sourceText = rssPrompt.error;
                                 }
                             } catch (e) {
                                 sourceText = `Error fetching RSS: ${rssUrl}`;
@@ -1535,16 +1473,71 @@ export async function executeWorkflow(
                 case 'threads-publisher': {
                     await assertUserCanPublishPlatform(userId, 'threads');
                     const accountId = node.data?.accountId;
-                    if (!accountId) throw new Error('No Threads account selected. Configure the node first.');
+                    const threadsConnections = connections.filter((c) => c.provider === 'threads');
+                    if (!accountId && threadsConnections.length !== 1) {
+                        throw new Error('No Threads account selected. Configure the node first.');
+                    }
 
-                    const connection = connections.find(c => c.id === accountId);
-                    if (!connection) throw new Error('Threads connection not found.');
+                    const connection =
+                        (accountId ? connections.find((c) => c.id === accountId) : null) ||
+                        (threadsConnections.length === 1 ? threadsConnections[0] : null);
+                    if (!connection) {
+                        if (threadsConnections.length === 0) {
+                            throw new Error('No Threads connection found. Go to Connections and use Connect with Threads.');
+                        }
+                        throw new Error('Threads connection not found. Re-select your Threads account in the node config.');
+                    }
 
                     const creds = parseConnectionCredentials(connection.credentials);
 
-                    const accessToken = creds.accessToken;
-                    const threadsUserId = creds.userId || creds.username;
-                    if (!accessToken || !threadsUserId) throw new Error('Threads connection requires accessToken and userId.');
+                    const accessToken = normalizeAccessToken(
+                        creds.accessToken ?? creds.access_token ?? creds.token
+                    );
+                    let threadsUserId =
+                        (typeof creds.userId === 'string' && creds.userId) ||
+                        (typeof creds.user_id === 'string' && creds.user_id) ||
+                        (typeof creds.platformUserId === 'string' && creds.platformUserId) ||
+                        (typeof creds.username === 'string' && /^\d+$/.test(creds.username) ? creds.username : '');
+                    let threadsUsername =
+                        typeof creds.username === 'string' && !/^\d+$/.test(creds.username)
+                            ? creds.username
+                            : '';
+
+                    if (accessToken && !threadsUserId) {
+                        const profileUrl = new URL('https://graph.threads.net/v1.0/me');
+                        profileUrl.searchParams.set('fields', 'id,username,name');
+                        profileUrl.searchParams.set('access_token', accessToken);
+
+                        const profileRes = await fetch(profileUrl.toString(), { cache: 'no-store' });
+                        const profileData = await profileRes.json().catch(() => ({}));
+
+                        if (profileRes.ok && typeof profileData?.id === 'string') {
+                            threadsUserId = profileData.id;
+                            threadsUsername =
+                                typeof profileData.username === 'string'
+                                    ? profileData.username
+                                    : threadsUsername;
+
+                            await prisma.externalConnection.update({
+                                where: { id: connection.id },
+                                data: {
+                                    credentials: serializeConnectionCredentials({
+                                        ...creds,
+                                        accessToken,
+                                        access_token: accessToken,
+                                        userId: threadsUserId,
+                                        user_id: threadsUserId,
+                                        platformUserId: threadsUserId,
+                                        username: threadsUsername || creds.username,
+                                    }),
+                                },
+                            });
+                        }
+                    }
+
+                    if (!accessToken || !threadsUserId) {
+                        throw new Error('Threads connection requires accessToken and userId.');
+                    }
 
                     const text = (lastTextOutput || lastOutput || node.data?.content || '').slice(0, 500);
                     if (!text) throw new Error('No content to post to Threads.');
@@ -1575,7 +1568,7 @@ export async function executeWorkflow(
                         throw new Error(`Threads API: ${createData.error?.message || 'Failed to create thread container'}`);
                     }
 
-                    const publishRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads_publish`, {
+                    const publishRes = await fetch(`https://graph.threads.net/v1.0/${threadsUserId}/threads_publish`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

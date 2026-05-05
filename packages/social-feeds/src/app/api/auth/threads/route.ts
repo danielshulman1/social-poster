@@ -45,11 +45,10 @@ export async function GET(req: Request) {
     const redirectUri = `${baseUrl}/api/auth/threads/callback`;
     const state = createOAuthState({ userId: session.user.id, provider: "threads" });
 
-    // Threads uses Instagram Graph API OAuth
-    // Scopes for Threads: threads_basic, threads_content_publish
+    // Threads OAuth uses the Threads authorization endpoint.
     const scope = 'threads_basic,threads_content_publish';
 
-    const authUrl = new URL('https://graph.instagram.com/oauth/authorize');
+    const authUrl = new URL('https://threads.net/oauth/authorize');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);

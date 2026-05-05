@@ -17,6 +17,7 @@ import {
     validateHttpRequestTarget,
 } from "@/lib/httpRequest";
 import { decryptUserSecretFields } from "@/lib/user-secrets";
+import { fetchRssFirstItemArticlePrompt } from "@/lib/rss-content";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -258,22 +259,8 @@ export async function POST(req: Request) {
                 const url = (rssUrl as string || '').trim();
                 if (url) {
                     try {
-                        const rssRes = await fetch(url.startsWith('http') ? url : `https://news.google.com/rss/search?q=${encodeURIComponent(url)}`, {
-                            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)' },
-                        });
-                        if (rssRes.ok) {
-                            const rssXml = await rssRes.text();
-                            // Simple regex extraction for test node (reusing logic would be better but keeping it self-contained for now)
-                            const itemMatch = rssXml.match(/<item>([\s\S]*?)<\/item>/i);
-                            if (itemMatch) {
-                                const title = itemMatch[1].match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '';
-                                const link = itemMatch[1].match(/<link>([\s\S]*?)<\/link>/i)?.[1] || '';
-                                const desc = itemMatch[1].match(/<description>([\s\S]*?)<\/description>/i)?.[1] || '';
-                                inputContent = `Title: ${title}\nLink: ${link}\nDescription: ${desc}`;
-                            } else {
-                                inputContent = "RSS Feed found but no items detected.";
-                            }
-                        }
+                        const rssPrompt = await fetchRssFirstItemArticlePrompt(url);
+                        inputContent = rssPrompt.ok ? rssPrompt.promptText : rssPrompt.error;
                     } catch (e) {
                         inputContent = `Error fetching RSS: ${url}`;
                     }
@@ -464,19 +451,8 @@ export async function POST(req: Request) {
                 const url = (rssUrl as string || '').trim();
                 if (url) {
                     try {
-                        const rssRes = await fetch(url.startsWith('http') ? url : `https://news.google.com/rss/search?q=${encodeURIComponent(url)}`, {
-                            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SocialPosterBot/1.0)' },
-                        });
-                        if (rssRes.ok) {
-                            const rssXml = await rssRes.text();
-                            const itemMatch = rssXml.match(/<item>([\s\S]*?)<\/item>/i);
-                            if (itemMatch) {
-                                const title = itemMatch[1].match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '';
-                                const link = itemMatch[1].match(/<link>([\s\S]*?)<\/link>/i)?.[1] || '';
-                                const desc = itemMatch[1].match(/<description>([\s\S]*?)<\/description>/i)?.[1] || '';
-                                sourceText = `Title: ${title}\nLink: ${link}\nDescription: ${desc}`;
-                            }
-                        }
+                        const rssPrompt = await fetchRssFirstItemArticlePrompt(url);
+                        sourceText = rssPrompt.ok ? rssPrompt.promptText : rssPrompt.error;
                     } catch (e) {
                         sourceText = `Error fetching RSS: ${url}`;
                     }

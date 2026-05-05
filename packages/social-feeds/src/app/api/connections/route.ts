@@ -76,6 +76,8 @@ export async function POST(req: Request) {
 
         await assertUserCanConnectProvider(auth.userId, platform);
 
+        let normalizedOther = { ...other };
+
         // --- STRICT INSTAGRAM TOKEN VALIDATION ---
         // Prevent users from manually pasting their IG Business Account ID instead of a Page Access Token
         if (platform === 'instagram') {
@@ -100,12 +102,44 @@ export async function POST(req: Request) {
             }
         }
 
+        if (platform === 'threads') {
+            try {
+                const profileUrl = new URL('https://graph.threads.net/v1.0/me');
+                profileUrl.searchParams.set('fields', 'id,username,name');
+                profileUrl.searchParams.set('access_token', normalizedAccessToken);
+
+                const profileRes = await fetch(profileUrl.toString(), { cache: 'no-store' });
+                const profileData = await profileRes.json().catch(() => ({}));
+
+                if (profileRes.ok && typeof profileData?.id === 'string') {
+                    normalizedOther = {
+                        ...normalizedOther,
+                        userId: profileData.id,
+                        user_id: profileData.id,
+                        platformUserId: profileData.id,
+                        username: typeof profileData.username === 'string'
+                            ? profileData.username
+                            : normalizedOther.username,
+                        displayName: typeof profileData.name === 'string'
+                            ? profileData.name
+                            : normalizedOther.displayName,
+                    };
+                }
+            } catch {
+                // Manual Threads connections can still be saved; publisher will attempt a repair fetch later.
+            }
+        }
+
         const connection = await prisma.externalConnection.create({
             data: {
                 userId: auth.userId,
                 provider: platform,
                 name: name,
-                credentials: serializeConnectionCredentials({ accessToken: normalizedAccessToken, ...other })
+                credentials: serializeConnectionCredentials({
+                    accessToken: normalizedAccessToken,
+                    access_token: normalizedAccessToken,
+                    ...normalizedOther,
+                })
             }
         });
 

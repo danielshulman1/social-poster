@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getApiAuthContext, unauthorizedJson } from "@/lib/apiAuth";
+import { getApiAuthContext } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 import {
     parseConnectionCredentials,
@@ -7,11 +7,19 @@ import {
     type ConnectionCredentials,
 } from "@/lib/connection-credentials";
 
+export const dynamic = "force-dynamic";
+
 type GoogleCreds = ConnectionCredentials & {
     accessToken?: string | null;
     refreshToken?: string | null;
     expiresAt?: number | null;
 };
+
+function jsonNoStore(body: unknown, init: ResponseInit & { status?: number } = {}) {
+    const headers = new Headers(init.headers);
+    headers.set("Cache-Control", "no-store");
+    return NextResponse.json(body, { ...init, headers });
+}
 
 function normalizeSpreadsheetId(input: string) {
     const trimmed = input.trim();
@@ -84,13 +92,15 @@ async function refreshGoogleAccessToken(connectionId: string, creds: GoogleCreds
 
 export async function GET(req: Request) {
     const auth = await getApiAuthContext(req);
-    if (!auth?.userId) return unauthorizedJson();
+    if (!auth?.userId) {
+        return jsonNoStore({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { searchParams } = new URL(req.url);
     const spreadsheetIdInput = searchParams.get("spreadsheetId");
 
     if (!spreadsheetIdInput) {
-        return NextResponse.json({ error: "Spreadsheet ID is required" }, { status: 400 });
+        return jsonNoStore({ error: "Spreadsheet ID is required" }, { status: 400 });
     }
 
     try {
@@ -102,7 +112,7 @@ export async function GET(req: Request) {
         });
 
         if (!connections.length) {
-            return NextResponse.json({ error: "Google account not connected." }, { status: 400 });
+            return jsonNoStore({ error: "Google account not connected." }, { status: 400 });
         }
 
         const candidates = connections
@@ -120,7 +130,7 @@ export async function GET(req: Request) {
             });
 
         if (!candidates.length) {
-            return NextResponse.json({ error: "No valid Google OAuth connection found. Please reconnect Google Sheets." }, { status: 400 });
+            return jsonNoStore({ error: "No valid Google OAuth connection found. Please reconnect Google Sheets." }, { status: 400 });
         }
 
         let lastError = "Failed to fetch sheets";
@@ -152,7 +162,7 @@ export async function GET(req: Request) {
             if (response.ok) {
                 const data = await response.json();
                 const sheets = data.sheets?.map((s: any) => s.properties.title) || [];
-                return NextResponse.json({ sheets });
+                return jsonNoStore({ sheets });
             }
 
             const errorPayload = await response.json().catch(() => ({} as any));
@@ -164,17 +174,17 @@ export async function GET(req: Request) {
                 || lower.includes("insufficient authentication scopes")
                 || lower.includes("invalid authentication credentials");
             if (!isAuthError) {
-                return NextResponse.json({ error: message }, { status: response.status });
+                return jsonNoStore({ error: message }, { status: response.status });
             }
         }
 
-        return NextResponse.json(
+        return jsonNoStore(
             { error: `${lastError}. Reconnect Google Sheets and grant Sheets access.` },
             { status: 400 }
         );
 
     } catch (error) {
         console.error("Error fetching sheet metadata:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return jsonNoStore({ error: "Internal Server Error" }, { status: 500 });
     }
 }

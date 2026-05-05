@@ -66,14 +66,21 @@ export async function GET(req: Request) {
     const redirectUri = `${baseUrl}/api/auth/threads/callback`;
 
     try {
-        // 1. Exchange code for access token
-        const tokenUrl = new URL('https://graph.instagram.com/oauth/access_token');
-        tokenUrl.searchParams.set('client_id', clientId);
-        tokenUrl.searchParams.set('client_secret', clientSecret);
-        tokenUrl.searchParams.set('code', code);
-        tokenUrl.searchParams.set('redirect_uri', redirectUri);
-
-        const tokenRes = await fetch(tokenUrl.toString());
+        // Exchange the authorization code for a Threads user token.
+        const tokenUrl = 'https://graph.threads.net/oauth/access_token';
+        const tokenRes = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                client_id: clientId,
+                client_secret: clientSecret,
+                code,
+                grant_type: 'authorization_code',
+                redirect_uri: redirectUri,
+            }),
+        });
         const tokenData = await tokenRes.json();
 
         if (!tokenRes.ok || !tokenData.access_token) {
@@ -85,8 +92,8 @@ export async function GET(req: Request) {
         const accessToken = tokenData.access_token;
         const userId_ig = tokenData.user_id;
 
-        // 2. Get user info (username and Threads profile)
-        const userInfoUrl = new URL('https://graph.instagram.com/me');
+        // Load the authenticated Threads profile from the Threads Graph API.
+        const userInfoUrl = new URL('https://graph.threads.net/me');
         userInfoUrl.searchParams.set('fields', 'id,username,name');
         userInfoUrl.searchParams.set('access_token', accessToken);
 
@@ -116,7 +123,10 @@ export async function GET(req: Request) {
                 name: displayName,
                 credentials: serializeConnectionCredentials({
                     accessToken: accessToken,
+                    access_token: accessToken,
                     userId: userInfo.id,
+                    user_id: userInfo.id,
+                    platformUserId: userInfo.id || userId_ig,
                     username: userInfo.username,
                     displayName: userInfo.name,
                     connectedAt: new Date().toISOString()
