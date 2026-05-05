@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
     const userAppId = normalizeEnv(prismaUser?.facebookAppId);
     const envAppId = normalizeEnv(process.env.NEXT_PUBLIC_FACEBOOK_APP_ID) || normalizeEnv(process.env.FACEBOOK_APP_ID);
-    const loginConfigId = normalizeEnv(process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_CONFIG_ID);
+    const loginConfigId = normalizeEnv(process.env.FACEBOOK_LOGIN_CONFIG_ID);
     // User's own app ID takes priority, falls back to environment variable
     const appId = userAppId || envAppId;
 
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
     const state = createOAuthState({ userId: session.user.id, provider: "facebook" });
 
-    const authUrl = new URL('https://www.facebook.com/v25.0/dialog/oauth');
+    const authUrl = new URL('https://www.facebook.com/v21.0/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('config_id', loginConfigId);
