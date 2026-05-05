@@ -319,7 +319,7 @@ function ConnectionsPageContent() {
     }, []);
 
     const connectWithFacebookOAuth = () => {
-        window.location.href = '/api/auth/facebook';
+        window.location.href = '/api/auth/facebook?fresh=1';
     };
 
     const connectWithThreadsOAuth = () => {

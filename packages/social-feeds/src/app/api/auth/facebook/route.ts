@@ -18,6 +18,8 @@ const isPlaceholder = (value: string) => {
 
 export async function GET(req: Request) {
     const baseUrl = getAppBaseUrl(req.url) || "http://localhost:3000";
+    const url = new URL(req.url);
+    const forceFreshLogin = url.searchParams.get("fresh") === "1";
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -35,6 +37,7 @@ export async function GET(req: Request) {
 
     const userAppId = normalizeEnv(prismaUser?.facebookAppId);
     const envAppId = normalizeEnv(process.env.NEXT_PUBLIC_FACEBOOK_APP_ID) || normalizeEnv(process.env.FACEBOOK_APP_ID);
+    const loginConfigId = normalizeEnv(process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_CONFIG_ID);
     // User's own app ID takes priority, falls back to environment variable
     const appId = userAppId || envAppId;
 
@@ -42,21 +45,22 @@ export async function GET(req: Request) {
         return NextResponse.redirect(`${baseUrl}/settings?error=missing_facebook_config`);
     }
 
+    if (!loginConfigId) {
+        return NextResponse.redirect(`${baseUrl}/settings?error=missing_facebook_login_config`);
+    }
+
     const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
     const state = createOAuthState({ userId: session.user.id, provider: "facebook" });
 
-    // Request permissions to view and manage pages
-    // Start with minimal scopes - can be expanded after app review
-    const scope = 'pages_show_list';
-
-    const authUrl = new URL('https://www.facebook.com/dialog/oauth');
+    const authUrl = new URL('https://www.facebook.com/v25.0/dialog/oauth');
     authUrl.searchParams.set('client_id', appId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('config_id', loginConfigId);
     authUrl.searchParams.set('state', state);
-    authUrl.searchParams.set('scope', scope);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('display', 'popup');
-    authUrl.searchParams.set('auth_type', 'rerequest');
+    authUrl.searchParams.set('auth_type', forceFreshLogin ? 'reauthenticate' : 'rerequest');
+    authUrl.searchParams.set('auth_nonce', crypto.randomUUID());
 
     const response = NextResponse.redirect(authUrl.toString());
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
