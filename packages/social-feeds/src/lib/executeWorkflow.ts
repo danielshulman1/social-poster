@@ -428,6 +428,27 @@ const extractOpenAiImageOutput = (data: any) => {
     return "";
 };
 
+const isRemoteImageUrl = (value: string) =>
+    value.startsWith("http://") || value.startsWith("https://");
+
+const isDataImageUrl = (value: string) => value.startsWith("data:image/");
+
+const decodeDataImageUrl = (value: string) => {
+    const match = value.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (!match) return null;
+
+    const mimeType = match[1];
+    const base64 = match[2];
+    const buffer = Buffer.from(base64, "base64");
+    const extension = mimeType.split("/")[1] || "png";
+
+    return {
+        mimeType,
+        buffer,
+        filename: `generated-image.${extension.replace(/[^a-zA-Z0-9]/g, "") || "png"}`,
+    };
+};
+
 async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
     try {
         const connections = await prisma.externalConnection.findMany({
@@ -705,6 +726,7 @@ export async function executeWorkflow(
     let lastAiTextOutput = '';
     let lastImageUrl = '';    // Tracks the most recent IMAGE URL
     let lastImageOrigin: WorkflowImageOrigin = "";
+    let lastRemoteImageUrl = "";
 
     for (const node of executionOrder) {
         const nodeType = node.type || 'unknown';
@@ -1178,15 +1200,32 @@ export async function executeWorkflow(
                     }
 
                     if (imageUrl) {
-                        const fbRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                url: imageUrl,
-                                caption: contentToPost || '',
-                                access_token: pageToken,
-                            }),
-                        });
+                        const dataImage = isDataImageUrl(imageUrl) ? decodeDataImageUrl(imageUrl) : null;
+                        const fbRes = dataImage
+                            ? await (async () => {
+                                const formData = new FormData();
+                                formData.append(
+                                    'source',
+                                    new Blob([dataImage.buffer], { type: dataImage.mimeType }),
+                                    dataImage.filename,
+                                );
+                                formData.append('caption', contentToPost || '');
+                                formData.append('access_token', pageToken);
+
+                                return fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+                                    method: 'POST',
+                                    body: formData,
+                                });
+                            })()
+                            : await fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    url: imageUrl,
+                                    caption: contentToPost || '',
+                                    access_token: pageToken,
+                                }),
+                            });
 
                         const fbData = await fbRes.json();
                         if (fbData.error) {
@@ -1472,10 +1511,18 @@ export async function executeWorkflow(
                         lastAiTextOutput,
                         lastOutput,
                     });
-                    const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
+                    let imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
+
+                    if (isDataImageUrl(imageUrl) && lastRemoteImageUrl) {
+                        imageUrl = lastRemoteImageUrl;
+                    }
 
                     if (!imageUrl) {
                         throw new Error('Instagram requires an image or video. Add an image URL in the node config, or use an Image Generation node before this publisher.');
+                    }
+
+                    if (!isRemoteImageUrl(imageUrl)) {
+                        throw new Error('Instagram requires a public image URL. Use a Google Sheets/custom image URL, or configure generated images to be hosted before publishing.');
                     }
 
                     if (!shouldPublishWithoutApproval(node)) {
@@ -2014,12 +2061,18 @@ export async function executeWorkflow(
             if (imageUrlFromNode !== null) {
                 lastImageUrl = imageUrlFromNode;
                 lastImageOrigin = imageUrlFromNode ? (node.type === 'manual-trigger' ? 'trigger-image' : 'google-sheet') : "";
+                if (isRemoteImageUrl(imageUrlFromNode)) {
+                    lastRemoteImageUrl = imageUrlFromNode;
+                }
             }
 
             if (node.type === 'image-generation') {
                 if (output && (output.startsWith('http') || output.startsWith('data:'))) {
                     lastImageUrl = output;
                     lastImageOrigin = 'image-generated';
+                    if (isRemoteImageUrl(output)) {
+                        lastRemoteImageUrl = output;
+                    }
                 }
             } else if (node.type?.includes('publisher') || node.type === 'http-request') {
                 // Do nothing — terminal/publisher nodes don't update lastTextOutput

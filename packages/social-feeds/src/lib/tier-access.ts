@@ -51,6 +51,15 @@ function isUniversallyAllowedPlatform(
   return UNIVERSAL_PLATFORM_ACCESS.has(platform as RestrictedSocialProvider);
 }
 
+async function isAdminUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  return user?.role === "admin";
+}
+
 async function requireActiveTier(userId: string): Promise<ActiveSubscription> {
   const subscription = await getUserSubscription(userId);
 
@@ -68,6 +77,10 @@ export async function assertUserCanConnectProvider(
   userId: string,
   provider: string
 ) {
+  if (await isAdminUser(userId)) {
+    return null;
+  }
+
   if (isUniversallyAllowedPlatform(provider)) {
     return null;
   }
@@ -88,6 +101,10 @@ export async function assertUserCanPublishPlatform(
   userId: string,
   platform: RestrictedSocialProvider
 ) {
+  if (await isAdminUser(userId)) {
+    return null;
+  }
+
   if (isUniversallyAllowedPlatform(platform)) {
     return null;
   }
@@ -177,6 +194,10 @@ export async function assertWorkflowDefinitionAllowed(
   userId: string,
   definition: string | WorkflowLikeDefinition | null | undefined
 ) {
+  if (await isAdminUser(userId)) {
+    return null;
+  }
+
   const restrictedPlatforms = extractRestrictedPlatformsFromDefinition(definition);
 
   if (
