@@ -16,6 +16,12 @@ export type UserGuideFaq = {
   answer: string;
 };
 
+export const USER_GUIDE_DRIVE_FILE_ID = "1BTe46tvW2wkzIhnJNXKbpBiqa1bTNOmq";
+export const USER_GUIDE_DRIVE_VIEW_URL = `https://drive.google.com/file/d/${USER_GUIDE_DRIVE_FILE_ID}/view?usp=sharing`;
+export const USER_GUIDE_DRIVE_PREVIEW_URL = `https://drive.google.com/file/d/${USER_GUIDE_DRIVE_FILE_ID}/preview`;
+export const USER_GUIDE_DRIVE_DOWNLOAD_URL = `https://drive.google.com/uc?export=download&id=${USER_GUIDE_DRIVE_FILE_ID}`;
+export const USER_GUIDE_DOWNLOAD_FILENAME = "easy-ai-user-guide.pdf";
+
 export const USER_GUIDE_HIGHLIGHTS = [
   "Build workflows from a blank canvas or from a text prompt.",
   "Use your AI persona, Google Sheets rows, and generated content together in one flow.",
@@ -336,6 +342,7 @@ export function buildUserGuidePlainText() {
   return [
     "Social Poster User Guide",
     "This guide is for end users who build workflows, generate content, connect platforms, and review outputs. It is not an admin guide.",
+    `Official PDF guide: ${USER_GUIDE_DRIVE_VIEW_URL}`,
     "",
     "Highlights:",
     ...USER_GUIDE_HIGHLIGHTS.map((highlight) => `- ${highlight}`),

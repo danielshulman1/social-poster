@@ -3,9 +3,11 @@ export const dynamic = "force-dynamic";
 
 import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
 import {
+  ArrowUpRight,
   BookOpenText,
   Bot,
   CheckCircle2,
+  Download,
   LifeBuoy,
   Loader2,
   MessageSquare,
@@ -19,6 +21,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  USER_GUIDE_DOWNLOAD_FILENAME,
+  USER_GUIDE_DRIVE_PREVIEW_URL,
+  USER_GUIDE_DRIVE_VIEW_URL,
   USER_GUIDE_FAQS,
   USER_GUIDE_HIGHLIGHTS,
   USER_GUIDE_SECTIONS,
@@ -170,6 +175,12 @@ export default function HelpPage() {
                   Ask The Assistant
                 </a>
               </Button>
+              <Button asChild variant="outline">
+                <a href="/api/help/guide-download">
+                  <Download className="h-4 w-4" />
+                  Download Guide
+                </a>
+              </Button>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:w-[25rem] xl:grid-cols-1">
@@ -215,6 +226,42 @@ export default function HelpPage() {
             </TabsList>
 
             <TabsContent value="guide" className="space-y-6">
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle>Official user guide</CardTitle>
+                  <CardDescription>
+                    The latest user guide is hosted from Google Drive so users can read it here or download the PDF directly.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild>
+                      <a href="/api/help/guide-download">
+                        <Download className="h-4 w-4" />
+                        Download PDF
+                      </a>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <a href={USER_GUIDE_DRIVE_VIEW_URL} target="_blank" rel="noreferrer">
+                        <ArrowUpRight className="h-4 w-4" />
+                        Open In Drive
+                      </a>
+                    </Button>
+                  </div>
+                  <div className="overflow-hidden rounded-[1.7rem] border border-border/75 bg-background/85">
+                    <iframe
+                      title="Official user guide preview"
+                      src={USER_GUIDE_DRIVE_PREVIEW_URL}
+                      className="h-[32rem] w-full"
+                    />
+                  </div>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    If Google Drive asks the user to sign in, the file still needs to be shared publicly with view or download access.
+                    The in-app sections below remain available as a fallback quick guide.
+                  </p>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Browse by topic</CardTitle>
@@ -228,6 +275,11 @@ export default function HelpPage() {
                       <a href={`#${section.id}`}>{section.title}</a>
                     </Badge>
                   ))}
+                  <Badge asChild variant="outline" className="cursor-pointer">
+                    <a href="/api/help/guide-download" download={USER_GUIDE_DOWNLOAD_FILENAME}>
+                      Download PDF
+                    </a>
+                  </Badge>
                 </CardContent>
               </Card>
 
