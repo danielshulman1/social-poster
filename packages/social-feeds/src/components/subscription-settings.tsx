@@ -10,17 +10,14 @@ interface SubscriptionSettingsProps {
 }
 
 type SubscriptionView = {
+  isAdminBypass?: boolean;
   subscription_tier: string;
   subscription_status: string;
   trial_ends_at: string | null;
   subscription_ends_at: string | null;
 };
 
-function getSubscriptionStatus(subscription: {
-  subscription_status: string;
-  trial_ends_at: string | null;
-  subscription_ends_at: string | null;
-}) {
+function getSubscriptionStatus(subscription: SubscriptionView) {
   const now = new Date();
 
   if (subscription.subscription_status === "trialing" && subscription.trial_ends_at) {
@@ -33,6 +30,10 @@ function getSubscriptionStatus(subscription: {
   }
 
   if (subscription.subscription_status === "active") {
+    if (subscription.isAdminBypass) {
+      return { message: "Admin access" };
+    }
+
     if (subscription.subscription_ends_at) {
       const subEnds = new Date(subscription.subscription_ends_at);
       const daysLeft = Math.ceil((subEnds.getTime() - now.getTime()) / 86400000);
@@ -142,6 +143,17 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
           </div>
         </div>
 
+        {subscription.isAdminBypass && (
+          <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
+            <p className="text-sm font-semibold text-blue-900 mb-1">
+              Admin Full Access
+            </p>
+            <p className="text-sm text-blue-700">
+              This account bypasses subscription limits and platform gating.
+            </p>
+          </div>
+        )}
+
         {subscription.subscription_status === "trialing" && subscription.trial_ends_at && (
           <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
             <p className="text-sm font-semibold text-blue-900 mb-1">
@@ -176,8 +188,9 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
           </div>
         )}
 
-        {subscription.subscription_status === "active" ||
-        subscription.subscription_status === "trialing" ? (
+        {!subscription.isAdminBypass &&
+        (subscription.subscription_status === "active" ||
+          subscription.subscription_status === "trialing") && (
           <Button
             variant="destructive"
             onClick={handleCancel}
@@ -186,13 +199,21 @@ export function SubscriptionSettings({ userId }: SubscriptionSettingsProps) {
           >
             {isCanceling ? "Canceling..." : "Cancel Subscription"}
           </Button>
-        ) : subscription.subscription_status === "canceling" ? (
+        )}
+
+        {!subscription.isAdminBypass &&
+          subscription.subscription_status === "canceling" && (
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
             <p className="text-sm text-amber-700">
               Subscription is canceled. Access remains until the period ends.
             </p>
           </div>
-        ) : (
+        )}
+
+        {!subscription.isAdminBypass &&
+          subscription.subscription_status !== "active" &&
+          subscription.subscription_status !== "trialing" &&
+          subscription.subscription_status !== "canceling" && (
           <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
             <p className="text-sm text-red-700">Subscription is {subscription.subscription_status}</p>
           </div>

@@ -15,6 +15,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
         isActive: !!subscription?.isValid,
+        isAdminBypass: !!subscription?.isAdminBypass,
         tier: subscription?.tier ?? null,
         status: subscription?.status ?? "inactive",
         allowedPlatforms,

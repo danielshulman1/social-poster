@@ -11,6 +11,7 @@ export interface UserSubscription {
   id: string;
   userId: string;
   email: string;
+  isAdminBypass: boolean;
   tier: TierId | null;
   status: string;
   isValid: boolean;
@@ -46,6 +47,44 @@ function isValidSubscriptionStatus(status: string, periodEnd: Date | null) {
   return false;
 }
 
+function buildAdminSubscription(params: {
+  userId: string;
+  email: string;
+  subscription?: {
+    id: string;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
+  } | null;
+}): UserSubscription {
+  const tier: TierId = "premium";
+  const config = getTierConfig(tier);
+
+  return {
+    id: params.subscription?.id || `admin-${params.userId}`,
+    userId: params.userId,
+    email: params.email,
+    isAdminBypass: true,
+    tier,
+    status: "active",
+    isValid: true,
+    config,
+    allowedPlatforms: config?.allowedPlatforms ?? [],
+    postsPerWeekPerPlatform: config?.postsPerWeekPerPlatform ?? 0,
+    maxPlatforms: config?.allowedPlatforms.length ?? 0,
+    canAccessCheckInCall:
+      !!config?.hasMonthlyCheckInCall || !!config?.hasWeeklyCheckInCall,
+    canAccessPrioritySupport: !!config?.hasPrioritySupport,
+    canAccessStrategyCall: !!config?.hasStrategyCall,
+    supportLabel: config?.supportLabel ?? "Admin access",
+    subscription_tier: tier,
+    subscription_status: "active",
+    trial_ends_at: null,
+    subscription_ends_at: null,
+    stripe_customer_id: params.subscription?.stripeCustomerId ?? null,
+    stripe_subscription_id: params.subscription?.stripeSubscriptionId ?? null,
+  };
+}
+
 export async function getUserSubscription(
   userId: string
 ): Promise<UserSubscription | null> {
@@ -54,11 +93,30 @@ export async function getUserSubscription(
     select: {
       id: true,
       email: true,
+      role: true,
       subscription: true,
     },
   });
 
-  if (!user?.subscription) {
+  if (!user) {
+    return null;
+  }
+
+  if (user.role === "admin") {
+    return buildAdminSubscription({
+      userId: user.id,
+      email: user.email,
+      subscription: user.subscription
+        ? {
+            id: user.subscription.id,
+            stripeCustomerId: user.subscription.stripeCustomerId,
+            stripeSubscriptionId: user.subscription.stripeSubscriptionId,
+          }
+        : null,
+    });
+  }
+
+  if (!user.subscription) {
     return null;
   }
 
@@ -72,6 +130,7 @@ export async function getUserSubscription(
     id: subscription.id,
     userId: user.id,
     email: user.email,
+    isAdminBypass: false,
     tier,
     status: subscription.status,
     isValid,
