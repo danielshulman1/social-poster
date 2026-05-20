@@ -449,6 +449,38 @@ const decodeDataImageUrl = (value: string) => {
     };
 };
 
+const normalizeBaseUrl = (value?: string | null) => {
+    const trimmed = (value || "").trim().replace(/\/+$/, "");
+    if (!trimmed) return null;
+
+    try {
+        const url = new URL(trimmed);
+        if (!["http:", "https:"].includes(url.protocol)) {
+            return null;
+        }
+
+        return url.origin;
+    } catch {
+        return null;
+    }
+};
+
+const getWorkflowImageBaseUrl = (requestUrl?: string) =>
+    normalizeBaseUrl(requestUrl) ||
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) ||
+    normalizeBaseUrl(process.env.NEXTAUTH_URL);
+
+const buildGeneratedWorkflowImageUrl = (params: {
+    requestUrl?: string;
+    executionId: string;
+    nodeId: string;
+}) => {
+    const baseUrl = getWorkflowImageBaseUrl(params.requestUrl);
+    if (!baseUrl) return "";
+
+    return `${baseUrl}/api/workflow-images/${encodeURIComponent(params.executionId)}/${encodeURIComponent(params.nodeId)}`;
+};
+
 async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
     try {
         const connections = await prisma.externalConnection.findMany({
@@ -727,6 +759,7 @@ export async function executeWorkflow(
     let lastImageUrl = '';    // Tracks the most recent IMAGE URL
     let lastImageOrigin: WorkflowImageOrigin = "";
     let lastRemoteImageUrl = "";
+    let lastGeneratedImageNodeId = "";
 
     for (const node of executionOrder) {
         const nodeType = node.type || 'unknown';
@@ -1513,7 +1546,14 @@ export async function executeWorkflow(
                     });
                     let imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
-                    if (isDataImageUrl(imageUrl) && lastRemoteImageUrl) {
+                    if (isDataImageUrl(imageUrl) && lastImageOrigin === 'image-generated' && lastGeneratedImageNodeId) {
+                        imageUrl =
+                            buildGeneratedWorkflowImageUrl({
+                                requestUrl,
+                                executionId: execution.id,
+                                nodeId: lastGeneratedImageNodeId,
+                            }) || lastRemoteImageUrl;
+                    } else if (isDataImageUrl(imageUrl) && lastRemoteImageUrl) {
                         imageUrl = lastRemoteImageUrl;
                     }
 
@@ -2070,6 +2110,7 @@ export async function executeWorkflow(
                 if (output && (output.startsWith('http') || output.startsWith('data:'))) {
                     lastImageUrl = output;
                     lastImageOrigin = 'image-generated';
+                    lastGeneratedImageNodeId = node.id;
                     if (isRemoteImageUrl(output)) {
                         lastRemoteImageUrl = output;
                     }
