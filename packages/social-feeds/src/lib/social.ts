@@ -1,4 +1,6 @@
 
+import { preparePublishableContent } from './publishable-content';
+
 export interface PostParams {
     platform: string;
     accessToken: string;
@@ -29,6 +31,10 @@ export async function postToSocialMedia(params: PostParams) {
 
 async function postToFacebook(params: PostParams) {
     const { pageId, accessToken, content, imageUrl } = params;
+    const publishableContent = preparePublishableContent(content);
+    if (!publishableContent && !imageUrl) {
+        throw new Error('No publishable Facebook content found. Add a content source or AI step before the publisher.');
+    }
     // If username is stored as pageId, use it. But in our store we saved `username: page.id`.
     // The `pageId` param here might come from the account username/id.
 
@@ -38,7 +44,7 @@ async function postToFacebook(params: PostParams) {
     const url = `https://graph.facebook.com/v19.0/me/feed`;
 
     const body: any = {
-        message: content,
+        message: publishableContent,
         access_token: accessToken
     };
 
@@ -59,7 +65,7 @@ async function postToFacebook(params: PostParams) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     url: imageUrl,
-                    caption: content,
+                    caption: publishableContent,
                     access_token: accessToken
                 })
             });
@@ -87,6 +93,10 @@ async function postToFacebook(params: PostParams) {
 async function postToLinkedIn(params: PostParams) {
     // Basic LinkedInugcPost implementation
     const { accessToken, content, imageUrl, pageId } = params;
+    const publishableContent = preparePublishableContent(content);
+    if (!publishableContent && !imageUrl) {
+        throw new Error('No publishable LinkedIn content found. Add a content source or AI step before the publisher.');
+    }
 
     // User or Organization URN is needed. 
     // We assume the 'pageId' or 'username' in our store is the URN (e.g., urn:li:person:...)
@@ -114,7 +124,7 @@ async function postToLinkedIn(params: PostParams) {
         "specificContent": {
             "com.linkedin.ugc.ShareContent": {
                 "shareCommentary": {
-                    "text": content
+                    "text": publishableContent
                 },
                 "shareMediaCategory": imageUrl ? "IMAGE" : "NONE",
                 // Media handling requires asset upload which is complex (initialize, upload, finalize).

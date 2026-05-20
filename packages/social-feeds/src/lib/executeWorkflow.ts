@@ -31,6 +31,7 @@ import {
     fetchRssFirstItemArticlePrompt,
     formatArticleExtractForPrompt,
 } from "@/lib/rss-content";
+import { preparePublishableContent } from "@/lib/publishable-content";
 
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
@@ -371,7 +372,7 @@ const resolvePublisherImageUrl = (params: {
         case "google-sheet":
             return lastImageOrigin === "google-sheet" ? lastImageUrl : "";
         case "image-generated":
-            return lastImageOrigin === "image-generated" ? lastImageUrl : "";
+            return lastImageOrigin === "image-generated" ? lastImageUrl : (configuredImageUrl || lastImageUrl || "");
         case "trigger-image":
             return lastImageOrigin === "trigger-image" ? lastImageUrl : "";
         case "custom-url":
@@ -381,6 +382,50 @@ const resolvePublisherImageUrl = (params: {
         default:
             return configuredImageUrl || lastImageUrl || outputImageUrl || "";
     }
+};
+
+const resolvePublisherTextContent = (params: {
+    node: { data?: Record<string, unknown> };
+    lastTextOutput: string;
+    lastAiTextOutput: string;
+    lastOutput: string;
+}) => {
+    const { node, lastTextOutput, lastAiTextOutput, lastOutput } = params;
+    const configuredContent =
+        typeof node.data?.content === "string" ? node.data.content.trim() : "";
+    const textSource =
+        typeof node.data?.textSource === "string" ? node.data.textSource : "";
+
+    switch (textSource) {
+        case "none":
+            return "";
+        case "ai-generated":
+            return preparePublishableContent(lastAiTextOutput || lastTextOutput || lastOutput || configuredContent || "");
+        case "trigger":
+        default:
+            return preparePublishableContent(lastTextOutput || lastOutput || configuredContent || "");
+    }
+};
+
+const GPT_IMAGE_PROVIDERS = new Set([
+    "gpt-image-1",
+    "gpt-image-1.5",
+    "gpt-image-1-mini",
+]);
+
+const extractOpenAiImageOutput = (data: any) => {
+    const image = data?.data?.[0];
+    if (!image) return "";
+
+    if (typeof image.url === "string" && image.url.trim()) {
+        return image.url.trim();
+    }
+
+    if (typeof image.b64_json === "string" && image.b64_json.trim()) {
+        return `data:image/png;base64,${image.b64_json.trim()}`;
+    }
+
+    return "";
 };
 
 async function getGoogleWriteAccessToken(userId: string, forceRefresh = false): Promise<string | null> {
@@ -657,6 +702,7 @@ export async function executeWorkflow(
     const results: Record<string, WorkflowExecutionResult> = {};
     let lastOutput = '';
     let lastTextOutput = '';  // Tracks the most recent TEXT content
+    let lastAiTextOutput = '';
     let lastImageUrl = '';    // Tracks the most recent IMAGE URL
     let lastImageOrigin: WorkflowImageOrigin = "";
 
@@ -1036,9 +1082,10 @@ export async function executeWorkflow(
                         prompt = prompt.replace('{{content}}', lastOutput);
                     }
 
-                    if (provider === 'dalle-3') {
+                    if (provider === 'dalle-3' || GPT_IMAGE_PROVIDERS.has(provider)) {
                         if (!user?.openaiApiKey) throw new Error('No OpenAI API key configured.');
 
+                        const model = provider === 'dalle-3' ? 'dall-e-3' : provider;
                         const response = await fetch('https://api.openai.com/v1/images/generations', {
                             method: 'POST',
                             headers: {
@@ -1046,7 +1093,7 @@ export async function executeWorkflow(
                                 'Authorization': `Bearer ${user.openaiApiKey}`,
                             },
                             body: JSON.stringify({
-                                model: "dall-e-3",
+                                model,
                                 prompt: prompt,
                                 n: 1,
                                 size: "1024x1024",
@@ -1055,12 +1102,12 @@ export async function executeWorkflow(
 
                         if (!response.ok) {
                             const err = await response.json();
-                            throw new Error(`DALL-E 3 error: ${err.error?.message || 'Unknown'}`);
+                            throw new Error(`${provider} error: ${err.error?.message || 'Unknown'}`);
                         }
 
                         const data = await response.json();
-                        output = data.data[0]?.url || '';
-                        if (!output) throw new Error('DALL-E 3 generated no image URL.');
+                        output = extractOpenAiImageOutput(data);
+                        if (!output) throw new Error(`${provider} generated no image output.`);
 
                     } else if (provider === 'nano-banana' || provider === 'gemini') {
                         const userWithGoogle = decryptUserSecretFields(await prisma.user.findUnique({
@@ -1109,7 +1156,12 @@ export async function executeWorkflow(
 
                     if (!pageToken) throw new Error('No access token found for this Facebook page.');
 
-                    const contentToPost = lastTextOutput || lastOutput || node.data?.content || '';
+                    const contentToPost = resolvePublisherTextContent({
+                        node,
+                        lastTextOutput,
+                        lastAiTextOutput,
+                        lastOutput,
+                    });
                     const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
                     if (!shouldPublishWithoutApproval(node)) {
@@ -1186,7 +1238,12 @@ export async function executeWorkflow(
 
                 case 'linkedin-publisher': {
                     await assertUserCanPublishPlatform(userId, 'linkedin');
-                    const liTextContent = lastTextOutput || lastOutput || node.data?.content || '';
+                    const liTextContent = resolvePublisherTextContent({
+                        node,
+                        lastTextOutput,
+                        lastAiTextOutput,
+                        lastOutput,
+                    });
                     const liImageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
                     if (!liTextContent && !liImageUrl) throw new Error('No content to post. Connect an AI node before this publisher.');
@@ -1409,7 +1466,12 @@ export async function executeWorkflow(
                         );
                     }
 
-                    const igContent = lastTextOutput || lastOutput || node.data?.content || '';
+                    const igContent = resolvePublisherTextContent({
+                        node,
+                        lastTextOutput,
+                        lastAiTextOutput,
+                        lastOutput,
+                    });
                     const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
                     if (!imageUrl) {
@@ -1539,7 +1601,12 @@ export async function executeWorkflow(
                         throw new Error('Threads connection requires accessToken and userId.');
                     }
 
-                    const text = (lastTextOutput || lastOutput || node.data?.content || '').slice(0, 500);
+                    const text = resolvePublisherTextContent({
+                        node,
+                        lastTextOutput,
+                        lastAiTextOutput,
+                        lastOutput,
+                    }).slice(0, 500);
                     if (!text) throw new Error('No content to post to Threads.');
 
                     if (!shouldPublishWithoutApproval(node)) {
@@ -1947,7 +2014,9 @@ export async function executeWorkflow(
             if (imageUrlFromNode !== null) {
                 lastImageUrl = imageUrlFromNode;
                 lastImageOrigin = imageUrlFromNode ? (node.type === 'manual-trigger' ? 'trigger-image' : 'google-sheet') : "";
-            } else if (node.type === 'image-generation') {
+            }
+
+            if (node.type === 'image-generation') {
                 if (output && (output.startsWith('http') || output.startsWith('data:'))) {
                     lastImageUrl = output;
                     lastImageOrigin = 'image-generated';
@@ -1956,6 +2025,9 @@ export async function executeWorkflow(
                 // Do nothing — terminal/publisher nodes don't update lastTextOutput
             } else {
                 if (output) lastTextOutput = output;
+                if (node.type === 'ai-generation' && output) {
+                    lastAiTextOutput = output;
+                }
             }
 
             const nodeCompletedAt = new Date();

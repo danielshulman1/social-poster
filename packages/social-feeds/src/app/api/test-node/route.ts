@@ -151,6 +151,27 @@ async function buildUpstreamErrorResponse(response: Response, prefix: string, fa
 const stringifyHttpResponse = (value: unknown) =>
     typeof value === "string" ? value : JSON.stringify(value, null, 2);
 
+const GPT_IMAGE_PROVIDERS = new Set([
+    "gpt-image-1",
+    "gpt-image-1.5",
+    "gpt-image-1-mini",
+]);
+
+const extractOpenAiImageOutput = (data: any) => {
+    const image = data?.data?.[0];
+    if (!image) return "";
+
+    if (typeof image.url === "string" && image.url.trim()) {
+        return image.url.trim();
+    }
+
+    if (typeof image.b64_json === "string" && image.b64_json.trim()) {
+        return `data:image/png;base64,${image.b64_json.trim()}`;
+    }
+
+    return "";
+};
+
 const summarizeHttpError = (status: number, statusText: string, responseText: string) => {
     const statusLabel = statusText ? ` ${statusText}` : "";
     const trimmed = responseText.trim();
@@ -634,7 +655,7 @@ export async function POST(req: Request) {
 
             console.log('[Test Node] Image Generation Request:', { provider, prompt, promptLength: prompt.length });
 
-            if (provider === 'dalle-3') {
+            if (provider === 'dalle-3' || GPT_IMAGE_PROVIDERS.has(provider)) {
                 const user = decryptUserSecretFields(await prisma.user.findUnique({
                     where: { id: auth.userId },
                     select: { openaiApiKey: true, openrouterApiKey: true },
@@ -644,6 +665,7 @@ export async function POST(req: Request) {
                     return NextResponse.json({ success: false, error: 'No OpenAI API key configured.' }, { status: 400 });
                 }
 
+                const model = provider === 'dalle-3' ? 'dall-e-3' : provider;
                 const response = await fetch('https://api.openai.com/v1/images/generations', {
                     method: 'POST',
                     headers: {
@@ -652,7 +674,7 @@ export async function POST(req: Request) {
                         'Authorization': `Bearer ${user.openaiApiKey}`,
                     },
                     body: JSON.stringify({
-                        model: "dall-e-3",
+                        model,
                         prompt: prompt,
                         n: 1,
                         size: "1024x1024",
@@ -660,11 +682,11 @@ export async function POST(req: Request) {
                 });
 
                 if (!response.ok) {
-                    return buildUpstreamErrorResponse(response, "DALL-E 3 error");
+                    return buildUpstreamErrorResponse(response, `${provider} error`);
                 }
 
                 const data = await parseJsonResponse(response);
-                const imageUrl = data?.data?.[0]?.url || '';
+                const imageUrl = extractOpenAiImageOutput(data);
                 return NextResponse.json({ success: true, result: imageUrl });
 
             } else if (provider === 'nano-banana' || provider === 'gemini') {
