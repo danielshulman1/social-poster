@@ -1101,31 +1101,31 @@ export async function executeWorkflow(
 
                     const blogPrompt = node.data?.blogPrompt || 'Write a polished blog post with headline, sections, and conclusion.';
 
-                    if (user?.openaiApiKey) {
-                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${user.openaiApiKey}`,
-                            },
-                            body: JSON.stringify({
-                                model: 'gpt-4o-mini',
-                                messages: [
-                                    { role: 'system', content: 'You are a professional blog writer.' },
-                                    { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
-                                ],
-                                max_tokens: 1200,
-                            }),
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(`Blog creation failed: ${errorData.error?.message || 'Unknown error'}`);
-                        }
-                        const aiData = await response.json();
-                        output = aiData.choices[0]?.message?.content || 'No blog content generated.';
-                    } else {
-                        output = `# Blog Draft\n\n${sourceText}`;
+                    if (!user?.openaiApiKey) {
+                        throw new Error('No OpenAI API key configured. Go to Settings → API Keys to add one, then re-run the workflow.');
                     }
+
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${user.openaiApiKey}`,
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-4o-mini',
+                            messages: [
+                                { role: 'system', content: 'You are a professional blog writer.' },
+                                { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
+                            ],
+                            max_tokens: 1200,
+                        }),
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`Blog creation failed: ${errorData.error?.message || 'Unknown error'}`);
+                    }
+                    const aiData = await response.json();
+                    output = aiData.choices[0]?.message?.content || 'No blog content generated.';
                     break;
                 }
 
