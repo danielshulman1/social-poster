@@ -52,7 +52,14 @@ export async function GET(req: Request) {
                         const day = normalizeDay(s?.day);
                         const time = normalizeTime(s?.time);
                         console.log(`Workflow ${workflow.id} schedule check: stored="${day} ${time}" vs current="${currentDay} ${currentTime}"`);
-                        return day === currentDay && time === currentTime;
+                        
+                        if (time !== currentTime) return false;
+                        
+                        if (day === 'everyday') return true;
+                        if (day === 'weekdays' && !['saturday', 'sunday'].includes(currentDay)) return true;
+                        if (day === 'weekends' && ['saturday', 'sunday'].includes(currentDay)) return true;
+                        
+                        return day === currentDay;
                     });
                     if (match) {
                         shouldTrigger = true;

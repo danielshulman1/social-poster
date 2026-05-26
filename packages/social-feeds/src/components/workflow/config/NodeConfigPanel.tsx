@@ -412,7 +412,7 @@ export const NodeConfigPanel = () => {
                                 <Select value={newScheduleDay} onValueChange={setNewScheduleDay}>
                                     <SelectTrigger className="w-[110px]"><SelectValue placeholder="Day" /></SelectTrigger>
                                     <SelectContent>
-                                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                        {['Everyday', 'Weekdays', 'Weekends', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
                                             <SelectItem key={day} value={day}>{day}</SelectItem>
                                         ))}
                                     </SelectContent>

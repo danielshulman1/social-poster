@@ -1595,6 +1595,31 @@ export async function executeWorkflow(
                         const containerData = await containerRes.json();
                         if (containerData.error) throw new Error(`Instagram Publisher: Instagram API: ${containerData.error.message}`);
 
+                        let isReady = false;
+                        let attempts = 0;
+                        const maxAttempts = 12; // Wait up to 60 seconds
+                        
+                        while (!isReady && attempts < maxAttempts) {
+                            const statusRes = await fetch(`https://graph.facebook.com/v19.0/${containerData.id}?fields=status_code&access_token=${igToken}`);
+                            const statusData = await statusRes.json();
+                            
+                            if (statusData.error) {
+                                // Ignore intermittent errors and just wait
+                                attempts++;
+                                await new Promise(resolve => setTimeout(resolve, 5000));
+                                continue;
+                            }
+                            
+                            if (statusData.status_code === 'FINISHED') {
+                                isReady = true;
+                            } else if (statusData.status_code === 'ERROR') {
+                                throw new Error('Instagram Publisher: Media processing failed on Instagram. The image format might be unsupported.');
+                            } else {
+                                attempts++;
+                                await new Promise(resolve => setTimeout(resolve, 5000));
+                            }
+                        }
+
                         const publishRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media_publish`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
