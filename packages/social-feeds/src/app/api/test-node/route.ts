@@ -665,7 +665,9 @@ export async function POST(req: Request) {
                     return NextResponse.json({ success: false, error: 'No OpenAI API key configured.' }, { status: 400 });
                 }
 
-                const model = provider === 'dalle-3' ? 'dall-e-3' : provider;
+                // 'dalle-3' is kept as a UI value for backwards compatibility, but OpenAI
+                // retired dall-e-3; gpt-image-1 is the current image model.
+                const model = provider === 'dalle-3' ? 'gpt-image-1' : provider;
                 const response = await fetch('https://api.openai.com/v1/images/generations', {
                     method: 'POST',
                     headers: {

@@ -1140,7 +1140,10 @@ export async function executeWorkflow(
                     if (provider === 'dalle-3' || GPT_IMAGE_PROVIDERS.has(provider)) {
                         if (!user?.openaiApiKey) throw new Error('No OpenAI API key configured.');
 
-                        const model = provider === 'dalle-3' ? 'dall-e-3' : provider;
+                        // 'dalle-3' is kept as a UI value for backwards compatibility with
+                        // saved nodes, but OpenAI's dall-e-3 model has been retired and the
+                        // current image model is gpt-image-1.
+                        const model = provider === 'dalle-3' ? 'gpt-image-1' : provider;
                         const response = await fetch('https://api.openai.com/v1/images/generations', {
                             method: 'POST',
                             headers: {
