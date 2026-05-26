@@ -3,11 +3,5 @@
     "outputDirectory": "packages/social-feeds/.next",
     "installCommand": "pnpm install --config.engine-strict=false",
     "framework": "nextjs",
-    "devCommand": "cd packages/social-feeds && pnpm dev",
-    "crons": [
-        {
-            "path": "/api/cron/process-schedules",
-            "schedule": "* * * * *"
-        }
-    ]
+    "devCommand": "cd packages/social-feeds && pnpm dev"
 }
