@@ -5,12 +5,113 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Download, Plus, Trash2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+
+type PromptTemplate = {
+    id: string;
+    platform: 'Facebook' | 'Instagram' | 'Threads' | 'LinkedIn';
+    label: string;
+    prompt: string;
+};
+
+// Platform-optimised, competitor-informed templates. Users can pick one
+// to drop into the Task Prompt and edit, or use as-is.
+// Replace [GOOGLE SHEET URL / RSS FEED URL] and [MY BUSINESS] with real
+// values, or swap the URL placeholder for {{content}} if this node
+// already receives upstream content.
+const PROMPT_TEMPLATES: PromptTemplate[] = [
+    // ---------- Facebook (40-80 words) ----------
+    {
+        id: 'fb-1',
+        platform: 'Facebook',
+        label: 'Facebook  Top Posts Pattern',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Search for the top 5 Facebook pages covering that topic. Identify their 3 highest-performing posts by likes, comments, and shares. Extract hook structure, post length, emotional triggers, and CTA style. Write one Facebook post using those patterns. Maximum 80 words. No hashtags. No fluff. Optimise for reach and comments.`,
+    },
+    {
+        id: 'fb-2',
+        platform: 'Facebook',
+        label: 'Facebook  Best-Format Engagement',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Analyse competitor Facebook posts on that topic and identify the format with the most engagement. Write a Facebook post using the top-performing format. Strong scroll-stopping first line. Clear point of view. Ends with a comment-driving question. Maximum 80 words.`,
+    },
+    {
+        id: 'fb-3',
+        platform: 'Facebook',
+        label: 'Facebook  Better Original Rewrite',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Find the most engaging Facebook post on that topic in the last 90 days. Analyse why it worked. Write a better original version for [MY BUSINESS]. Keep what made it work, sharpen the hook, remove competitor branding. Maximum 80 words. No filler sentences. Optimise for early engagement signals.`,
+    },
+
+    // ---------- Instagram (50-70 words) ----------
+    {
+        id: 'ig-1',
+        platform: 'Instagram',
+        label: 'Instagram  Top Accounts Pattern',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Search for the top Instagram accounts posting about that topic. Identify their 3 highest-performing posts by likes and comments. Extract caption structure, opening line, CTA, and hashtag strategy. Write an Instagram caption using those patterns. Maximum 70 words. Hook before the "more" cut-off. End with a question or CTA that drives saves and comments. Add 3 relevant hashtags at the end.`,
+    },
+    {
+        id: 'ig-2',
+        platform: 'Instagram',
+        label: 'Instagram  Best-Format Caption',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Analyse what caption format performs best for that topic on Instagram. Write a caption using the top-performing format. Maximum 70 words. Strong opening line, punchy body, 3 hashtags at the end only.`,
+    },
+    {
+        id: 'ig-3',
+        platform: 'Instagram',
+        label: 'Instagram  Better Original Rewrite',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Find the most engaged Instagram post on that topic in the last 90 days. Analyse the hook, tone, and structure. Write a better original version for [MY BUSINESS]. Maximum 70 words. Sharpen the hook, remove competitor branding. Optimise for saves and shares. Add 3 relevant hashtags at the end.`,
+    },
+
+    // ---------- Threads (30-50 words) ----------
+    {
+        id: 'th-1',
+        platform: 'Threads',
+        label: 'Threads  Top Posts Pattern',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Search for the highest-performing Threads posts on that topic by replies and reposts. Extract what made them work. Write one Threads post using that pattern. Maximum 50 words. No hashtags. Strong opening line that demands a reply.`,
+    },
+    {
+        id: 'th-2',
+        platform: 'Threads',
+        label: 'Threads  Opinionated Hot Take',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Identify the most debated angle on that topic currently on Threads. Write a short opinionated Threads post that takes a clear stance and invites disagreement or discussion. Maximum 50 words. No fluff. No hedging. End with a direct question.`,
+    },
+    {
+        id: 'th-3',
+        platform: 'Threads',
+        label: 'Threads  Better Original Rewrite',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Find the most replied-to or reposted Threads post on that topic in the last 30 days. Write a sharper, more original version for [MY BUSINESS]. Maximum 50 words. Conversational, direct. Optimise for replies.`,
+    },
+
+    // ---------- LinkedIn (100-150 words) ----------
+    {
+        id: 'li-1',
+        platform: 'LinkedIn',
+        label: 'LinkedIn  Top Posts Pattern',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Search for the top-performing LinkedIn posts on that topic by likes, comments, and reposts. Extract opening hook, storytelling format, insight delivery, and CTA. Write one LinkedIn post using those patterns. Maximum 150 words. No corporate fluff. Open with a scroll-stopping first line. End with a question that sparks professional debate.`,
+    },
+    {
+        id: 'li-2',
+        platform: 'LinkedIn',
+        label: 'LinkedIn  Best-Format Post',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Identify which content format performs best for that topic on LinkedIn: personal story, bold opinion, numbered list, case study, or industry hot take. Write a post in that format. Maximum 150 words. Hook first, value in the middle, CTA or question at the end.`,
+    },
+    {
+        id: 'li-3',
+        platform: 'LinkedIn',
+        label: 'LinkedIn  Better Original Rewrite',
+        prompt: `Fetch the latest post title from [GOOGLE SHEET URL / RSS FEED URL]. Find the most engaged LinkedIn post on that topic in the last 90 days. Analyse the hook, structure, and why it resonated professionally. Write a better original version for [MY BUSINESS]. Maximum 150 words. Sharpen the opening line, remove competitor identity. Optimise for comments and reposts.`,
+    },
+];
+
+const PROMPT_TEMPLATE_PLATFORMS: { platform: PromptTemplate['platform']; heading: string }[] = [
+    { platform: 'Facebook', heading: 'Facebook  40-80 words' },
+    { platform: 'Instagram', heading: 'Instagram  50-70 words' },
+    { platform: 'Threads', heading: 'Threads  30-50 words' },
+    { platform: 'LinkedIn', heading: 'LinkedIn  100-150 words' },
+];
 
 export const NodeConfigPanel = () => {
     const { selectedNode: storedSelectedNode, isConfigPanelOpen, toggleConfigPanel, nodes, setNodes, edges, setEdges } = useWorkflowStore();
@@ -536,38 +637,65 @@ export const NodeConfigPanel = () => {
 
                         <div className="grid gap-2">
                             <Label>Master Prompt / Persona</Label>
-                            <div className="text-xs text-muted-foreground mb-1">Set the tone, style, and identity for the AI.</div>
+                            <div className="text-xs text-muted-foreground mb-1">
+                                Pick a saved AI persona to load <strong>or</strong> write your own below. The text in the box is what gets sent  edit it freely either way.
+                            </div>
 
-                            <Select onValueChange={(val) => {
-                                const persona = useWorkflowStore.getState().personas.find(p => p.id === val);
-                                if (persona) {
-                                    setNodes(nodes.map(n =>
-                                        n.id === selectedNode?.id
-                                            ? { ...n, data: { ...n.data, masterPrompt: persona.prompt } }
-                                            : n
-                                    ));
-                                }
-                            }}>
-                                <SelectTrigger><SelectValue placeholder="Load a Persona..." /></SelectTrigger>
+                            <Select
+                                value=""
+                                onValueChange={(val) => {
+                                    if (val === '__custom__') {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, masterPrompt: '' } }
+                                                : n
+                                        ));
+                                        toast.success('Cleared. Write your own persona below.');
+                                        return;
+                                    }
+                                    const persona = useWorkflowStore.getState().personas.find(p => p.id === val);
+                                    if (persona) {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, masterPrompt: persona.prompt } }
+                                                : n
+                                        ));
+                                        toast.success(`Loaded persona: ${persona.name}`);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger><SelectValue placeholder="Load a saved persona..." /></SelectTrigger>
                                 <SelectContent>
-                                    {useWorkflowStore.getState().personas.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        <SelectLabel>Custom</SelectLabel>
+                                        <SelectItem value="__custom__"> Write my own (clear box)</SelectItem>
+                                    </SelectGroup>
+                                    {useWorkflowStore.getState().personas.length > 0 && (
+                                        <SelectGroup>
+                                            <SelectLabel>Saved AI Personas</SelectLabel>
+                                            {useWorkflowStore.getState().personas.map(p => (
+                                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    )}
                                 </SelectContent>
                             </Select>
 
-                            <textarea
-                                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
-                                placeholder="You are a professional social media manager. Tone: Witty and engaging."
-                                value={(selectedNode?.data.masterPrompt as string) || ''}
-                                onChange={(e) => {
-                                    setNodes(nodes.map(n =>
-                                        n.id === selectedNode?.id
-                                            ? { ...n, data: { ...n.data, masterPrompt: e.target.value } }
-                                            : n
-                                    ));
-                                }}
-                            />
+                            <div className="grid gap-1 mt-2">
+                                <Label className="text-xs">Your persona prompt (editable)</Label>
+                                <textarea
+                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    placeholder="You are a professional social media manager. Tone: Witty and engaging."
+                                    value={(selectedNode?.data.masterPrompt as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, masterPrompt: e.target.value } }
+                                                : n
+                                        ));
+                                    }}
+                                />
+                            </div>
                         </div>
 
                         <div className="grid gap-2">
@@ -688,6 +816,39 @@ export const NodeConfigPanel = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Template Prompts (Optional)</Label>
+                            <div className="text-xs text-muted-foreground mb-1">
+                                Pick a platform-optimised template to start from, then edit in the Task Prompt box below.
+                                Replace <code>[GOOGLE SHEET URL / RSS FEED URL]</code> with <code>{"{{content}}"}</code> if this node already receives upstream content, and <code>[MY BUSINESS]</code> with your brand.
+                            </div>
+                            <Select
+                                value=""
+                                onValueChange={(val) => {
+                                    const template = PROMPT_TEMPLATES.find(t => t.id === val);
+                                    if (!template) return;
+                                    setNodes(nodes.map(n =>
+                                        n.id === selectedNode?.id
+                                            ? { ...n, data: { ...n.data, taskPrompt: template.prompt } }
+                                            : n
+                                    ));
+                                    toast.success(`Loaded template: ${template.label}`);
+                                }}
+                            >
+                                <SelectTrigger><SelectValue placeholder="Choose a template..." /></SelectTrigger>
+                                <SelectContent className="max-h-[320px]">
+                                    {PROMPT_TEMPLATE_PLATFORMS.map(group => (
+                                        <SelectGroup key={group.platform}>
+                                            <SelectLabel>{group.heading}</SelectLabel>
+                                            {PROMPT_TEMPLATES.filter(t => t.platform === group.platform).map(t => (
+                                                <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="grid gap-2">
