@@ -1118,6 +1118,11 @@ export async function executeWorkflow(
                         inputContent = lastTextOutput || lastOutput || '';
                     }
 
+                    if (stopAfterCurrentNode && isNoSourceRowMessage(inputContent)) {
+                        output = inputContent;
+                        break;
+                    }
+
                     const persona = node.data?.masterPrompt || 'You are a helpful assistant.';
                     let taskPrompt = node.data?.taskPrompt || 'Generate content.';
 
@@ -1265,6 +1270,11 @@ export async function executeWorkflow(
                         }
                     } else {
                         sourceText = lastOutput || node.data?.content || '';
+                    }
+
+                    if (stopAfterCurrentNode && isNoSourceRowMessage(sourceText)) {
+                        output = sourceText;
+                        break;
                     }
 
                     if (!sourceText) throw new Error('No input content found for blog creation.');
