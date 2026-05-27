@@ -160,6 +160,7 @@ const NODE_TYPE_TO_PROVIDER: Record<string, RestrictedSocialProvider> = {
   "instagram-publisher": "instagram",
   "linkedin-publisher": "linkedin",
   "threads-publisher": "threads",
+  "twitter-publisher": "twitter",
 };
 
 export function extractRestrictedPlatformsFromDefinition(

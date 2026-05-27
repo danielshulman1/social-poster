@@ -153,16 +153,21 @@ export const USER_GUIDE_SECTIONS: UserGuideSection[] = [
       },
       {
         title: "Prepare Google Sheets correctly",
-        detail: "Use the template download if you want a ready-made structure. The standard headers include content, status, image_url, platform, scheduled_at, and notes.",
+        detail: "Use the template download if you want a ready-made structure. The default column mapping is content=A, status=B, image=C, platform=D, scheduled_at=E.",
       },
       {
         title: "Use the same row for post text and image",
-        detail: "If you want the sheet to supply an image, place the image URL in the same row as the post content so the workflow keeps them together.",
+        detail: "If you want the sheet to supply an image, place the image URL in the same row as the post content so the workflow keeps them together. Pasted URLs and Insert > Image > Insert image in cell both work — the workflow reads the =IMAGE() formula behind in-cell pictures.",
+      },
+      {
+        title: "Pick when each row posts",
+        detail: "Put the post time in the scheduled_at column (YYYY-MM-DD HH:MM). The workflow only picks rows whose time has arrived. Pair it with a schedule trigger set to a wildcard time (*) so the cron checks the sheet every minute.",
       },
     ],
     tips: [
-      "If a Google Sheet row should be processed, leave status empty. The app marks used rows as done.",
+      "If a Google Sheet row should be processed, leave status empty. The app marks used rows as done once it posts them.",
       "When using sheet images, select Google Sheet Row Image in the publisher node so the output uses that row image intentionally.",
+      "scheduled_at is interpreted in the timezone Google Sheets returns. Use the standard YYYY-MM-DD HH:MM format to avoid ambiguity.",
     ],
   },
   {

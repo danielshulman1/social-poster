@@ -143,15 +143,44 @@ const getGoogleSheetsImageColumn = (contentCol: string, configuredImageCol?: str
         ? configuredImageCol.trim().toUpperCase()
         : indexToColumn(columnToIndex(contentCol) + 2));
 
+// Default template layout: content=A, status=B, image=C, platform=D, scheduled_at=E.
+const getGoogleSheetsScheduledAtColumn = (contentCol: string, configuredCol?: string) =>
+    (configuredCol?.trim()
+        ? configuredCol.trim().toUpperCase()
+        : indexToColumn(columnToIndex(contentCol) + 4));
+
+const IMAGE_FORMULA_REGEX = /^=IMAGE\(\s*"([^"]+)"|^=IMAGE\(\s*'([^']+)'/i;
+
+function extractImageFormulaUrl(cell: unknown): string {
+    if (typeof cell !== "string") return "";
+    const trimmed = cell.trim();
+    if (!trimmed) return "";
+    const match = trimmed.match(IMAGE_FORMULA_REGEX);
+    if (match) return (match[1] || match[2] || "").trim();
+    return trimmed;
+}
+
+function parseScheduledAt(raw: string): Date | null {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    // Try a few common formats. Sheets typically returns ISO-ish or "YYYY-MM-DD HH:MM".
+    const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+    const fallback = new Date(trimmed);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
 type GoogleSheetsPendingRow = {
     content: string;
     imageUrl: string;
     actualRow: number;
     statusCol: string;
+    scheduledAt: Date | null;
 };
 
-function buildGoogleSheetsRangeColumns(contentCol: string, statusCol: string, imageCol: string) {
-    const indexes = [contentCol, statusCol, imageCol].map(columnToIndex);
+function buildGoogleSheetsRangeColumns(columns: string[]) {
+    const indexes = columns.map(columnToIndex);
     const startIndex = Math.min(...indexes);
     const endIndex = Math.max(...indexes);
     return {
@@ -202,30 +231,50 @@ async function readNextGoogleSheetsRow(params: {
     imageCol: string;
     apiKey?: string | null;
     readToken?: string | null;
+    scheduledAtCol?: string | null;
+    useSheetDates?: boolean;
+    referenceTime?: Date;
 }) {
-    const { userId, sheetId, sheetName, contentCol, imageCol, apiKey, readToken } = params;
+    const {
+        userId, sheetId, sheetName, contentCol, imageCol, apiKey, readToken,
+        scheduledAtCol, useSheetDates, referenceTime,
+    } = params;
     const statusCol = getGoogleSheetsStatusColumn(contentCol);
-    const { startCol, endCol } = buildGoogleSheetsRangeColumns(contentCol, statusCol, imageCol);
+    const wantScheduled = !!(useSheetDates && scheduledAtCol);
+    const rangeColumns = [contentCol, statusCol, imageCol];
+    if (wantScheduled && scheduledAtCol) rangeColumns.push(scheduledAtCol);
+    const { startCol, endCol } = buildGoogleSheetsRangeColumns(rangeColumns);
     const range = `${sheetName}!${startCol}1:${endCol}1000`;
-    let fetchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
-    const readHeaders: Record<string, string> = {};
 
-    if (readToken) {
-        readHeaders.Authorization = `Bearer ${readToken}`;
-    } else if (apiKey) {
-        fetchUrl += `?key=${apiKey}`;
+    const buildFetchUrl = (renderOption: "FORMATTED_VALUE" | "FORMULA") => {
+        const search = new URLSearchParams({ valueRenderOption: renderOption });
+        if (!readToken && apiKey) search.set("key", apiKey);
+        return `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?${search.toString()}`;
+    };
+    const readHeaders: Record<string, string> = readToken
+        ? { Authorization: `Bearer ${readToken}` }
+        : {};
+
+    const [valueRes, formulaRes] = await Promise.all([
+        fetch(buildFetchUrl("FORMATTED_VALUE"), { headers: readHeaders }),
+        fetch(buildFetchUrl("FORMULA"), { headers: readHeaders }),
+    ]);
+    if (!valueRes.ok) {
+        const errData = await valueRes.json().catch(() => ({}));
+        throw new Error(`Failed to fetch sheet: ${errData.error?.message || valueRes.statusText}`);
     }
 
-    const sheetsRes = await fetch(fetchUrl, { headers: readHeaders });
-    if (!sheetsRes.ok) {
-        const errData = await sheetsRes.json().catch(() => ({}));
-        throw new Error(`Failed to fetch sheet: ${errData.error?.message || sheetsRes.statusText}`);
-    }
-
-    const sheetData = await sheetsRes.json();
+    const sheetData = await valueRes.json();
     const rows: string[][] = sheetData.values || [];
     const startRow = parseStartRowFromRange(sheetData.range);
 
+    let formulaRows: string[][] = [];
+    if (formulaRes.ok) {
+        const formulaData = await formulaRes.json().catch(() => ({}));
+        formulaRows = (formulaData.values as string[][]) || [];
+    }
+
+    const currentTime = (referenceTime || new Date()).getTime();
     let pendingRow: GoogleSheetsPendingRow | null = null;
 
     for (let i = 0; i < rows.length; i++) {
@@ -233,17 +282,34 @@ async function readNextGoogleSheetsRow(params: {
             continue;
         }
 
-        const content = getGoogleSheetsRowValue(rows[i] || [], startCol, contentCol);
-        const status = getGoogleSheetsRowValue(rows[i] || [], startCol, statusCol).toLowerCase();
-        if (content && status !== "done") {
-            pendingRow = {
-                content,
-                imageUrl: getGoogleSheetsRowValue(rows[i] || [], startCol, imageCol),
-                actualRow: startRow + i,
-                statusCol,
-            };
-            break;
+        const valueRow = rows[i] || [];
+        const formulaRow = formulaRows[i] || [];
+
+        const content = getGoogleSheetsRowValue(valueRow, startCol, contentCol);
+        const status = getGoogleSheetsRowValue(valueRow, startCol, statusCol).toLowerCase();
+        if (!content || status === "done") continue;
+
+        let scheduledAt: Date | null = null;
+        if (wantScheduled && scheduledAtCol) {
+            const rawScheduled = getGoogleSheetsRowValue(valueRow, startCol, scheduledAtCol);
+            scheduledAt = parseScheduledAt(rawScheduled);
+            if (!scheduledAt) continue; // skip rows missing/unparseable date when sheet-driven dates are on
+            if (scheduledAt.getTime() > currentTime) continue; // not due yet
         }
+
+        // Prefer the FORMULA-rendered cell so `=IMAGE("url")` resolves to its URL; fall back to formatted value.
+        const formulaImageCell = getGoogleSheetsRowValue(formulaRow, startCol, imageCol);
+        const formattedImageCell = getGoogleSheetsRowValue(valueRow, startCol, imageCol);
+        const imageUrl = extractImageFormulaUrl(formulaImageCell) || formattedImageCell;
+
+        pendingRow = {
+            content,
+            imageUrl,
+            actualRow: startRow + i,
+            statusCol,
+            scheduledAt,
+        };
+        break;
     }
 
     if (!pendingRow) {
@@ -858,6 +924,10 @@ export async function executeWorkflow(
 
                     const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                     const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
+                    const useSheetDates = node.data?.useSheetDates !== false;
+                    const scheduledAtCol = useSheetDates
+                        ? getGoogleSheetsScheduledAtColumn(contentCol, node.data?.scheduledAtColumn as string | undefined)
+                        : null;
                     const nextRow = await readNextGoogleSheetsRow({
                         userId,
                         sheetId: spreadsheetId,
@@ -866,10 +936,14 @@ export async function executeWorkflow(
                         imageCol,
                         apiKey: userWithKey?.googleApiKey,
                         readToken,
+                        scheduledAtCol,
+                        useSheetDates,
                     });
 
                     if (!nextRow) {
-                        output = 'All rows in the sheet have been processed (marked as done).';
+                        output = useSheetDates
+                            ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
+                            : 'All rows in the sheet have been processed (marked as done).';
                     } else {
                         output = nextRow.content;
                         imageUrlFromNode = nextRow.imageUrl;
@@ -878,6 +952,8 @@ export async function executeWorkflow(
                             sourceImageUrl: nextRow.imageUrl || undefined,
                             sourceImageColumn: imageCol,
                             sourceContentColumn: contentCol,
+                            sourceScheduledAt: nextRow.scheduledAt?.toISOString(),
+                            sourceScheduledAtColumn: scheduledAtCol || undefined,
                         };
                     }
                     break;
@@ -920,6 +996,10 @@ export async function executeWorkflow(
                         const tab = (node.data?.sheetTab as string) || 'Sheet1';
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                         const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
+                        const useSheetDates = node.data?.useSheetDates !== false;
+                        const scheduledAtCol = useSheetDates
+                            ? getGoogleSheetsScheduledAtColumn(contentCol, node.data?.scheduledAtColumn as string | undefined)
+                            : null;
 
                         const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } }));
                         const readToken = await getGoogleWriteAccessToken(userId);
@@ -934,10 +1014,14 @@ export async function executeWorkflow(
                                     imageCol,
                                     apiKey: userWithKey?.googleApiKey,
                                     readToken,
+                                    scheduledAtCol,
+                                    useSheetDates,
                                 });
 
                                 if (!nextRow) {
-                                    inputContent = 'All rows in the sheet have been processed (marked as done).';
+                                    inputContent = useSheetDates
+                                        ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
+                                        : 'All rows in the sheet have been processed (marked as done).';
                                     imageUrlFromNode = '';
                                 } else {
                                     inputContent = nextRow.content;
@@ -947,6 +1031,8 @@ export async function executeWorkflow(
                                         sourceRowNumber: nextRow.actualRow,
                                         sourceImageUrl: nextRow.imageUrl || undefined,
                                         sourceImageColumn: imageCol,
+                                        sourceScheduledAt: nextRow.scheduledAt?.toISOString(),
+                                        sourceScheduledAtColumn: scheduledAtCol || undefined,
                                     };
                                 }
                             } catch (e) {
@@ -1058,6 +1144,10 @@ export async function executeWorkflow(
                         const tab = (node.data?.sheetTab as string) || 'Sheet1';
                         const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                         const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
+                        const useSheetDates = node.data?.useSheetDates !== false;
+                        const scheduledAtCol = useSheetDates
+                            ? getGoogleSheetsScheduledAtColumn(contentCol, node.data?.scheduledAtColumn as string | undefined)
+                            : null;
 
                         const userWithKey = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: userId }, select: { googleApiKey: true } }));
                         const readToken = await getGoogleWriteAccessToken(userId);
@@ -1072,10 +1162,14 @@ export async function executeWorkflow(
                                     imageCol,
                                     apiKey: userWithKey?.googleApiKey,
                                     readToken,
+                                    scheduledAtCol,
+                                    useSheetDates,
                                 });
 
                                 if (!nextRow) {
-                                    sourceText = 'All rows in the sheet have been processed (marked as done).';
+                                    sourceText = useSheetDates
+                                        ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
+                                        : 'All rows in the sheet have been processed (marked as done).';
                                     imageUrlFromNode = '';
                                 } else {
                                     sourceText = nextRow.content;
@@ -1085,6 +1179,8 @@ export async function executeWorkflow(
                                         sourceRowNumber: nextRow.actualRow,
                                         sourceImageUrl: nextRow.imageUrl || undefined,
                                         sourceImageColumn: imageCol,
+                                        sourceScheduledAt: nextRow.scheduledAt?.toISOString(),
+                                        sourceScheduledAtColumn: scheduledAtCol || undefined,
                                     };
                                 }
                             } catch (e) {
@@ -1503,6 +1599,104 @@ export async function executeWorkflow(
                     if (!liPostSuccess) {
                         throw new Error(`LinkedIn posting failed: ${lastLiError}. Try disconnecting and reconnecting your LinkedIn account.`);
                     }
+                    break;
+                }
+
+                case 'twitter-publisher': {
+                    await assertUserCanPublishPlatform(userId, 'twitter');
+
+                    const txTextContent = resolvePublisherTextContent({
+                        node,
+                        lastTextOutput,
+                        lastAiTextOutput,
+                        lastOutput,
+                    });
+                    const txImageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
+
+                    if (!txTextContent && !txImageUrl) {
+                        throw new Error('No content to post. Connect an upstream node before this Twitter/X publisher.');
+                    }
+
+                    if (!shouldPublishWithoutApproval(node)) {
+                        const approvalPreview = buildApprovalPreview({
+                            platform: 'twitter',
+                            platformLabel: 'Twitter/X',
+                            content: txTextContent,
+                            imageUrl: txImageUrl || undefined,
+                        });
+                        output = approvalPreview.output;
+                        resultDetails = approvalPreview.details;
+                        break;
+                    }
+
+                    const txAccountId = node.data?.accountId;
+                    const txConnection = (txAccountId ? connections.find(c => c.id === txAccountId) : null)
+                        || connections.find(c => c.provider === 'twitter');
+                    if (!txConnection) throw new Error('No Twitter/X connection found. Connect Twitter on the Connections page.');
+
+                    const txCreds = parseConnectionCredentials(txConnection.credentials);
+                    const txToken = normalizeAccessToken(txCreds.accessToken);
+                    if (!txToken) throw new Error('Twitter/X connection is missing an access token. Reconnect on Connections.');
+
+                    let mediaId: string | undefined;
+                    if (txImageUrl) {
+                        let imageBlob: Blob;
+                        if (isDataImageUrl(txImageUrl)) {
+                            const decoded = decodeDataImageUrl(txImageUrl);
+                            if (!decoded) throw new Error('Twitter publisher could not decode data image URL.');
+                            imageBlob = new Blob([decoded.buffer], { type: decoded.mimeType });
+                        } else if (isRemoteImageUrl(txImageUrl)) {
+                            const imgRes = await fetch(txImageUrl);
+                            if (!imgRes.ok) throw new Error(`Twitter publisher could not fetch image (${imgRes.status}).`);
+                            imageBlob = await imgRes.blob();
+                        } else {
+                            throw new Error('Twitter publisher requires a remote http(s) image URL or data URL.');
+                        }
+
+                        const mediaForm = new FormData();
+                        mediaForm.append('media', imageBlob);
+                        const uploadRes = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${txToken}` },
+                            body: mediaForm,
+                        });
+                        const uploadData = await uploadRes.json().catch(() => ({}));
+                        if (!uploadRes.ok || !uploadData.media_id_string) {
+                            throw new Error(`Twitter media upload failed: ${uploadData.error || uploadData.errors?.[0]?.message || uploadRes.statusText}`);
+                        }
+                        mediaId = uploadData.media_id_string;
+                    }
+
+                    const tweetBody: Record<string, unknown> = { text: txTextContent.slice(0, 280) };
+                    if (mediaId) tweetBody.media = { media_ids: [mediaId] };
+
+                    const tweetRes = await fetch('https://api.twitter.com/2/tweets', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${txToken}`,
+                        },
+                        body: JSON.stringify(tweetBody),
+                    });
+                    const tweetData = await tweetRes.json().catch(() => ({}));
+                    if (!tweetRes.ok) {
+                        const detail = tweetData.detail || tweetData.title || tweetData.errors?.[0]?.message || tweetRes.statusText;
+                        throw new Error(`Twitter API: ${detail}`);
+                    }
+
+                    const tweetId = tweetData.data?.id || 'unknown';
+                    const handle = (txCreds.username || '').toString();
+                    output = `Posted to Twitter/X${mediaId ? ' with image' : ''}! Tweet ID: ${tweetId}`;
+                    await prisma.publishResult.create({
+                        data: {
+                            workflowId: workflowId,
+                            executionId: execution.id,
+                            platform: 'twitter',
+                            postId: tweetId,
+                            postUrl: handle ? `https://twitter.com/${handle}/status/${tweetId}` : null,
+                            status: 'success',
+                        },
+                    });
                     break;
                 }
 

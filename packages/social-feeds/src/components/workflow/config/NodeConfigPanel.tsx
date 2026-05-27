@@ -122,6 +122,7 @@ export const NodeConfigPanel = () => {
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
     const [newScheduleDay, setNewScheduleDay] = useState<string>('');
     const [newScheduleTime, setNewScheduleTime] = useState<string>('');
+    const [runEveryMinute, setRunEveryMinute] = useState(false);
 
     const fetchSheets = async (spreadsheetId: string) => {
         if (!spreadsheetId) {
@@ -408,6 +409,18 @@ export const NodeConfigPanel = () => {
                     <div className="space-y-4">
                         <div className="grid gap-2">
                             <Label>Add Schedule Time</Label>
+                            <div className="flex items-center justify-between rounded-xl border border-border/70 bg-background/55 px-3 py-2">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">Run Every Minute</p>
+                                    <p className="text-[10px] leading-4 text-muted-foreground">
+                                        Use this for Google Sheets workflows where each row has its own `scheduled_at` date.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={runEveryMinute}
+                                    onCheckedChange={setRunEveryMinute}
+                                />
+                            </div>
                             <div className="flex gap-2">
                                 <Select value={newScheduleDay} onValueChange={setNewScheduleDay}>
                                     <SelectTrigger className="w-[110px]"><SelectValue placeholder="Day" /></SelectTrigger>
@@ -421,17 +434,26 @@ export const NodeConfigPanel = () => {
                                     type="time"
                                     className="flex-1"
                                     value={newScheduleTime}
+                                    disabled={runEveryMinute}
                                     onChange={(e) => setNewScheduleTime(e.target.value)}
                                 />
                                 <Button
                                     size="icon"
                                     variant="secondary"
                                     onClick={() => {
-                                        if (!newScheduleDay || !newScheduleTime) {
+                                        if (!newScheduleDay) {
+                                            toast.error('Please select a day.');
+                                            return;
+                                        }
+                                        if (!runEveryMinute && !newScheduleTime) {
                                             toast.error('Please select both a day and a time.');
                                             return;
                                         }
-                                        const newSchedule = { id: uuidv4(), day: newScheduleDay, time: newScheduleTime };
+                                        const newSchedule = {
+                                            id: uuidv4(),
+                                            day: newScheduleDay,
+                                            time: runEveryMinute ? '*' : newScheduleTime,
+                                        };
                                         setNodes(nodes.map(n =>
                                             n.id === selectedNode?.id
                                                 ? { ...n, data: { ...n.data, schedules: [...schedules, newSchedule] } }
@@ -439,10 +461,14 @@ export const NodeConfigPanel = () => {
                                         ));
                                         setNewScheduleDay('');
                                         setNewScheduleTime('');
+                                        setRunEveryMinute(false);
                                         toast.success('Schedule added');
                                     }}
                                 ><Plus className="w-4 h-4" /></Button>
                             </div>
+                            <p className="text-[10px] text-muted-foreground">
+                                Standard schedules use the selected day and time. For sheet-driven posting dates, add an `Everyday` schedule with `Run Every Minute` enabled.
+                            </p>
                         </div>
 
                         <div className="space-y-2">
@@ -453,7 +479,7 @@ export const NodeConfigPanel = () => {
                                 <div className="rounded-md border p-2 space-y-2">
                                     {schedules.map((schedule: any) => (
                                         <div key={schedule.id} className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded">
-                                            <span>{schedule.day}, {schedule.time}</span>
+                                            <span>{schedule.day}, {schedule.time === '*' || !schedule.time ? 'every minute' : schedule.time}</span>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -607,9 +633,39 @@ export const NodeConfigPanel = () => {
                                     }}
                                 />
                             </div>
+                            <div className="space-y-2">
+                                <Label>Scheduled Date Column</Label>
+                                <Input
+                                    placeholder="E"
+                                    value={(selectedNode?.data.scheduledAtColumn as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n => n.id === selectedNode?.id ? { ...n, data: { ...n.data, scheduledAtColumn: e.target.value } } : n));
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-sm">Use Row Dates From Google Sheet</Label>
+                                    <p className="text-[10px] leading-5 text-muted-foreground">
+                                        When this is on, each row posts only when its `scheduled_at` date has arrived.
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={(selectedNode?.data.useSheetDates as boolean | undefined) !== false}
+                                    onCheckedChange={(checked) => {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, useSheetDates: checked } }
+                                                : n
+                                        ));
+                                    }}
+                                />
+                            </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Use one row per post. Put the image URL in the same row as the post text so the workflow carries both together.
+                            Use one row per post. Put the image URL in the same row as the post text so the workflow carries both together. Use `YYYY-MM-DD HH:MM` in the scheduled date column.
                         </p>
                     </div>
                 );
@@ -811,8 +867,36 @@ export const NodeConfigPanel = () => {
                                             />
                                         </div>
                                     </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid gap-1">
+                                            <Label className="text-xs">Scheduled Date Col</Label>
+                                            <Input
+                                                className="h-8 text-xs"
+                                                value={(selectedNode?.data.scheduledAtColumn as string) || ''}
+                                                onChange={(e) => {
+                                                    setNodes(nodes.map(n => n.id === selectedNode?.id ? { ...n, data: { ...n.data, scheduledAtColumn: e.target.value } } : n));
+                                                }}
+                                                placeholder="E"
+                                            />
+                                        </div>
+                                        <div className="grid gap-1">
+                                            <Label className="text-xs">Use Sheet Dates</Label>
+                                            <div className="flex h-8 items-center rounded-md border border-input px-3">
+                                                <Switch
+                                                    checked={(selectedNode?.data.useSheetDates as boolean | undefined) !== false}
+                                                    onCheckedChange={(checked) => {
+                                                        setNodes(nodes.map(n =>
+                                                            n.id === selectedNode?.id
+                                                                ? { ...n, data: { ...n.data, useSheetDates: checked } }
+                                                                : n
+                                                        ));
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="text-[10px] text-muted-foreground">
-                                        Leave blank to use Global Settings.
+                                        Leave blank to use Global Settings. Use `YYYY-MM-DD HH:MM` in the scheduled date column.
                                     </div>
                                 </div>
                             )}
