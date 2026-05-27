@@ -826,6 +826,7 @@ export async function executeWorkflow(
     let lastImageOrigin: WorkflowImageOrigin = "";
     let lastRemoteImageUrl = "";
     let lastGeneratedImageNodeId = "";
+    let stopAfterCurrentNode = false;
 
     for (const node of executionOrder) {
         const nodeType = node.type || 'unknown';
@@ -944,6 +945,7 @@ export async function executeWorkflow(
                         output = useSheetDates
                             ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
                             : 'All rows in the sheet have been processed (marked as done).';
+                        stopAfterCurrentNode = true;
                     } else {
                         output = nextRow.content;
                         imageUrlFromNode = nextRow.imageUrl;
@@ -1023,6 +1025,7 @@ export async function executeWorkflow(
                                         ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
                                         : 'All rows in the sheet have been processed (marked as done).';
                                     imageUrlFromNode = '';
+                                    stopAfterCurrentNode = true;
                                 } else {
                                     inputContent = nextRow.content;
                                     imageUrlFromNode = nextRow.imageUrl;
@@ -1171,6 +1174,7 @@ export async function executeWorkflow(
                                         ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
                                         : 'All rows in the sheet have been processed (marked as done).';
                                     imageUrlFromNode = '';
+                                    stopAfterCurrentNode = true;
                                 } else {
                                     sourceText = nextRow.content;
                                     imageUrlFromNode = nextRow.imageUrl;
@@ -2388,6 +2392,20 @@ export async function executeWorkflow(
                     : undefined,
             });
             await persistExecutionLog();
+
+            if (stopAfterCurrentNode) {
+                appendWorkflowExecutionEvent(executionLog, {
+                    level: "info",
+                    type: "workflow.stopped_no_source_row",
+                    message: "Workflow stopped because the Google Sheets source did not return a due row to publish.",
+                    nodeId: node.id,
+                    nodeType,
+                    nodeLabel,
+                });
+                await persistExecutionLog();
+                stopAfterCurrentNode = false;
+                break;
+            }
 
         } catch (error: any) {
             const failureMessage = getErrorMessage(error);
