@@ -128,6 +128,30 @@ export default function EditorPage() {
             }
         };
 
+        const showImageDebugToasts = (results: Record<string, unknown>) => {
+            for (const [nodeId, result] of Object.entries(results)) {
+                const r = result as any;
+                const details = r?.details || {};
+                if (!('sourceRowNumber' in details) && !('sourceImageUrl' in details)) continue;
+
+                const node = nodes.find((n: any) => n.id === nodeId);
+                const label = (node?.data?.label as string) || nodeId;
+                const rowText = details.sourceRowNumber ? `row ${details.sourceRowNumber}` : 'selected row';
+
+                if (details.sourceImageUrl) {
+                    toast.message(`${label} image debug`, {
+                        description: `${rowText} image URL: ${details.sourceImageUrl}`,
+                        duration: 12000,
+                    });
+                } else {
+                    toast.warning(`${label} image debug`, {
+                        description: `${rowText} did not return an image URL from Google Sheets.`,
+                        duration: 12000,
+                    });
+                }
+            }
+        };
+
         try {
             const definition = { nodes, edges };
             await fetch(`/api/workflows/${workflowId}`, {
@@ -164,6 +188,7 @@ export default function EditorPage() {
                 toast.success('Workflow executed successfully!');
                 // Show outputs in a readable way
                 const results = data.results || {};
+                showImageDebugToasts(results);
                 for (const [nodeId, result] of Object.entries(results)) {
                     const r = result as any;
                     if (r.output && r.output.length > 0) {
@@ -180,6 +205,7 @@ export default function EditorPage() {
                     description: 'Open Activity Log to review the run trail and failure reasons.',
                 });
                 const results = data.results || {};
+                showImageDebugToasts(results);
                 for (const [nodeId, result] of Object.entries(results)) {
                     const r = result as any;
                     if (r.status === 'failed') {

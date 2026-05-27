@@ -1655,7 +1655,13 @@ export async function executeWorkflow(
                     }
 
                     if (!liPostSuccess) {
-                        throw new Error(`LinkedIn posting failed: ${lastLiError}. Try disconnecting and reconnecting your LinkedIn account.`);
+                        const normalizedLinkedInError = (lastLiError || '').toLowerCase();
+                        if (normalizedLinkedInError.includes('duplicate')) {
+                            throw new Error(
+                                `LinkedIn posting failed: ${lastLiError}. LinkedIn rejected this as duplicate content or media. Change the post text, image, or both, then try again.`
+                            );
+                        }
+                        throw new Error(`LinkedIn posting failed: ${lastLiError}. If this is an auth issue, reconnect your LinkedIn account.`);
                     }
                     break;
                 }
