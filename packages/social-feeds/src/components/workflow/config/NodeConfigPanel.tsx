@@ -1398,17 +1398,18 @@ export const NodeConfigPanel = () => {
                                         ? { ...n, data: { ...n.data, imageSource: val } }
                                         : n
                                 ));
-                            }} defaultValue={(selectedNode?.data.imageSource as string) || 'none'}>
+                            }} defaultValue={(selectedNode?.data.imageSource as string) || 'auto'}>
                                 <SelectTrigger><SelectValue placeholder="Select image source" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">None (Text Only)</SelectItem>
+                                    <SelectItem value="auto">Auto / Upstream Image</SelectItem>
                                     <SelectItem value="google-sheet">Google Sheet Row Image</SelectItem>
                                     <SelectItem value="trigger-image">Trigger Image URL</SelectItem>
                                     <SelectItem value="image-generated">AI Generated Image</SelectItem>
+                                    <SelectItem value="text-only">None (Text Only)</SelectItem>
                                 </SelectContent>
                             </Select>
                             <p className="text-[10px] text-muted-foreground">
-                                Choose <strong>Google Sheet Row Image</strong> to publish the image URL from the same row as the selected post.
+                                Use <strong>Auto / Upstream Image</strong> for most workflows. Choose <strong>Google Sheet Row Image</strong> when the post image should come from the same Google Sheets row.
                             </p>
                         </div>
 

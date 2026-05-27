@@ -443,8 +443,12 @@ const resolvePublisherImageUrl = (params: {
             return lastImageOrigin === "trigger-image" ? lastImageUrl : "";
         case "custom-url":
             return configuredImageUrl;
-        case "none":
+        case "text-only":
             return configuredImageUrl || "";
+        case "none":
+            // Backward compatibility: older publisher nodes were defaulted to "none",
+            // which unintentionally dropped upstream sheet/trigger/generated images.
+            return configuredImageUrl || lastImageUrl || outputImageUrl || "";
         default:
             return configuredImageUrl || lastImageUrl || outputImageUrl || "";
     }
