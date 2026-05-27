@@ -1402,9 +1402,30 @@ export async function executeWorkflow(
                     });
                     const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
+                    const existingFacebookPublish = await prisma.publishResult.findFirst({
+                        where: {
+                            executionId: execution.id,
+                            platform: 'facebook',
+                            status: 'success',
+                        },
+                        orderBy: {
+                            publishedAt: 'asc',
+                        },
+                    });
+
                     if (!contentToPost && !imageUrl && isNoSourceRowMessage(lastOutput)) {
                         output = 'Skipped Facebook publish because no due Google Sheets row was available.';
                         resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
+                    }
+
+                    if (existingFacebookPublish) {
+                        output = 'Skipped Facebook publish because a Facebook post was already created earlier in this workflow run.';
+                        resultDetails = {
+                            skipped: true,
+                            reason: 'duplicate_platform_publish',
+                            existingPostId: existingFacebookPublish.postId || undefined,
+                        };
                         break;
                     }
 
