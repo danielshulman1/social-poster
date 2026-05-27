@@ -195,6 +195,30 @@ function getGoogleSheetsRowValue(row: string[], startCol: string, targetCol: str
     return (row[offset] || "").trim();
 }
 
+function getGoogleSheetsCellDataValue(
+    row: Array<Record<string, any>> | undefined,
+    startCol: string,
+    targetCol: string,
+) {
+    const offset = columnToIndex(targetCol) - columnToIndex(startCol);
+    if (!row || offset < 0) return null;
+    return row[offset] || null;
+}
+
+function extractImageUrlFromCellData(cell: Record<string, any> | null) {
+    if (!cell) return "";
+
+    const candidates = [
+        extractImageFormulaUrl(cell.userEnteredValue?.formulaValue),
+        typeof cell.hyperlink === "string" ? cell.hyperlink.trim() : "",
+        typeof cell.formattedValue === "string" ? cell.formattedValue.trim() : "",
+        typeof cell.userEnteredValue?.stringValue === "string" ? cell.userEnteredValue.stringValue.trim() : "",
+        typeof cell.effectiveValue?.stringValue === "string" ? cell.effectiveValue.stringValue.trim() : "",
+    ].filter(Boolean);
+
+    return candidates.find((value) => /^https?:\/\//i.test(value)) || "";
+}
+
 const normalizeGoogleSheetCell = (value: string) =>
     value.trim().toLowerCase().replace(/\s+/g, "_");
 
@@ -274,6 +298,29 @@ async function readNextGoogleSheetsRow(params: {
         formulaRows = (formulaData.values as string[][]) || [];
     }
 
+    let gridRows: Array<Array<Record<string, any>>> = [];
+    try {
+        const gridSearch = new URLSearchParams({
+            ranges: range,
+            includeGridData: "true",
+            fields: "sheets(data(rowData(values(formattedValue,hyperlink,userEnteredValue,effectiveValue))))",
+        });
+        if (!readToken && apiKey) gridSearch.set("key", apiKey);
+
+        const gridRes = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?${gridSearch.toString()}`,
+            { headers: readHeaders },
+        );
+
+        if (gridRes.ok) {
+            const gridData = await gridRes.json().catch(() => ({}));
+            gridRows =
+                gridData?.sheets?.[0]?.data?.[0]?.rowData?.map((row: any) => row?.values || []) || [];
+        }
+    } catch {
+        // Keep value-based fallback path if cell metadata read fails.
+    }
+
     const currentTime = (referenceTime || new Date()).getTime();
     let pendingRow: GoogleSheetsPendingRow | null = null;
 
@@ -300,7 +347,10 @@ async function readNextGoogleSheetsRow(params: {
         // Prefer the FORMULA-rendered cell so `=IMAGE("url")` resolves to its URL; fall back to formatted value.
         const formulaImageCell = getGoogleSheetsRowValue(formulaRow, startCol, imageCol);
         const formattedImageCell = getGoogleSheetsRowValue(valueRow, startCol, imageCol);
-        const imageUrl = extractImageFormulaUrl(formulaImageCell) || formattedImageCell;
+        const cellDataImage = extractImageUrlFromCellData(
+            getGoogleSheetsCellDataValue(gridRows[i], startCol, imageCol),
+        );
+        const imageUrl = extractImageFormulaUrl(formulaImageCell) || cellDataImage || formattedImageCell;
 
         pendingRow = {
             content,
