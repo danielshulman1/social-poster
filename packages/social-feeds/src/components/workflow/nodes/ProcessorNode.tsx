@@ -13,6 +13,7 @@ const ProcessorNode = ({ id, data, selected }: NodeProps) => {
             icon={isRouter ? GitFork : Sparkles}
             color={isRouter ? 'bg-orange-500' : 'bg-purple-500'}
             selected={selected}
+            status={data.status as 'idle' | 'running' | 'completed' | 'failed' | undefined}
             handles={[
                 { type: 'target', position: Position.Top },
                 { type: 'source', position: Position.Bottom }

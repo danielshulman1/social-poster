@@ -8,6 +8,13 @@ import { useWorkflowStore } from '@/lib/store';
 import { toast } from 'sonner';
 import { useParams } from "next/navigation";
 
+type WorkflowNodeStatus = 'idle' | 'running' | 'completed' | 'failed';
+type ExecutionState = {
+    executionId: string | null;
+    activeNodeId: string | null;
+    nodeStatuses: Record<string, WorkflowNodeStatus>;
+};
+
 export default function EditorPage() {
     const params = useParams();
     const workflowId = params.workflowId as string;
@@ -17,6 +24,11 @@ export default function EditorPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [executionState, setExecutionState] = useState<ExecutionState>({
+        executionId: null,
+        activeNodeId: null,
+        nodeStatuses: {},
+    });
     const { setNodes, setEdges, nodes, edges } = useWorkflowStore();
 
     useEffect(() => {
@@ -86,6 +98,36 @@ export default function EditorPage() {
     const handleRun = async () => {
         // Auto-save first
         setIsRunning(true);
+        const startedAfter = new Date().toISOString();
+        let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+        const pollExecutionStatus = async () => {
+            try {
+                const statusRes = await fetch(
+                    `/api/workflows/${workflowId}/execution-status?startedAfter=${encodeURIComponent(startedAfter)}`,
+                    { cache: 'no-store' },
+                );
+                if (!statusRes.ok) return;
+
+                const statusData = await statusRes.json();
+                const execution = statusData.execution;
+                if (!execution) return;
+
+                setExecutionState({
+                    executionId: execution.id || null,
+                    activeNodeId: execution.activeNodeId || null,
+                    nodeStatuses: execution.nodeStatuses || {},
+                });
+
+                if (execution.status !== 'running' && pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+            } catch (error) {
+                console.error('Failed to poll execution status', error);
+            }
+        };
+
         try {
             const definition = { nodes, edges };
             await fetch(`/api/workflows/${workflowId}`, {
@@ -93,6 +135,14 @@ export default function EditorPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: workflowName, definition }),
             });
+
+            setExecutionState({
+                executionId: null,
+                activeNodeId: null,
+                nodeStatuses: {},
+            });
+            pollTimer = setInterval(pollExecutionStatus, 900);
+            void pollExecutionStatus();
 
             const res = await fetch(`/api/workflows/${workflowId}/execute`, {
                 method: 'POST',
@@ -107,6 +157,8 @@ export default function EditorPage() {
                 });
                 return;
             }
+
+            await pollExecutionStatus();
 
             if (data.status === 'completed') {
                 toast.success('Workflow executed successfully!');
@@ -141,7 +193,16 @@ export default function EditorPage() {
             console.error(error);
             toast.error("Failed to execute workflow");
         } finally {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+            }
             setIsRunning(false);
+            window.setTimeout(() => {
+                setExecutionState((current) => ({
+                    ...current,
+                    activeNodeId: null,
+                }));
+            }, 1800);
         }
     };
 
@@ -208,9 +269,10 @@ export default function EditorPage() {
                 isGenerating={isGenerating}
                 isDirty={false}
                 onGenerateFromPrompt={handleGenerateFromPrompt}
+                activeNodeId={executionState.activeNodeId}
             />
             <div className="flex-1 overflow-hidden">
-                <Canvas />
+                <Canvas executionState={executionState} />
             </div>
         </div>
     );

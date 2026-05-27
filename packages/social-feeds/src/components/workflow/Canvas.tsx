@@ -44,6 +44,12 @@ const initialNodes: Node[] = [
 import { useWorkflowStore } from '@/lib/store';
 import { NodeConfigPanel } from './config/NodeConfigPanel';
 
+type WorkflowNodeStatus = 'idle' | 'running' | 'completed' | 'failed';
+type WorkflowExecutionDisplayState = {
+    activeNodeId: string | null;
+    nodeStatuses: Record<string, WorkflowNodeStatus>;
+} | null;
+
 // Auto-layout: topological sort → assign columns, then stack rows within each column
 function tidyLayout(nodes: Node[], edges: Edge[]): Node[] {
     if (nodes.length === 0) return nodes;
@@ -106,7 +112,7 @@ function tidyLayout(nodes: Node[], edges: Edge[]): Node[] {
     return nodes.map(n => ({ ...n, position: positions[n.id] ?? n.position }));
 }
 
-const CanvasContent = () => {
+const CanvasContent = ({ executionState }: { executionState: WorkflowExecutionDisplayState }) => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const {
         nodes,
@@ -177,6 +183,19 @@ const CanvasContent = () => {
         'google-sheets-publisher': DestinationNode,
     }), []);
 
+    const displayNodes = useMemo(
+        () =>
+            nodes.map((node) => ({
+                ...node,
+                data: {
+                    ...node.data,
+                    status: executionState?.nodeStatuses[node.id] || undefined,
+                    isActive: executionState?.activeNodeId === node.id,
+                },
+            })),
+        [nodes, executionState],
+    );
+
     const edgeTypes = useMemo(() => ({
         'deletable-edge': DeletableEdge,
     }), []);
@@ -239,7 +258,7 @@ const CanvasContent = () => {
                     </button>
                 </div>
                 <ReactFlow
-                    nodes={nodes}
+                    nodes={displayNodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesChange}
@@ -265,10 +284,10 @@ const CanvasContent = () => {
     );
 };
 
-export const Canvas = () => {
+export const Canvas = ({ executionState = null }: { executionState?: WorkflowExecutionDisplayState }) => {
     return (
         <ReactFlowProvider>
-            <CanvasContent />
+            <CanvasContent executionState={executionState} />
         </ReactFlowProvider>
     );
 };

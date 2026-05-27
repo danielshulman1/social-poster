@@ -13,6 +13,7 @@ const SourceNode = ({ id, data, selected }: NodeProps) => {
             icon={isSheets ? FileSpreadsheet : Rss}
             color="bg-blue-500"
             selected={selected}
+            status={data.status as 'idle' | 'running' | 'completed' | 'failed' | undefined}
             handles={[
                 { type: 'target', position: Position.Top },
                 { type: 'source', position: Position.Bottom }

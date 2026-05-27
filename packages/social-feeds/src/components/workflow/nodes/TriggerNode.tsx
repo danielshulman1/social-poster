@@ -14,6 +14,7 @@ const TriggerNode = ({ id, data, selected }: NodeProps) => {
             icon={isAutomatic ? Calendar : Play} // Zap for generic
             color="bg-emerald-500"
             selected={selected}
+            status={data.status as 'idle' | 'running' | 'completed' | 'failed' | undefined}
             handles={[{ type: 'source', position: Position.Bottom }]}
         >
             <div className="flex flex-col gap-1">

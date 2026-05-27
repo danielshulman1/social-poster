@@ -11,6 +11,7 @@ const ImageGenNode = ({ id, data, selected }: NodeProps) => {
             icon={ImageIcon}
             color="bg-purple-600"
             selected={selected}
+            status={data.status as 'idle' | 'running' | 'completed' | 'failed' | undefined}
             handles={[
                 { type: 'target', position: Position.Top },
                 { type: 'source', position: Position.Bottom }

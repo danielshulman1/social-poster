@@ -1743,6 +1743,13 @@ export async function executeWorkflow(
                     });
                     let imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
+                    // Older workflows often left Instagram publishers on "None (Text Only)" even
+                    // when the upstream Google Sheets row already carried an image. Instagram
+                    // cannot publish text-only posts, so prefer the upstream image if one exists.
+                    if (!imageUrl && lastImageUrl && lastImageOrigin) {
+                        imageUrl = lastImageUrl;
+                    }
+
                     if (isDataImageUrl(imageUrl) && lastImageOrigin === 'image-generated' && lastGeneratedImageNodeId) {
                         imageUrl =
                             buildGeneratedWorkflowImageUrl({

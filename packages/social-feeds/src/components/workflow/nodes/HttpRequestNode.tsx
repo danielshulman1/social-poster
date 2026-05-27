@@ -13,6 +13,7 @@ const HttpRequestNode = ({ id, data, selected }: NodeProps) => {
             icon={Globe}
             color="bg-teal-600"
             selected={selected}
+            status={data.status as 'idle' | 'running' | 'completed' | 'failed' | undefined}
             handles={[
                 { type: 'target', position: Position.Top },
                 { type: 'source', position: Position.Bottom }

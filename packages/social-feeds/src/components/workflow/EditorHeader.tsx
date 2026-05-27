@@ -18,6 +18,7 @@ interface EditorHeaderProps {
     workflowId?: string;
     onGenerateFromPrompt: (prompt: string) => Promise<boolean>;
     isGenerating?: boolean;
+    activeNodeId?: string | null;
 }
 
 export function EditorHeader({
@@ -31,6 +32,7 @@ export function EditorHeader({
     workflowId,
     onGenerateFromPrompt,
     isGenerating,
+    activeNodeId,
 }: EditorHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(workflowName);
@@ -158,6 +160,12 @@ export function EditorHeader({
                 {isDirty && <span className="text-xs text-muted-foreground italic">- Unsaved changes</span>}
             </div>
             <div className="flex items-center gap-2">
+                {isRunning && activeNodeId ? (
+                    <div className="hidden sm:flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] text-amber-900">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Active node: {activeNodeId}
+                    </div>
+                ) : null}
                 <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
                     <DialogTrigger asChild>
                         <Button size="sm" variant="outline" disabled={isSaving || isRunning || isGenerating}>
