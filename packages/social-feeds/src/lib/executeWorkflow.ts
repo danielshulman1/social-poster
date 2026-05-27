@@ -471,6 +471,14 @@ type WorkflowImageOrigin = "" | "google-sheet" | "image-generated" | "trigger-im
 const isImageLikeOutput = (value: string) =>
     value.startsWith("http") || value.startsWith("data:");
 
+const NO_SOURCE_ROW_MESSAGES = [
+    'No rows in the sheet are due to post yet (or all due rows are marked done).',
+    'All rows in the sheet have been processed (marked as done).',
+];
+
+const isNoSourceRowMessage = (value: string) =>
+    NO_SOURCE_ROW_MESSAGES.includes((value || '').trim());
+
 const resolvePublisherImageUrl = (params: {
     node: { data?: Record<string, unknown> };
     lastImageUrl: string;
@@ -520,10 +528,18 @@ const resolvePublisherTextContent = (params: {
         case "none":
             return "";
         case "ai-generated":
-            return preparePublishableContent(lastAiTextOutput || lastTextOutput || lastOutput || configuredContent || "");
+            return preparePublishableContent(
+                isNoSourceRowMessage(lastAiTextOutput || lastTextOutput || lastOutput || configuredContent || "")
+                    ? ""
+                    : (lastAiTextOutput || lastTextOutput || lastOutput || configuredContent || "")
+            );
         case "trigger":
         default:
-            return preparePublishableContent(lastTextOutput || lastOutput || configuredContent || "");
+            return preparePublishableContent(
+                isNoSourceRowMessage(lastTextOutput || lastOutput || configuredContent || "")
+                    ? ""
+                    : (lastTextOutput || lastOutput || configuredContent || "")
+            );
     }
 };
 
@@ -1376,6 +1392,12 @@ export async function executeWorkflow(
                     });
                     const imageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
+                    if (!contentToPost && !imageUrl && isNoSourceRowMessage(lastOutput)) {
+                        output = 'Skipped Facebook publish because no due Google Sheets row was available.';
+                        resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
+                    }
+
                     if (!shouldPublishWithoutApproval(node)) {
                         const approvalPreview = buildApprovalPreview({
                             platform: 'facebook',
@@ -1474,6 +1496,12 @@ export async function executeWorkflow(
                         lastOutput,
                     });
                     const liImageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
+
+                    if (!liTextContent && !liImageUrl && isNoSourceRowMessage(lastOutput)) {
+                        output = 'Skipped LinkedIn publish because no due Google Sheets row was available.';
+                        resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
+                    }
 
                     if (!liTextContent && !liImageUrl) throw new Error('No content to post. Connect an AI node before this publisher.');
 
@@ -1677,6 +1705,12 @@ export async function executeWorkflow(
                     });
                     const txImageUrl = resolvePublisherImageUrl({ node, lastImageUrl, lastImageOrigin, lastOutput });
 
+                    if (!txTextContent && !txImageUrl && isNoSourceRowMessage(lastOutput)) {
+                        output = 'Skipped Twitter/X publish because no due Google Sheets row was available.';
+                        resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
+                    }
+
                     if (!txTextContent && !txImageUrl) {
                         throw new Error('No content to post. Connect an upstream node before this Twitter/X publisher.');
                     }
@@ -1812,6 +1846,12 @@ export async function executeWorkflow(
                     // cannot publish text-only posts, so prefer the upstream image if one exists.
                     if (!imageUrl && lastImageUrl && lastImageOrigin) {
                         imageUrl = lastImageUrl;
+                    }
+
+                    if (!igContent && !imageUrl && isNoSourceRowMessage(lastOutput)) {
+                        output = 'Skipped Instagram publish because no due Google Sheets row was available.';
+                        resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
                     }
 
                     if (isDataImageUrl(imageUrl) && lastImageOrigin === 'image-generated' && lastGeneratedImageNodeId) {
@@ -1987,6 +2027,12 @@ export async function executeWorkflow(
                         lastAiTextOutput,
                         lastOutput,
                     }).slice(0, 500);
+
+                    if (!text && isNoSourceRowMessage(lastOutput)) {
+                        output = 'Skipped Threads publish because no due Google Sheets row was available.';
+                        resultDetails = { skipped: true, reason: 'no_source_row' };
+                        break;
+                    }
                     if (!text) throw new Error('No content to post to Threads.');
 
                     if (!shouldPublishWithoutApproval(node)) {
