@@ -57,6 +57,13 @@ export default function SettingsPage() {
     const [showOpenrouterKey, setShowOpenrouterKey] = useState(false);
     const [isSavingOpenrouterKey, setIsSavingOpenrouterKey] = useState(false);
 
+    // Gemini (image generation) specific state
+    const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [hasGeminiApiKey, setHasGeminiApiKey] = useState(false);
+    const [geminiApiKeyPreview, setGeminiApiKeyPreview] = useState('');
+    const [showGeminiKey, setShowGeminiKey] = useState(false);
+    const [isSavingGeminiKey, setIsSavingGeminiKey] = useState(false);
+
     // Facebook specific state
     const [hasGoogleApiKey, setHasGoogleApiKey] = useState(false);
     const [facebookAppId, setFacebookAppId] = useState('');
@@ -94,6 +101,10 @@ export default function SettingsPage() {
                 if (data.hasOpenrouterKey) {
                     setHasOpenrouterApiKey(true);
                     setOpenrouterApiKeyPreview(data.openrouterKeyPreview || '');
+                }
+                if (data.hasGeminiApiKey) {
+                    setHasGeminiApiKey(true);
+                    setGeminiApiKeyPreview(data.geminiApiKeyPreview || '');
                 }
                 if (data.hasFacebookAppCredentials) {
                     setHasFacebookAppCredentials(true);
@@ -341,6 +352,50 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveGeminiKey = async () => {
+        if (!geminiApiKey.trim()) {
+            toast.error('Please enter a Gemini API key');
+            return;
+        }
+        setIsSavingGeminiKey(true);
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geminiApiKey: geminiApiKey.trim() }),
+            });
+            if (!res.ok) throw new Error();
+            setHasGeminiApiKey(true);
+            setGeminiApiKeyPreview(`...${geminiApiKey.trim().slice(-4)}`);
+            setGeminiApiKey('');
+            toast.success('Gemini API key saved! You can now select Gemini on Image Generation nodes.');
+        } catch {
+            toast.error('Failed to save Gemini API key');
+        } finally {
+            setIsSavingGeminiKey(false);
+        }
+    };
+
+    const handleRemoveGeminiKey = async () => {
+        setIsSavingGeminiKey(true);
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geminiApiKey: null }),
+            });
+            if (!res.ok) throw new Error();
+            setHasGeminiApiKey(false);
+            setGeminiApiKeyPreview('');
+            setGeminiApiKey('');
+            toast.success('Gemini API key removed');
+        } catch {
+            toast.error('Failed to remove Gemini API key');
+        } finally {
+            setIsSavingGeminiKey(false);
+        }
+    };
+
     const handleAddPersona = () => {
         if (newName && newPrompt) {
             addPersona({ id: Date.now().toString(), name: newName, prompt: newPrompt });
@@ -558,7 +613,7 @@ export default function SettingsPage() {
                         <div className="grid gap-2">
                             <Label>Google API Key</Label>
                             <p className="text-[11px] text-muted-foreground mb-1">
-                                Required for Google Sheets integration (fetching tabs &amp; reading/writing data) and for Gemini image generation nodes.
+                                Required for Google Sheets integration (fetching tabs &amp; reading/writing data).
                             </p>
                             {hasGoogleApiKey && (
                                 <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">
@@ -635,6 +690,49 @@ export default function SettingsPage() {
                             </div>
                             <p className="text-[11px] text-muted-foreground">
                                 Get your API key from <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/keys</a>.
+                            </p>
+                        </div>
+
+                        <Separator />
+
+                        {/* Gemini API Key */}
+                        <div className="grid gap-2">
+                            <Label>Gemini API Key</Label>
+                            <p className="text-[11px] text-muted-foreground mb-1">
+                                Used by Image Generation nodes to create images with Gemini (Nano Banana). Separate from the Google API Key above, which is only for Sheets.
+                            </p>
+                            {hasGeminiApiKey && (
+                                <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">
+                                    <Badge variant="secondary" className="text-xs">Active</Badge>
+                                    <span className="text-sm font-mono text-muted-foreground">{geminiApiKeyPreview}</span>
+                                    <Button variant="ghost" size="sm" className="ml-auto text-red-500 h-7" onClick={handleRemoveGeminiKey} disabled={isSavingGeminiKey}>
+                                        <Trash2 className="h-3 w-3 mr-1" /> Remove
+                                    </Button>
+                                </div>
+                            )}
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Input
+                                        type={showGeminiKey ? 'text' : 'password'}
+                                        placeholder={hasGeminiApiKey ? 'Enter new key to replace...' : 'AIza...'}
+                                        value={geminiApiKey}
+                                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setShowGeminiKey(!showGeminiKey)}
+                                    >
+                                        {showGeminiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                <Button onClick={handleSaveGeminiKey} disabled={isSavingGeminiKey || !geminiApiKey.trim()} size="sm">
+                                    {isSavingGeminiKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Key
+                                </Button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                                Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline hover:text-foreground">aistudio.google.com/apikey</a>.
                             </p>
                         </div>
 

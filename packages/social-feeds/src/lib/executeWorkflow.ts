@@ -1418,14 +1418,15 @@ export async function executeWorkflow(
                         if (!output) throw new Error(`${provider} generated no image output.`);
 
                     } else if (provider === 'nano-banana' || provider === 'gemini') {
-                        const userWithGoogle = decryptUserSecretFields(await prisma.user.findUnique({
+                        const userWithGemini = decryptUserSecretFields(await prisma.user.findUnique({
                             where: { id: userId },
-                            select: { googleApiKey: true }
+                            select: { geminiApiKey: true, googleApiKey: true }
                         }));
 
-                        if (!userWithGoogle?.googleApiKey) throw new Error('No Google API key configured for Gemini image generation. Go to Settings.');
+                        const geminiKey = userWithGemini?.geminiApiKey || userWithGemini?.googleApiKey;
+                        if (!geminiKey) throw new Error('No Gemini API key configured for image generation. Go to Settings.');
 
-                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${userWithGoogle.googleApiKey}`, {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${geminiKey}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({

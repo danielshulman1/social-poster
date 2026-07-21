@@ -20,6 +20,7 @@ model User {
   abacusApiKey  String?   // Per-user Abacus AI API key
   abacusDeploymentId String? // Per-user Abacus AI Deployment ID
   openrouterApiKey     String?  // Per-user OpenRouter API key
+  geminiApiKey         String?  // Per-user Gemini (Google AI Studio) API key, used for image generation
   linkedinClientId     String?  // Per-user LinkedIn app Client ID
   linkedinClientSecret String?  // Per-user LinkedIn app Client Secret
   facebookAppId        String?  // Per-user Facebook app ID

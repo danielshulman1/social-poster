@@ -743,16 +743,16 @@ export async function POST(req: Request) {
             } else if (provider === 'nano-banana' || provider === 'gemini') {
                 const user = decryptUserSecretFields(await prisma.user.findUnique({
                     where: { id: auth.userId },
-                    select: { googleApiKey: true } // This field exists now
+                    select: { geminiApiKey: true, googleApiKey: true }
                 }));
 
-                // @ts-ignore
-                if (!user?.googleApiKey) {
-                    return NextResponse.json({ success: false, error: 'No Google API key configured for Gemini image generation.' }, { status: 400 });
+                const geminiKey = user?.geminiApiKey || user?.googleApiKey;
+                if (!geminiKey) {
+                    return NextResponse.json({ success: false, error: 'No Gemini API key configured for image generation.' }, { status: 400 });
                 }
 
                 // Gemini 2.5 Flash Image ("Nano Banana")
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${user.googleApiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${geminiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

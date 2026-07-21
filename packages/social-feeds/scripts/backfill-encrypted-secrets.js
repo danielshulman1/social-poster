@@ -15,6 +15,7 @@ const USER_SECRET_FIELDS = [
   "googleApiKey",
   "abacusApiKey",
   "openrouterApiKey",
+  "geminiApiKey",
   "linkedinClientSecret",
   "facebookAppSecret",
   "twitterClientSecret",
