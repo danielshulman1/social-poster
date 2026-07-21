@@ -803,7 +803,7 @@ export async function executeWorkflow(
     // Load user's API key and connections
     const user = decryptUserSecretFields(await prisma.user.findUnique({
         where: { id: userId },
-        select: { openaiApiKey: true, googleApiKey: true },
+        select: { openaiApiKey: true, googleApiKey: true, openrouterApiKey: true },
     }));
 
     const connections = await prisma.externalConnection.findMany({
@@ -818,6 +818,7 @@ export async function executeWorkflow(
             connectionCount: connections.length,
             hasOpenAiKey: Boolean(user?.openaiApiKey),
             hasGoogleApiKey: Boolean(user?.googleApiKey),
+            hasOpenRouterKey: Boolean(user?.openrouterApiKey),
         },
     });
     await persistExecutionLog();
@@ -1032,7 +1033,12 @@ export async function executeWorkflow(
                 }
 
                 case 'ai-generation': {
-                    if (!user?.openaiApiKey) {
+                    const aiProvider = (node.data?.provider as string) || 'openai';
+                    if (aiProvider === 'openrouter') {
+                        if (!user?.openrouterApiKey) {
+                            throw new Error('No OpenRouter API key configured. Go to Settings → API Keys.');
+                        }
+                    } else if (!user?.openaiApiKey) {
                         throw new Error('No OpenAI API key configured. Go to Settings → API Keys.');
                     }
 
@@ -1164,25 +1170,47 @@ export async function executeWorkflow(
 
                     const enhancedPersona = persona + humanInstructions + socialContext;
 
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${user.openaiApiKey}`,
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-4o-mini',
-                            messages: [
-                                { role: 'system', content: enhancedPersona },
-                                { role: 'user', content: taskPrompt },
-                            ],
-                            max_tokens: platforms.length > 0 ? 300 : 500,
-                        }),
-                    });
+                    const aiMaxTokens = platforms.length > 0 ? 300 : 500;
+                    let response: Response;
+                    if (aiProvider === 'openrouter') {
+                        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${user.openrouterApiKey}`,
+                                'HTTP-Referer': 'https://social-feeds.com',
+                                'X-Title': 'Social Feeds Poster',
+                            },
+                            body: JSON.stringify({
+                                model: (node.data?.model as string)?.trim() || 'openrouter/auto',
+                                messages: [
+                                    { role: 'system', content: enhancedPersona },
+                                    { role: 'user', content: taskPrompt },
+                                ],
+                                max_tokens: aiMaxTokens,
+                            }),
+                        });
+                    } else {
+                        response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${user.openaiApiKey}`,
+                            },
+                            body: JSON.stringify({
+                                model: 'gpt-4o-mini',
+                                messages: [
+                                    { role: 'system', content: enhancedPersona },
+                                    { role: 'user', content: taskPrompt },
+                                ],
+                                max_tokens: aiMaxTokens,
+                            }),
+                        });
+                    }
 
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(`OpenAI error: ${errorData.error?.message || 'Unknown'}`);
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`${aiProvider === 'openrouter' ? 'OpenRouter' : 'OpenAI'} error: ${errorData.error?.message || 'Unknown'}`);
                     }
 
                     const aiData = await response.json();
@@ -1281,25 +1309,51 @@ export async function executeWorkflow(
 
                     const blogPrompt = node.data?.blogPrompt || 'Write a polished blog post with headline, sections, and conclusion.';
 
-                    if (!user?.openaiApiKey) {
+                    const blogProvider = (node.data?.provider as string) || 'openai';
+                    if (blogProvider === 'openrouter') {
+                        if (!user?.openrouterApiKey) {
+                            throw new Error('No OpenRouter API key configured. Go to Settings → API Keys to add one, then re-run the workflow.');
+                        }
+                    } else if (!user?.openaiApiKey) {
                         throw new Error('No OpenAI API key configured. Go to Settings → API Keys to add one, then re-run the workflow.');
                     }
 
-                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${user.openaiApiKey}`,
-                        },
-                        body: JSON.stringify({
-                            model: 'gpt-4o-mini',
-                            messages: [
-                                { role: 'system', content: 'You are a professional blog writer.' },
-                                { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
-                            ],
-                            max_tokens: 1200,
-                        }),
-                    });
+                    let response: Response;
+                    if (blogProvider === 'openrouter') {
+                        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${user.openrouterApiKey}`,
+                                'HTTP-Referer': 'https://social-feeds.com',
+                                'X-Title': 'Social Feeds Poster',
+                            },
+                            body: JSON.stringify({
+                                model: (node.data?.model as string)?.trim() || 'openrouter/auto',
+                                messages: [
+                                    { role: 'system', content: 'You are a professional blog writer.' },
+                                    { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
+                                ],
+                                max_tokens: 1200,
+                            }),
+                        });
+                    } else {
+                        response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${user.openaiApiKey}`,
+                            },
+                            body: JSON.stringify({
+                                model: 'gpt-4o-mini',
+                                messages: [
+                                    { role: 'system', content: 'You are a professional blog writer.' },
+                                    { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
+                                ],
+                                max_tokens: 1200,
+                            }),
+                        });
+                    }
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
                         throw new Error(`Blog creation failed: ${errorData.error?.message || 'Unknown error'}`);

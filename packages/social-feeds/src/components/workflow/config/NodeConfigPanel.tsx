@@ -675,21 +675,43 @@ export const NodeConfigPanel = () => {
                     <div className="space-y-4">
                         <div className="grid gap-2">
                             <Label>Provider</Label>
-                            <Select defaultValue="openai" onValueChange={(val) => {
-                                setNodes(nodes.map(n =>
-                                    n.id === selectedNode?.id
-                                        ? { ...n, data: { ...n.data, provider: val } }
-                                        : n
-                                ));
-                            }}>
+                            <Select
+                                value={(selectedNode?.data.provider as string) || 'openai'}
+                                onValueChange={(val) => {
+                                    setNodes(nodes.map(n =>
+                                        n.id === selectedNode?.id
+                                            ? { ...n, data: { ...n.data, provider: val } }
+                                            : n
+                                    ));
+                                }}
+                            >
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="openai">OpenAI (GPT-4)</SelectItem>
-                                    <SelectItem value="anthropic">Anthropic (Claude 3)</SelectItem>
-                                    <SelectItem value="gemini">Google Gemini 1.5</SelectItem>
+                                    <SelectItem value="openai">OpenAI (GPT-4o mini)</SelectItem>
+                                    <SelectItem value="openrouter">OpenRouter (Claude, Llama, Gemini, etc.)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {(selectedNode?.data.provider as string) === 'openrouter' && (
+                            <div className="grid gap-2">
+                                <Label>OpenRouter Model</Label>
+                                <Input
+                                    placeholder="openrouter/auto"
+                                    value={(selectedNode?.data.model as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                : n
+                                        ));
+                                    }}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Any model slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="grid gap-2">
                             <Label>Master Prompt / Persona</Label>
@@ -973,6 +995,46 @@ export const NodeConfigPanel = () => {
             case 'blog-creation':
                 return (
                     <div className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Provider</Label>
+                            <Select
+                                value={(selectedNode?.data.provider as string) || 'openai'}
+                                onValueChange={(val) => {
+                                    setNodes(nodes.map(n =>
+                                        n.id === selectedNode?.id
+                                            ? { ...n, data: { ...n.data, provider: val } }
+                                            : n
+                                    ));
+                                }}
+                            >
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="openai">OpenAI (GPT-4o mini)</SelectItem>
+                                    <SelectItem value="openrouter">OpenRouter (Claude, Llama, Gemini, etc.)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {(selectedNode?.data.provider as string) === 'openrouter' && (
+                            <div className="grid gap-2">
+                                <Label>OpenRouter Model</Label>
+                                <Input
+                                    placeholder="openrouter/auto"
+                                    value={(selectedNode?.data.model as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                : n
+                                        ));
+                                    }}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Any model slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="grid gap-2">
                             <Label>Content Source</Label>
                             <Select

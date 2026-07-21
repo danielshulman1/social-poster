@@ -483,7 +483,40 @@ export async function POST(req: Request) {
             }
 
             const blogPrompt = getString(body.blogPrompt, 'Write a blog post.');
-            const user = decryptUserSecretFields(await prisma.user.findUnique({ where: { id: auth.userId }, select: { openaiApiKey: true } }));
+            const user = decryptUserSecretFields(await prisma.user.findUnique({
+                where: { id: auth.userId },
+                select: { openaiApiKey: true, openrouterApiKey: true },
+            }));
+
+            if (provider === 'openrouter') {
+                if (!user?.openrouterApiKey) {
+                    return NextResponse.json({ success: false, error: 'No OpenRouter API key configured. Go to Settings to add your API key.' }, { status: 400 });
+                }
+
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${user.openrouterApiKey}`,
+                        'HTTP-Referer': 'https://social-feeds.com',
+                        'X-Title': 'Social Feeds Poster',
+                    },
+                    body: JSON.stringify({
+                        model: body.model || 'openrouter/auto',
+                        messages: [
+                            { role: 'system', content: 'You are a professional blog writer.' },
+                            { role: 'user', content: `${blogPrompt}\n\nSource material:\n${sourceText}` },
+                        ],
+                    }),
+                });
+
+                if (!response.ok) {
+                    return buildUpstreamErrorResponse(response, "OpenRouter API error");
+                }
+
+                const data = await parseJsonResponse(response);
+                return NextResponse.json({ success: true, result: data?.choices?.[0]?.message?.content || 'No content generated.', provider: 'openrouter' });
+            }
 
             if (!user?.openaiApiKey) {
                 return NextResponse.json({ success: false, error: 'No OpenAI API key.' }, { status: 400 });

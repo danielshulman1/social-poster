@@ -22,6 +22,7 @@ export async function GET(req: Request) {
             email: true,
             openaiApiKey: true,
             googleApiKey: true,
+            openrouterApiKey: true,
             linkedinClientId: true,
             linkedinClientSecret: true,
             threadsClientId: true,
@@ -40,6 +41,8 @@ export async function GET(req: Request) {
         openaiKeyPreview: getSecretPreview(user.openaiApiKey, "sk-..."),
         hasGoogleApiKey: !!user.googleApiKey,
         googleApiKeyPreview: getSecretPreview(user.googleApiKey),
+        hasOpenrouterKey: !!user.openrouterApiKey,
+        openrouterKeyPreview: getSecretPreview(user.openrouterApiKey, "sk-or-v1-..."),
         hasLinkedinCredentials: !!(user.linkedinClientId && user.linkedinClientSecret),
         linkedinClientId: user.linkedinClientId || '',
         hasThreadsCredentials: !!(user.threadsClientId && user.threadsClientSecret),
@@ -60,6 +63,7 @@ export async function PUT(req: Request) {
     if (body.name !== undefined) updateData.name = body.name;
     if (body.openaiApiKey !== undefined) updateData.openaiApiKey = body.openaiApiKey;
     if (body.googleApiKey !== undefined) updateData.googleApiKey = body.googleApiKey;
+    if (body.openrouterApiKey !== undefined) updateData.openrouterApiKey = body.openrouterApiKey;
     if (body.linkedinClientId !== undefined) updateData.linkedinClientId = body.linkedinClientId;
     if (body.linkedinClientSecret !== undefined) updateData.linkedinClientSecret = body.linkedinClientSecret;
     if (body.threadsClientId !== undefined) updateData.threadsClientId = body.threadsClientId;

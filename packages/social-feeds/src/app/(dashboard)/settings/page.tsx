@@ -298,31 +298,47 @@ export default function SettingsPage() {
     };
 
     const handleSaveOpenrouterKey = async () => {
-        // Implementation for openrouter key save
         if (!openrouterApiKey.trim()) {
             toast.error('Please enter an OpenRouter API key');
             return;
         }
         setIsSavingOpenrouterKey(true);
-        // Note: Currently backend doesn't persist this, so just update UI for now a placeholder
-        setTimeout(() => {
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openrouterApiKey: openrouterApiKey.trim() }),
+            });
+            if (!res.ok) throw new Error();
             setHasOpenrouterApiKey(true);
             setOpenrouterApiKeyPreview(`sk-or-v1-...${openrouterApiKey.trim().slice(-4)}`);
             setOpenrouterApiKey('');
+            toast.success('OpenRouter API key saved! You can now select OpenRouter as a provider on AI nodes.');
+        } catch {
+            toast.error('Failed to save OpenRouter API key');
+        } finally {
             setIsSavingOpenrouterKey(false);
-            toast.success('OpenRouter API key saved (local placeholder)');
-        }, 500);
+        }
     };
 
     const handleRemoveOpenrouterKey = async () => {
         setIsSavingOpenrouterKey(true);
-        setTimeout(() => {
+        try {
+            const res = await fetch('/api/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openrouterApiKey: null }),
+            });
+            if (!res.ok) throw new Error();
             setHasOpenrouterApiKey(false);
             setOpenrouterApiKeyPreview('');
             setOpenrouterApiKey('');
-            setIsSavingOpenrouterKey(false);
             toast.success('OpenRouter API key removed');
-        }, 500);
+        } catch {
+            toast.error('Failed to remove OpenRouter API key');
+        } finally {
+            setIsSavingOpenrouterKey(false);
+        }
     };
 
     const handleAddPersona = () => {
