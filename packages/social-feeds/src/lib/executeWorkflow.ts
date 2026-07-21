@@ -580,6 +580,27 @@ const extractGeminiImageOutput = (data: any) => {
     return "";
 };
 
+const describeGeminiImageError = (status: number, errText: string) => {
+    let parsed: any;
+    try {
+        parsed = JSON.parse(errText);
+    } catch {
+        parsed = null;
+    }
+
+    const googleStatus = parsed?.error?.status;
+    const message = parsed?.error?.message || errText;
+
+    if (status === 429 || googleStatus === "RESOURCE_EXHAUSTED") {
+        const isZeroQuota = /limit:\s*0\b/i.test(message);
+        return isZeroQuota
+            ? "Gemini image generation isn't enabled for this API key's Google Cloud project (free-tier quota is 0 for image models). Enable billing on the project at aistudio.google.com, then try again."
+            : "Gemini image generation is rate-limited right now. Wait a bit and try again, or check your quota at aistudio.google.com.";
+    }
+
+    return `Gemini image generation error: ${message}`;
+};
+
 const isRemoteImageUrl = (value: string) =>
     value.startsWith("http://") || value.startsWith("https://");
 
@@ -1436,7 +1457,7 @@ export async function executeWorkflow(
 
                         if (!response.ok) {
                             const errText = await response.text();
-                            throw new Error(`Gemini image generation error: ${errText}`);
+                            throw new Error(describeGeminiImageError(response.status, errText));
                         }
 
                         const data = await response.json();
