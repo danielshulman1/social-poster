@@ -558,7 +558,7 @@ export default function SettingsPage() {
                         <div className="grid gap-2">
                             <Label>Google API Key</Label>
                             <p className="text-[11px] text-muted-foreground mb-1">
-                                Required for Google Sheets integration (fetching tabs &amp; reading/writing data).
+                                Required for Google Sheets integration (fetching tabs &amp; reading/writing data) and for Gemini image generation nodes.
                             </p>
                             {hasGoogleApiKey && (
                                 <div className="flex items-center gap-2 p-2 rounded border bg-muted/30">

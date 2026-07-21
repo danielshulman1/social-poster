@@ -564,6 +564,22 @@ const extractOpenAiImageOutput = (data: any) => {
     return "";
 };
 
+const extractGeminiImageOutput = (data: any) => {
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return "";
+
+    for (const part of parts) {
+        const inline = part?.inlineData || part?.inline_data;
+        const b64 = inline?.data;
+        if (typeof b64 === "string" && b64.trim()) {
+            const mimeType = inline?.mimeType || inline?.mime_type || "image/png";
+            return `data:${mimeType};base64,${b64.trim()}`;
+        }
+    }
+
+    return "";
+};
+
 const isRemoteImageUrl = (value: string) =>
     value.startsWith("http://") || value.startsWith("https://");
 
@@ -1407,27 +1423,24 @@ export async function executeWorkflow(
                             select: { googleApiKey: true }
                         }));
 
-                        if (!userWithGoogle?.googleApiKey) throw new Error('No Google API key configured for Nano Banana. Go to Settings.');
+                        if (!userWithGoogle?.googleApiKey) throw new Error('No Google API key configured for Gemini image generation. Go to Settings.');
 
-                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${userWithGoogle.googleApiKey}`, {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${userWithGoogle.googleApiKey}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                instances: [{ prompt: prompt }],
-                                parameters: { sampleCount: 1 }
+                                contents: [{ parts: [{ text: prompt }] }],
                             })
                         });
 
                         if (!response.ok) {
                             const errText = await response.text();
-                            throw new Error(`Nano Banana error: ${errText}`);
+                            throw new Error(`Gemini image generation error: ${errText}`);
                         }
 
                         const data = await response.json();
-                        const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-                        if (!b64) throw new Error('Nano Banana returned no image data.');
-
-                        output = `data:image/png;base64,${b64}`;
+                        output = extractGeminiImageOutput(data);
+                        if (!output) throw new Error('Gemini returned no image data.');
                     } else {
                         throw new Error(`Unknown image provider: ${provider}`);
                     }

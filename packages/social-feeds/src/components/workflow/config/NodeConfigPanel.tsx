@@ -1190,7 +1190,7 @@ export const NodeConfigPanel = () => {
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="dalle-3">GPT Image (OpenAI)</SelectItem>
-                                    <SelectItem value="nano-banana">Nano Banana (Gemini Flash)</SelectItem>
+                                    <SelectItem value="nano-banana">Gemini (Nano Banana Flash Image)</SelectItem>
                                     <SelectItem value="stable-diffusion">Stable Diffusion (Coming Soon)</SelectItem>
                                 </SelectContent>
                             </Select>

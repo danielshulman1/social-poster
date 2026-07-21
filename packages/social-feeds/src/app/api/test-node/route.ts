@@ -172,6 +172,22 @@ const extractOpenAiImageOutput = (data: any) => {
     return "";
 };
 
+const extractGeminiImageOutput = (data: any) => {
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return "";
+
+    for (const part of parts) {
+        const inline = part?.inlineData || part?.inline_data;
+        const b64 = inline?.data;
+        if (typeof b64 === "string" && b64.trim()) {
+            const mimeType = inline?.mimeType || inline?.mime_type || "image/png";
+            return `data:${mimeType};base64,${b64.trim()}`;
+        }
+    }
+
+    return "";
+};
+
 const summarizeHttpError = (status: number, statusText: string, responseText: string) => {
     const statusLabel = statusText ? ` ${statusText}` : "";
     const trimmed = responseText.trim();
@@ -732,30 +748,29 @@ export async function POST(req: Request) {
 
                 // @ts-ignore
                 if (!user?.googleApiKey) {
-                    return NextResponse.json({ success: false, error: 'No Google API key configured for Nano Banana.' }, { status: 400 });
+                    return NextResponse.json({ success: false, error: 'No Google API key configured for Gemini image generation.' }, { status: 400 });
                 }
 
-                // Nano Banana (Gemini/Imagen)
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${user.googleApiKey}`, {
+                // Gemini 2.5 Flash Image ("Nano Banana")
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${user.googleApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        instances: [{ prompt: prompt }],
-                        parameters: { sampleCount: 1 }
+                        contents: [{ parts: [{ text: prompt }] }],
                     })
                 });
 
                 if (!response.ok) {
                     const errText = await response.text();
-                    return NextResponse.json({ success: false, error: `Nano Banana error: ${errText}` }, { status: 500 });
+                    return NextResponse.json({ success: false, error: `Gemini image generation error: ${errText}` }, { status: 500 });
                 }
 
                 const data = await response.json();
-                const b64 = data.predictions?.[0]?.bytesBase64Encoded;
+                const imageUrl = extractGeminiImageOutput(data);
 
-                if (!b64) return NextResponse.json({ success: false, error: 'Nano Banana returned no image data.' }, { status: 500 });
+                if (!imageUrl) return NextResponse.json({ success: false, error: 'Gemini returned no image data.' }, { status: 500 });
 
-                return NextResponse.json({ success: true, result: `data:image/png;base64,${b64}` });
+                return NextResponse.json({ success: true, result: imageUrl });
             }
 
             return NextResponse.json({
