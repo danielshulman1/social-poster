@@ -122,6 +122,8 @@ export const NodeConfigPanel = () => {
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
     const [openrouterImageModels, setOpenrouterImageModels] = useState<{ id: string; name: string }[]>([]);
     const [isLoadingOpenrouterImageModels, setIsLoadingOpenrouterImageModels] = useState(false);
+    const [openrouterFreeModels, setOpenrouterFreeModels] = useState<{ id: string; name: string }[]>([]);
+    const [isLoadingOpenrouterFreeModels, setIsLoadingOpenrouterFreeModels] = useState(false);
     const [newScheduleDay, setNewScheduleDay] = useState<string>('');
     const [newScheduleTime, setNewScheduleTime] = useState<string>('');
     const [runEveryMinute, setRunEveryMinute] = useState(false);
@@ -319,6 +321,27 @@ export const NodeConfigPanel = () => {
             .catch(() => toast.error('Failed to load OpenRouter image models'))
             .finally(() => setIsLoadingOpenrouterImageModels(false));
     }, [selectedNode?.type, selectedNode?.data?.provider, openrouterImageModels.length, isLoadingOpenrouterImageModels]);
+
+    useEffect(() => {
+        const needsOpenrouterFreeModels =
+            (selectedNode?.type === 'ai-generation' || selectedNode?.type === 'blog-creation')
+            && (selectedNode?.data.provider as string) === 'openrouter';
+
+        if (!needsOpenrouterFreeModels || openrouterFreeModels.length > 0 || isLoadingOpenrouterFreeModels) {
+            return;
+        }
+
+        setIsLoadingOpenrouterFreeModels(true);
+        fetch('/api/openrouter/free-models')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data.models)) {
+                    setOpenrouterFreeModels(data.models);
+                }
+            })
+            .catch(() => toast.error('Failed to load OpenRouter free models'))
+            .finally(() => setIsLoadingOpenrouterFreeModels(false));
+    }, [selectedNode?.type, selectedNode?.data?.provider, openrouterFreeModels.length, isLoadingOpenrouterFreeModels]);
 
     if (!selectedNode) return null;
 
@@ -718,19 +741,57 @@ export const NodeConfigPanel = () => {
                         {(selectedNode?.data.provider as string) === 'openrouter' && (
                             <div className="grid gap-2">
                                 <Label>OpenRouter Model</Label>
-                                <Input
-                                    placeholder="openrouter/auto"
-                                    value={(selectedNode?.data.model as string) || ''}
-                                    onChange={(e) => {
-                                        setNodes(nodes.map(n =>
-                                            n.id === selectedNode?.id
-                                                ? { ...n, data: { ...n.data, model: e.target.value } }
-                                                : n
-                                        ));
-                                    }}
-                                />
+                                {(() => {
+                                    const currentModel = (selectedNode?.data.model as string) || '';
+                                    const isKnownFreeModel = openrouterFreeModels.some(m => m.id === currentModel);
+                                    const isCustom = !!currentModel && !isKnownFreeModel;
+
+                                    return (
+                                        <>
+                                            <Select
+                                                value={isCustom ? '__custom__' : currentModel}
+                                                onValueChange={(val) => {
+                                                    setNodes(nodes.map(n =>
+                                                        n.id === selectedNode?.id
+                                                            ? { ...n, data: { ...n.data, model: val === '__custom__' ? (n.data.model || '') : val } }
+                                                            : n
+                                                    ));
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={isLoadingOpenrouterFreeModels ? 'Loading free models...' : 'openrouter/auto (default)'} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {openrouterFreeModels.length > 0 && (
+                                                        <SelectGroup>
+                                                            <SelectLabel>Free models</SelectLabel>
+                                                            {openrouterFreeModels.map(m => (
+                                                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    )}
+                                                    <SelectItem value="__custom__">Custom model (type slug)...</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            {isCustom && (
+                                                <Input
+                                                    className="mt-2"
+                                                    placeholder="anthropic/claude-3.5-sonnet"
+                                                    value={currentModel}
+                                                    onChange={(e) => {
+                                                        setNodes(nodes.map(n =>
+                                                            n.id === selectedNode?.id
+                                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                                : n
+                                                        ));
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 <p className="text-[10px] text-muted-foreground">
-                                    Any model slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
+                                    Free models cost no OpenRouter credits. Pick "Custom model" for any paid slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
                                 </p>
                             </div>
                         )}
@@ -1040,19 +1101,57 @@ export const NodeConfigPanel = () => {
                         {(selectedNode?.data.provider as string) === 'openrouter' && (
                             <div className="grid gap-2">
                                 <Label>OpenRouter Model</Label>
-                                <Input
-                                    placeholder="openrouter/auto"
-                                    value={(selectedNode?.data.model as string) || ''}
-                                    onChange={(e) => {
-                                        setNodes(nodes.map(n =>
-                                            n.id === selectedNode?.id
-                                                ? { ...n, data: { ...n.data, model: e.target.value } }
-                                                : n
-                                        ));
-                                    }}
-                                />
+                                {(() => {
+                                    const currentModel = (selectedNode?.data.model as string) || '';
+                                    const isKnownFreeModel = openrouterFreeModels.some(m => m.id === currentModel);
+                                    const isCustom = !!currentModel && !isKnownFreeModel;
+
+                                    return (
+                                        <>
+                                            <Select
+                                                value={isCustom ? '__custom__' : currentModel}
+                                                onValueChange={(val) => {
+                                                    setNodes(nodes.map(n =>
+                                                        n.id === selectedNode?.id
+                                                            ? { ...n, data: { ...n.data, model: val === '__custom__' ? (n.data.model || '') : val } }
+                                                            : n
+                                                    ));
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={isLoadingOpenrouterFreeModels ? 'Loading free models...' : 'openrouter/auto (default)'} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {openrouterFreeModels.length > 0 && (
+                                                        <SelectGroup>
+                                                            <SelectLabel>Free models</SelectLabel>
+                                                            {openrouterFreeModels.map(m => (
+                                                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    )}
+                                                    <SelectItem value="__custom__">Custom model (type slug)...</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            {isCustom && (
+                                                <Input
+                                                    className="mt-2"
+                                                    placeholder="anthropic/claude-3.5-sonnet"
+                                                    value={currentModel}
+                                                    onChange={(e) => {
+                                                        setNodes(nodes.map(n =>
+                                                            n.id === selectedNode?.id
+                                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                                : n
+                                                        ));
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 <p className="text-[10px] text-muted-foreground">
-                                    Any model slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
+                                    Free models cost no OpenRouter credits. Pick "Custom model" for any paid slug from <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>anthropic/claude-3.5-sonnet</code>). Leave blank for <code>openrouter/auto</code>.
                                 </p>
                             </div>
                         )}
