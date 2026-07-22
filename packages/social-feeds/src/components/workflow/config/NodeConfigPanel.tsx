@@ -120,6 +120,8 @@ export const NodeConfigPanel = () => {
     const [testError, setTestError] = useState<string | null>(null);
     const [isFetchingSheets, setIsFetchingSheets] = useState(false);
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
+    const [openrouterImageModels, setOpenrouterImageModels] = useState<{ id: string; name: string }[]>([]);
+    const [isLoadingOpenrouterImageModels, setIsLoadingOpenrouterImageModels] = useState(false);
     const [newScheduleDay, setNewScheduleDay] = useState<string>('');
     const [newScheduleTime, setNewScheduleTime] = useState<string>('');
     const [runEveryMinute, setRunEveryMinute] = useState(false);
@@ -297,6 +299,26 @@ export const NodeConfigPanel = () => {
 
         fetchSheets(sheetId);
     }, [selectedNode?.id, selectedNode?.type, selectedNode?.data?.contentSource, selectedNode?.data?.sheetId]);
+
+    useEffect(() => {
+        const needsOpenrouterImageModels =
+            selectedNode?.type === 'image-generation' && (selectedNode?.data.provider as string) === 'openrouter';
+
+        if (!needsOpenrouterImageModels || openrouterImageModels.length > 0 || isLoadingOpenrouterImageModels) {
+            return;
+        }
+
+        setIsLoadingOpenrouterImageModels(true);
+        fetch('/api/openrouter/image-models')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data.models)) {
+                    setOpenrouterImageModels(data.models);
+                }
+            })
+            .catch(() => toast.error('Failed to load OpenRouter image models'))
+            .finally(() => setIsLoadingOpenrouterImageModels(false));
+    }, [selectedNode?.type, selectedNode?.data?.provider, openrouterImageModels.length, isLoadingOpenrouterImageModels]);
 
     if (!selectedNode) return null;
 
@@ -1200,19 +1222,52 @@ export const NodeConfigPanel = () => {
                         {(selectedNode?.data.provider as string) === 'openrouter' && (
                             <div className="grid gap-2">
                                 <Label>OpenRouter Image Model</Label>
-                                <Input
-                                    placeholder="bytedance-seed/seedream-4.5"
-                                    value={(selectedNode?.data.model as string) || ''}
-                                    onChange={(e) => {
-                                        setNodes(nodes.map(n =>
-                                            n.id === selectedNode?.id
-                                                ? { ...n, data: { ...n.data, model: e.target.value } }
-                                                : n
-                                        ));
-                                    }}
-                                />
+                                {(() => {
+                                    const currentModel = (selectedNode?.data.model as string) || '';
+                                    const isKnownModel = openrouterImageModels.some(m => m.id === currentModel);
+                                    const isCustom = !!currentModel && !isKnownModel;
+
+                                    return (
+                                        <>
+                                            <Select
+                                                value={isCustom ? '__custom__' : currentModel}
+                                                onValueChange={(val) => {
+                                                    setNodes(nodes.map(n =>
+                                                        n.id === selectedNode?.id
+                                                            ? { ...n, data: { ...n.data, model: val === '__custom__' ? (n.data.model || '') : val } }
+                                                            : n
+                                                    ));
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={isLoadingOpenrouterImageModels ? 'Loading models...' : 'Select a model...'} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {openrouterImageModels.map(m => (
+                                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                                    ))}
+                                                    <SelectItem value="__custom__">Custom model (type slug)...</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            {isCustom && (
+                                                <Input
+                                                    className="mt-2"
+                                                    placeholder="bytedance-seed/seedream-4.5"
+                                                    value={currentModel}
+                                                    onChange={(e) => {
+                                                        setNodes(nodes.map(n =>
+                                                            n.id === selectedNode?.id
+                                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                                : n
+                                                        ));
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                })()}
                                 <p className="text-[10px] text-muted-foreground">
-                                    Any image model slug from <a href="https://openrouter.ai/models?output_modalities=image" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>bytedance-seed/seedream-4.5</code>, <code>black-forest-labs/flux-1.1-pro</code>).
+                                    List pulled live from <a href="https://openrouter.ai/models?output_modalities=image" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a>. Pick "Custom model" to type any slug directly.
                                 </p>
                             </div>
                         )}
