@@ -10,11 +10,17 @@ type OpenRouterModel = {
         output_modalities?: string[];
     };
     pricing?: {
-        image?: string;
+        image_output?: string;
     };
 };
 
-let cachedModels: { id: string; name: string }[] | null = null;
+const isFreeImageModel = (m: OpenRouterModel) => {
+    if (m.id.endsWith(":free")) return true;
+    const imageOutputCost = parseFloat(m.pricing?.image_output ?? "1");
+    return imageOutputCost === 0;
+};
+
+let cachedModels: { id: string; name: string; free: boolean }[] | null = null;
 let cachedAt = 0;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
@@ -45,7 +51,7 @@ export async function GET(req: Request) {
 
     const imageModels = allModels
         .filter((m) => m.architecture?.output_modalities?.includes("image"))
-        .map((m) => ({ id: m.id, name: m.name || m.id }))
+        .map((m) => ({ id: m.id, name: m.name || m.id, free: isFreeImageModel(m) }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
     cachedModels = imageModels;

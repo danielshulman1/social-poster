@@ -120,7 +120,7 @@ export const NodeConfigPanel = () => {
     const [testError, setTestError] = useState<string | null>(null);
     const [isFetchingSheets, setIsFetchingSheets] = useState(false);
     const [availableSheets, setAvailableSheets] = useState<string[]>([]);
-    const [openrouterImageModels, setOpenrouterImageModels] = useState<{ id: string; name: string }[]>([]);
+    const [openrouterImageModels, setOpenrouterImageModels] = useState<{ id: string; name: string; free: boolean }[]>([]);
     const [isLoadingOpenrouterImageModels, setIsLoadingOpenrouterImageModels] = useState(false);
     const [openrouterFreeModels, setOpenrouterFreeModels] = useState<{ id: string; name: string }[]>([]);
     const [isLoadingOpenrouterFreeModels, setIsLoadingOpenrouterFreeModels] = useState(false);
@@ -1325,6 +1325,8 @@ export const NodeConfigPanel = () => {
                                     const currentModel = (selectedNode?.data.model as string) || '';
                                     const isKnownModel = openrouterImageModels.some(m => m.id === currentModel);
                                     const isCustom = !!currentModel && !isKnownModel;
+                                    const freeModels = openrouterImageModels.filter(m => m.free);
+                                    const paidModels = openrouterImageModels.filter(m => !m.free);
 
                                     return (
                                         <>
@@ -1342,9 +1344,20 @@ export const NodeConfigPanel = () => {
                                                     <SelectValue placeholder={isLoadingOpenrouterImageModels ? 'Loading models...' : 'Select a model...'} />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {openrouterImageModels.map(m => (
-                                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                                    ))}
+                                                    {freeModels.length > 0 && (
+                                                        <SelectGroup>
+                                                            <SelectLabel>Free models</SelectLabel>
+                                                            {freeModels.map(m => (
+                                                                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    )}
+                                                    <SelectGroup>
+                                                        {freeModels.length > 0 && <SelectLabel>Paid models</SelectLabel>}
+                                                        {paidModels.map(m => (
+                                                            <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
                                                     <SelectItem value="__custom__">Custom model (type slug)...</SelectItem>
                                                 </SelectContent>
                                             </Select>
@@ -1366,7 +1379,7 @@ export const NodeConfigPanel = () => {
                                     );
                                 })()}
                                 <p className="text-[10px] text-muted-foreground">
-                                    List pulled live from <a href="https://openrouter.ai/models?output_modalities=image" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a>. Pick "Custom model" to type any slug directly.
+                                    List pulled live from <a href="https://openrouter.ai/models?output_modalities=image" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a>, split into free and paid. Pick "Custom model" to type any slug directly. Note: OpenRouter currently has no free image-generation models &mdash; all image models cost credits per image.
                                 </p>
                             </div>
                         )}
