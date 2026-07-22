@@ -1191,10 +1191,32 @@ export const NodeConfigPanel = () => {
                                 <SelectContent>
                                     <SelectItem value="dalle-3">GPT Image (OpenAI)</SelectItem>
                                     <SelectItem value="nano-banana">Gemini (Nano Banana Flash Image)</SelectItem>
+                                    <SelectItem value="openrouter">OpenRouter (Seedream, Flux, etc.)</SelectItem>
                                     <SelectItem value="stable-diffusion">Stable Diffusion (Coming Soon)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {(selectedNode?.data.provider as string) === 'openrouter' && (
+                            <div className="grid gap-2">
+                                <Label>OpenRouter Image Model</Label>
+                                <Input
+                                    placeholder="bytedance-seed/seedream-4.5"
+                                    value={(selectedNode?.data.model as string) || ''}
+                                    onChange={(e) => {
+                                        setNodes(nodes.map(n =>
+                                            n.id === selectedNode?.id
+                                                ? { ...n, data: { ...n.data, model: e.target.value } }
+                                                : n
+                                        ));
+                                    }}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Any image model slug from <a href="https://openrouter.ai/models?output_modalities=image" target="_blank" rel="noreferrer" className="underline hover:text-foreground">openrouter.ai/models</a> (e.g. <code>bytedance-seed/seedream-4.5</code>, <code>black-forest-labs/flux-1.1-pro</code>).
+                                </p>
+                            </div>
+                        )}
+
                         <div className="grid gap-2">
                             <Label>Image Prompt</Label>
                             <textarea

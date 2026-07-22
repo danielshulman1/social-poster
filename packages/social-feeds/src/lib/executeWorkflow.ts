@@ -580,6 +580,19 @@ const extractGeminiImageOutput = (data: any) => {
     return "";
 };
 
+const extractOpenRouterImageOutput = (data: any) => {
+    const image = data?.data?.[0];
+    if (!image) return "";
+
+    const b64 = image.b64_json;
+    if (typeof b64 === "string" && b64.trim()) {
+        const mimeType = image.media_type || "image/png";
+        return `data:${mimeType};base64,${b64.trim()}`;
+    }
+
+    return "";
+};
+
 const describeGeminiImageError = (status: number, errText: string) => {
     let parsed: any;
     try {
@@ -1463,6 +1476,40 @@ export async function executeWorkflow(
                         const data = await response.json();
                         output = extractGeminiImageOutput(data);
                         if (!output) throw new Error('Gemini returned no image data.');
+                    } else if (provider === 'openrouter') {
+                        const userWithOpenrouter = decryptUserSecretFields(await prisma.user.findUnique({
+                            where: { id: userId },
+                            select: { openrouterApiKey: true }
+                        }));
+
+                        if (!userWithOpenrouter?.openrouterApiKey) throw new Error('No OpenRouter API key configured for image generation. Go to Settings.');
+
+                        const openrouterModel = (node.data?.model as string)?.trim();
+                        if (!openrouterModel) throw new Error('Set an OpenRouter image model (e.g. bytedance-seed/seedream-4.5) on this node.');
+
+                        const response = await fetch('https://openrouter.ai/api/v1/images', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${userWithOpenrouter.openrouterApiKey}`,
+                                'HTTP-Referer': 'https://social-feeds.com',
+                                'X-Title': 'Social Feeds Poster',
+                            },
+                            body: JSON.stringify({
+                                model: openrouterModel,
+                                prompt: prompt,
+                                n: 1,
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`OpenRouter image generation error: ${errText}`);
+                        }
+
+                        const data = await response.json();
+                        output = extractOpenRouterImageOutput(data);
+                        if (!output) throw new Error('OpenRouter returned no image data.');
                     } else {
                         throw new Error(`Unknown image provider: ${provider}`);
                     }

@@ -188,6 +188,19 @@ const extractGeminiImageOutput = (data: any) => {
     return "";
 };
 
+const extractOpenRouterImageOutput = (data: any) => {
+    const image = data?.data?.[0];
+    if (!image) return "";
+
+    const b64 = image.b64_json;
+    if (typeof b64 === "string" && b64.trim()) {
+        const mimeType = image.media_type || "image/png";
+        return `data:${mimeType};base64,${b64.trim()}`;
+    }
+
+    return "";
+};
+
 const describeGeminiImageError = (status: number, errText: string) => {
     let parsed: any;
     try {
@@ -790,6 +803,47 @@ export async function POST(req: Request) {
                 const imageUrl = extractGeminiImageOutput(data);
 
                 if (!imageUrl) return NextResponse.json({ success: false, error: 'Gemini returned no image data.' }, { status: 500 });
+
+                return NextResponse.json({ success: true, result: imageUrl });
+
+            } else if (provider === 'openrouter') {
+                const user = decryptUserSecretFields(await prisma.user.findUnique({
+                    where: { id: auth.userId },
+                    select: { openrouterApiKey: true },
+                }));
+
+                if (!user?.openrouterApiKey) {
+                    return NextResponse.json({ success: false, error: 'No OpenRouter API key configured for image generation.' }, { status: 400 });
+                }
+
+                const openrouterModel = getString(body.model).trim();
+                if (!openrouterModel) {
+                    return NextResponse.json({ success: false, error: 'Set an OpenRouter image model (e.g. bytedance-seed/seedream-4.5) on this node.' }, { status: 400 });
+                }
+
+                const response = await fetch('https://openrouter.ai/api/v1/images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${user.openrouterApiKey}`,
+                        'HTTP-Referer': 'https://social-feeds.com',
+                        'X-Title': 'Social Feeds Poster',
+                    },
+                    body: JSON.stringify({
+                        model: openrouterModel,
+                        prompt: prompt,
+                        n: 1,
+                    }),
+                });
+
+                if (!response.ok) {
+                    return buildUpstreamErrorResponse(response, "OpenRouter image generation error");
+                }
+
+                const data = await parseJsonResponse(response);
+                const imageUrl = extractOpenRouterImageOutput(data);
+
+                if (!imageUrl) return NextResponse.json({ success: false, error: 'OpenRouter returned no image data.' }, { status: 500 });
 
                 return NextResponse.json({ success: true, result: imageUrl });
             }
