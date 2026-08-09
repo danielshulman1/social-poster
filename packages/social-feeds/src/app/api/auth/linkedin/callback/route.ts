@@ -60,10 +60,11 @@ export async function GET(req: Request) {
             }),
         });
 
-        const tokenData = await tokenRes.json();
+        const tokenData = await tokenRes.json().catch(() => ({} as any));
         if (!tokenRes.ok || !tokenData.access_token) {
-            console.error('LinkedIn token exchange failed');
-            return NextResponse.redirect(`${baseUrl}/connections?error=token_failed`);
+            const reason = tokenData?.error_description || tokenData?.error || `status_${tokenRes.status}`;
+            console.error('LinkedIn token exchange failed:', tokenRes.status, tokenData?.error, tokenData?.error_description);
+            return NextResponse.redirect(`${baseUrl}/connections?error=token_failed&reason=${encodeURIComponent(reason)}`);
         }
 
         // Get user profile
