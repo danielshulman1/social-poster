@@ -1427,10 +1427,21 @@ export async function executeWorkflow(
 
                 case 'image-generation': {
                     const provider = node.data?.provider || 'dalle-3';
-                    let prompt = (node.data?.prompt as string) || 'A creative image.';
 
-                    if (prompt.includes('{{content}}') && lastOutput) {
-                        prompt = prompt.replace('{{content}}', lastOutput);
+                    // Ground the image in the actual post content so it stays relevant to
+                    // what is being published, not a generic stock-style picture.
+                    const contentForImage = (lastAiTextOutput || lastTextOutput || lastOutput || '').trim();
+                    const configuredPrompt = ((node.data?.prompt as string) || '').trim();
+                    let prompt: string;
+
+                    if (configuredPrompt.includes('{{content}}')) {
+                        prompt = configuredPrompt.replace('{{content}}', contentForImage);
+                    } else if (contentForImage && !isNoSourceRowMessage(contentForImage)) {
+                        const snippet = contentForImage.slice(0, 600);
+                        const style = configuredPrompt || 'A high-quality, photorealistic social media image';
+                        prompt = `${style}. Create an image that visually illustrates the subject of the social media post below. Do not render any text, letters, words, watermarks, or logos in the image.\n\nPost:\n"""${snippet}"""`;
+                    } else {
+                        prompt = configuredPrompt || 'A creative image.';
                     }
 
                     if (provider === 'dalle-3' || GPT_IMAGE_PROVIDERS.has(provider)) {
