@@ -792,7 +792,12 @@ export default function SettingsPage() {
                                 </div>
                                 <Button
                                     onClick={handleSaveLinkedin}
-                                    disabled={isSavingLinkedin || !linkedinClientId.trim() || !linkedinClientSecret.trim()}
+                                    disabled={
+                                        isSavingLinkedin ||
+                                        (hasLinkedinCredentials
+                                            ? (!linkedinClientId.trim() && !linkedinClientSecret.trim())
+                                            : (!linkedinClientId.trim() || !linkedinClientSecret.trim()))
+                                    }
                                     size="sm"
                                 >
                                     {isSavingLinkedin && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
