@@ -64,7 +64,7 @@ export async function GET(req: Request) {
         if (!tokenRes.ok || !tokenData.access_token) {
             const reason = tokenData?.error_description || tokenData?.error || `status_${tokenRes.status}`;
             console.error('LinkedIn token exchange failed:', tokenRes.status, tokenData?.error, tokenData?.error_description);
-            return NextResponse.redirect(`${baseUrl}/connections?error=token_failed&reason=${encodeURIComponent(reason)}`);
+            return NextResponse.redirect(`${baseUrl}/connections?error=linkedin_token_failed:${encodeURIComponent(reason)}`);
         }
 
         // Get user profile

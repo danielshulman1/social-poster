@@ -258,6 +258,18 @@ function ConnectionsPageContent() {
                     title: 'LinkedIn callback incomplete',
                     description: 'OAuth returned, but the profile lookup failed. Retry from a fresh Connections page load.',
                 });
+            } else if (decodedError.startsWith('linkedin_token_failed')) {
+                const detail = decodedError.split(':').slice(1).join(':').trim();
+                toast.error(detail
+                    ? `LinkedIn sign-in failed: ${detail}`
+                    : 'LinkedIn sign-in failed. Re-check the Client Secret saved in Settings.');
+                setConnectionNotice({
+                    tone: 'warning',
+                    title: 'LinkedIn token exchange failed',
+                    description: detail
+                        ? `LinkedIn returned: ${detail}. This usually means the Client Secret saved in Settings doesn't exactly match your LinkedIn app, or the redirect URL isn't authorized in the app.`
+                        : "Re-check the Client Secret saved in Settings and that your LinkedIn app's authorized redirect URL is https://socialposter.easy-ai.co.uk/api/auth/linkedin/callback.",
+                });
             } else if (decodedError.startsWith('token_failed')) {
                 const detail = decodedError.split(':').slice(1).join(':').trim();
                 toast.error(detail
