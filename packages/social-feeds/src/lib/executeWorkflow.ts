@@ -564,6 +564,18 @@ const extractOpenAiImageOutput = (data: any) => {
     return "";
 };
 
+const INSTAGRAM_CAPTION_LIMIT = 2200;
+
+// Instagram rejects captions over 2200 characters. Trim to the limit,
+// preferring to cut on a word boundary and appending an ellipsis.
+const truncateForInstagram = (caption: string) => {
+    if (caption.length <= INSTAGRAM_CAPTION_LIMIT) return caption;
+    const slice = caption.slice(0, INSTAGRAM_CAPTION_LIMIT - 1);
+    const lastSpace = slice.lastIndexOf(" ");
+    const cut = lastSpace > INSTAGRAM_CAPTION_LIMIT - 200 ? slice.slice(0, lastSpace) : slice;
+    return `${cut.trimEnd()}…`;
+};
+
 const extractGeminiImageOutput = (data: any) => {
     const parts = data?.candidates?.[0]?.content?.parts;
     if (!Array.isArray(parts)) return "";
@@ -2059,7 +2071,7 @@ export async function executeWorkflow(
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 image_url: imageUrl,
-                                caption: igContent,
+                                caption: truncateForInstagram(igContent || ''),
                                 access_token: igToken,
                             }),
                         });
