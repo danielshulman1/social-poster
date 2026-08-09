@@ -1058,10 +1058,8 @@ export async function executeWorkflow(
 
                     const contentCol = ((node.data?.sheetColumn as string) || 'A').toUpperCase();
                     const imageCol = getGoogleSheetsImageColumn(contentCol, node.data?.imageColumn as string | undefined);
-                    const useSheetDates = node.data?.useSheetDates !== false;
-                    const scheduledAtCol = useSheetDates
-                        ? getGoogleSheetsScheduledAtColumn(contentCol, node.data?.scheduledAtColumn as string | undefined)
-                        : null;
+                    // Scheduled-date gating has been removed: always post the next row
+                    // that isn't marked done, regardless of any date column.
                     const nextRow = await readNextGoogleSheetsRow({
                         userId,
                         sheetId: spreadsheetId,
@@ -1070,14 +1068,12 @@ export async function executeWorkflow(
                         imageCol,
                         apiKey: userWithKey?.googleApiKey,
                         readToken,
-                        scheduledAtCol,
-                        useSheetDates,
+                        scheduledAtCol: null,
+                        useSheetDates: false,
                     });
 
                     if (!nextRow) {
-                        output = useSheetDates
-                            ? 'No rows in the sheet are due to post yet (or all due rows are marked done).'
-                            : 'All rows in the sheet have been processed (marked as done).';
+                        output = 'All rows in the sheet have been processed (marked as done).';
                         stopAfterCurrentNode = true;
                     } else {
                         output = nextRow.content;
@@ -1087,8 +1083,6 @@ export async function executeWorkflow(
                             sourceImageUrl: nextRow.imageUrl || undefined,
                             sourceImageColumn: imageCol,
                             sourceContentColumn: contentCol,
-                            sourceScheduledAt: nextRow.scheduledAt?.toISOString(),
-                            sourceScheduledAtColumn: scheduledAtCol || undefined,
                         };
                     }
                     break;

@@ -678,39 +678,9 @@ export const NodeConfigPanel = () => {
                                     }}
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label>Scheduled Date Column</Label>
-                                <Input
-                                    placeholder="E"
-                                    value={(selectedNode?.data.scheduledAtColumn as string) || ''}
-                                    onChange={(e) => {
-                                        setNodes(nodes.map(n => n.id === selectedNode?.id ? { ...n, data: { ...n.data, scheduledAtColumn: e.target.value } } : n));
-                                    }}
-                                />
-                            </div>
-                        </div>
-                        <div className="rounded-2xl border border-border/80 bg-background/55 p-4">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1">
-                                    <Label className="text-sm">Use Row Dates From Google Sheet</Label>
-                                    <p className="text-[10px] leading-5 text-muted-foreground">
-                                        When this is on, each row posts only when its `scheduled_at` date has arrived.
-                                    </p>
-                                </div>
-                                <Switch
-                                    checked={(selectedNode?.data.useSheetDates as boolean | undefined) !== false}
-                                    onCheckedChange={(checked) => {
-                                        setNodes(nodes.map(n =>
-                                            n.id === selectedNode?.id
-                                                ? { ...n, data: { ...n.data, useSheetDates: checked } }
-                                                : n
-                                        ));
-                                    }}
-                                />
-                            </div>
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Use one row per post. Put the image URL in the same row as the post text so the workflow carries both together. Use `YYYY-MM-DD HH:MM` in the scheduled date column.
+                            Use one row per post. Put the image URL in the same row as the post text so the workflow carries both together. Each run posts the next row that isn&apos;t marked done.
                         </p>
                     </div>
                 );
