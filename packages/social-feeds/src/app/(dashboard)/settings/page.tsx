@@ -221,20 +221,33 @@ export default function SettingsPage() {
     };
 
     const handleSaveLinkedin = async () => {
-        if (!linkedinClientId.trim() || !linkedinClientSecret.trim()) {
+        const clientId = linkedinClientId.trim();
+        const clientSecret = linkedinClientSecret.trim();
+        // When no credentials exist yet, both fields are required. When updating
+        // existing credentials, allow saving just the field(s) that changed —
+        // the Client ID field is empty on return (it shows a masked preview), so
+        // requiring it again would block a secret-only update.
+        if (!hasLinkedinCredentials && (!clientId || !clientSecret)) {
             toast.error('Please enter both Client ID and Client Secret');
+            return;
+        }
+        if (!clientId && !clientSecret) {
+            toast.error('Enter a new Client ID or Client Secret to update.');
             return;
         }
         setIsSavingLinkedin(true);
         try {
+            const payload: Record<string, string> = {};
+            if (clientId) payload.linkedinClientId = clientId;
+            if (clientSecret) payload.linkedinClientSecret = clientSecret;
             const res = await fetch('/api/user/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ linkedinClientId: linkedinClientId.trim(), linkedinClientSecret: linkedinClientSecret.trim() }),
+                body: JSON.stringify(payload),
             });
             if (!res.ok) throw new Error();
             setHasLinkedinCredentials(true);
-            setLinkedinClientIdPreview(linkedinClientId.trim());
+            if (clientId) setLinkedinClientIdPreview(clientId);
             setLinkedinClientId('');
             setLinkedinClientSecret('');
             toast.success('LinkedIn credentials saved! Go to Connections to connect your account.');
